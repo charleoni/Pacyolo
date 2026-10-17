@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { EmpresasModule } from './empresas/empresas.module.js';
 import { TercerosModule } from './terceros/terceros.module.js';
 import { PucModule } from './puc/puc.module.js';
+import { AsientosModule } from './asientos/asientos.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PucModule } from './puc/puc.module.js';
     EmpresasModule,
     TercerosModule,
     PucModule,
+    AsientosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
