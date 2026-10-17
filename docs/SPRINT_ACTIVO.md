@@ -3,36 +3,48 @@
 
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/02-retenciones-cxp`  
-*Última Versión Publicada:* `v0.1.0-sprint1` (Fusionado en `develop` y `main`)
+*Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
+*Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
+*Rama Activa:* `sprint/03-integracion-webhooks`  
+*Última Versión Publicada:* `v0.2.0-sprint2` (Fusionado en `develop` y `main`)
 
 ---
 
-## 🎯 SPRINT 2: Motor de Retenciones, Mapeo & Cuentas por Pagar (CxP)
-- **Objetivo del Sprint:** Dotar a PACYOLO de la inteligencia tributaria colombiana (Retefuente, ReteICA, ReteIVA, IVA) y del flujo completo de compras y pasivos: causación de facturas de proveedores con retenciones automáticas, generación del asiento contable de pasivo y posterior pago con comprobante de egreso (`EGR`).
+## 🎯 SPRINT 3: Interfaz de Integración Externa (API-First / Webhooks & Idempotencia)
+- **Objetivo del Sprint:** Permitir que sistemas externos (ERPs comerciales, facturadores electrónicos, plataformas de nómina o e-commerce) sincronicen transacciones en PACYOLO con endpoints desacoplados (`POST /api/v1/integracion/facturas-venta`, `POST /api/v1/integracion/recaudos`), garantizando idempotencia estricta, soporte para modo `INMEDIATA` vs `REVISION_PREVIA` (borradores pendientes de aprobación), y notificación asíncrona mediante Webhooks firmados.
 - **Entregables Evaluativos para el Usuario:**
-  - Configuración de reglas tributarias con bases mínimas y cuentas contables NIIF (2365, 2367, 2368, 2408).
-  - Endpoint de causación de compras/servicios donde el usuario sólo envía subtotal y concepto, y el sistema calcula y asienta automáticamente las retenciones y la cuenta por pagar.
-  - Endpoint de consulta de cartera de proveedores (CxP) por vencer y vencidas.
-  - Endpoint de pago total o parcial generando el comprobante de egreso (`EGR`) y cruzando saldos.
-  - Suite de pruebas unitarias y E2E que demuestren que los cálculos tributarios cuadran al centavo.
+  - Endpoint de ingesta de Facturas de Venta (`POST /api/v1/integracion/facturas-venta`) con cálculo automático de cuentas por cobrar (CxC), IVA generado y autorretenciones.
+  - Endpoint de Recaudos / Cobros (`POST /api/v1/integracion/recaudos`) que cancela saldos de CxC e ingresa dinero a cuentas bancarias/caja.
+  - Soporte de modo de contabilización: `INMEDIATA` (genera comprobante contable directo) o `REVISION_PREVIA` (queda en bandeja de borradores `PENDIENTE_REVISION`).
+  - Bandeja y endpoints para listar, aprobar o rechazar comprobantes en borrador.
+  - Sistema de Webhooks con firma HMAC-SHA256 para notificar al sistema externo cuando un comprobante es aprobado o rechazado.
+  - Suite de pruebas unitarias y E2E que validen ingesta masiva, idempotencia y despacho de webhooks.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 2 (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 3 (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
-| :-: | :--- | :--- | :-: | :-: | :-: |
-| **2.1** | Reglas de Impuestos | Entidad `cont_impuestos_reglas`, DTOs y CRUD para configurar retenciones (Retefuente compras/servicios/honorarios, ReteICA, ReteIVA, IVA) con bases mínimas y cuentas contables asociadas. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.2** | Motor Tributario | Servicio de cálculo `ImpuestosService`: evalúa base gravable vs base mínima, calcula tarifas y devuelve el desglose de líneas de débito/crédito con cuentas NIIF. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.3** | Mapeo de Conceptos | Entidad y servicio de plantillas (`cont_plantillas_mapeo`) para traducir conceptos ("COMPRA_MERCANCIA", "HONORARIOS", "MANTENIMIENTO") a cuentas de gasto/costo y pasivo. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.4** | Módulo de CxP | Entidad `cont_cuentas_por_pagar`, DTOs y servicio de causación: genera la factura de compra, calcula retenciones y crea el asiento contable balanceado. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.5** | Pago y Egreso (EGR) | Servicio y endpoints para pagar facturas de proveedores: creación del comprobante de egreso (`EGR`), cruce de saldo en CxP y abono a banco/caja. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.6** | Pruebas & Documentación | Pruebas automatizadas (unitarias + E2E) con casos reales de la DIAN + actualización de Swagger y colección de Postman/Thunder Client. | 2h | `[x]` Completado | 17/10/2026 |
+| :-: | :--- | :--- | :--- | :-: | :-: |
+| **3.1** | Ingesta Facturas Venta | DTOs, endpoint `POST /api/v1/integracion/facturas-venta`, mapeo de conceptos de venta, validación de idempotencia (`origen_sistema` + `origen_documento_id`) y generación de CxC / comprobante `FAC` o borrador. | 2h | `[ ]` Pendiente | - |
+| **3.2** | Ingesta Recaudos (CxC) | Endpoint `POST /api/v1/integracion/recaudos` para registrar cobros de facturas de clientes, cruce de saldos de cartera CxC y comprobante de ingreso `ING`. | 2h | `[ ]` Pendiente | - |
+| **3.3** | Bandeja de Borradores | Endpoints para consultar documentos en revisión (`GET /api/v1/integracion/borradores`), aprobar borrador (`POST /api/v1/integracion/borradores/:id/aprobar`) generando asiento contable, o rechazarlo (`POST /api/v1/integracion/borradores/:id/rechazar`). | 2h | `[ ]` Pendiente | - |
+| **3.4** | Motor de Webhooks | Entidad y servicio de suscripción de Webhooks (`core_webhooks`), cola o despachador de eventos HTTP con firma criptográfica HMAC-SHA256 y reintentos ante fallos. | 2h | `[ ]` Pendiente | - |
+| **3.5** | Pruebas & Documentación | Pruebas unitarias y E2E de sincronización externa, simulación de webhook receiver y documentación OpenAPI / Postman. | 2h | `[ ]` Pendiente | - |
 
 ---
 
 ## 📜 Historial de Sprints Cerrados
+
+### ✅ SPRINT 2: Motor de Retenciones, Mapeo & Cuentas por Pagar (COMPLETADO 100%)
+- **Versión de Cierre:** `v0.2.0-sprint2` (17/10/2026).
+- **Logros:**
+  - Motor de reglas tributarias (`cont_impuestos_reglas`) y seeder estándar de Colombia (Retefuente, ReteICA, ReteIVA, IVA).
+  - Servicio tributario con control de bases mínimas y cuentas contables NIIF (2365, 2367, 2368, 2408).
+  - Plantillas de mapeo comercial a cuentas contables (`cont_plantillas_mapeo`).
+  - Módulo de CxP (`cont_cuentas_por_pagar`): causación de compras con retenciones automáticas y comprobante `CAU`, cartera ejecutiva por vencer y vencida.
+  - Pago y Comprobante de Egreso (`cont_pagos_cxp`): liquidación de pasivo a `$0.00` y emisión de `EGR`.
+  - 21 pruebas unitarias y 17 pruebas E2E pasando al 100%.
 
 ### ✅ SPRINT 1: Cimientos del Core Ledger NIIF & Primer Comprobante (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.1.0-sprint1` (17/10/2026).
