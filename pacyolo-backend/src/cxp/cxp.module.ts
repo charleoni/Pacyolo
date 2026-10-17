@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CuentaPorPagar } from './entities/cuenta-por-pagar.entity.js';
+import { PagoCxp } from './entities/pago-cxp.entity.js';
 import { Empresa } from '../empresas/entities/empresa.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { PucCuenta } from '../puc/entities/puc.entity.js';
@@ -12,7 +13,7 @@ import { CxpController } from './cxp.controller.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CuentaPorPagar, Empresa, Tercero, PucCuenta]),
+    TypeOrmModule.forFeature([CuentaPorPagar, PagoCxp, Empresa, Tercero, PucCuenta]),
     AsientosModule,
     ImpuestosModule,
     MapeoModule,

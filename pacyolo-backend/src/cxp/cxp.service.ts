@@ -6,6 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CuentaPorPagar, EstadoCuentaPorPagar } from './entities/cuenta-por-pagar.entity.js';
+import { PagoCxp, MetodoPago } from './entities/pago-cxp.entity.js';
+import { PucCuenta } from '../puc/entities/puc.entity.js';
 import { Empresa } from '../empresas/entities/empresa.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { MapeoService } from '../mapeo/mapeo.service.js';
@@ -16,16 +18,21 @@ import { TipoComprobante } from '../asientos/entities/asiento.entity.js';
 import { CreateAsientoLineaDto } from '../asientos/dto/create-asiento-linea.dto.js';
 import { CausarFacturaCxpDto } from './dto/causar-factura-cxp.dto.js';
 import { FilterCxpDto } from './dto/filter-cxp.dto.js';
+import { RegistrarPagoCxpDto } from './dto/registrar-pago-cxp.dto.js';
 
 @Injectable()
 export class CxpService {
   constructor(
     @InjectRepository(CuentaPorPagar)
     private readonly cxpRepo: Repository<CuentaPorPagar>,
+    @InjectRepository(PagoCxp)
+    private readonly pagoRepo: Repository<PagoCxp>,
     @InjectRepository(Empresa)
     private readonly empresaRepo: Repository<Empresa>,
     @InjectRepository(Tercero)
     private readonly terceroRepo: Repository<Tercero>,
+    @InjectRepository(PucCuenta)
+    private readonly pucRepo: Repository<PucCuenta>,
     private readonly mapeoService: MapeoService,
     private readonly impuestosService: ImpuestosService,
     private readonly asientosService: AsientosService,
@@ -236,4 +243,140 @@ export class CxpService {
       total_facturas_pendientes: facturas.length,
     };
   }
+
+  /**
+   * Registra un pago total o parcial de una factura:
+   * 1. Valida saldo disponible.
+   * 2. Valida cuenta de banco/caja auxiliar.
+   * 3. Asienta comprobante de egreso (tipo EGR) con partida doble exacta.
+   * 4. Descuenta el saldo pendiente y actualiza estado (PAGADA_PARCIAL o PAGADA_TOTAL).
+   * 5. Registra el detalle del pago en cont_pagos_cxp.
+   */
+  async registrarPago(dto: RegistrarPagoCxpDto): Promise<PagoCxp> {
+    const cxp = await this.cxpRepo.findOne({
+      where: { id: dto.cuenta_por_pagar_id, empresa_id: dto.empresa_id },
+      relations: {
+        tercero: true,
+        cuenta_pasivo: true,
+      },
+    });
+
+    if (!cxp) {
+      throw new NotFoundException(`La cuenta por pagar con ID ${dto.cuenta_por_pagar_id} no existe.`);
+    }
+
+    if (cxp.estado === EstadoCuentaPorPagar.PAGADA_TOTAL) {
+      throw new BadRequestException('Esta factura ya se encuentra pagada en su totalidad.');
+    }
+
+    if (cxp.estado === EstadoCuentaPorPagar.ANULADA) {
+      throw new BadRequestException('No se puede realizar pagos a una factura anulada.');
+    }
+
+    const saldoPendiente = Number(cxp.saldo_pendiente);
+    const montoPago = Math.round(Number(dto.monto_pago) * 100) / 100;
+
+    if (montoPago > saldoPendiente) {
+      throw new BadRequestException(
+        `El monto a pagar ($${montoPago.toLocaleString('es-CO')}) no puede exceder el saldo pendiente ($${saldoPendiente.toLocaleString('es-CO')}).`,
+      );
+    }
+
+    const cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_id } });
+    if (!cuentaBanco) {
+      throw new NotFoundException(`La cuenta bancaria con ID ${dto.cuenta_banco_id} no existe.`);
+    }
+    if (cuentaBanco.empresa_id !== dto.empresa_id) {
+      throw new BadRequestException('La cuenta bancaria no pertenece a esta empresa.');
+    }
+    if (!cuentaBanco.permite_movimiento) {
+      throw new BadRequestException(
+        `La cuenta '${cuentaBanco.codigo} - ${cuentaBanco.nombre}' no es auxiliar y no permite movimientos.`,
+      );
+    }
+
+    // Línea 1 (Débito): Disminuye el pasivo de proveedores
+    // Línea 2 (Crédito): Disminuye el activo en bancos/caja
+    const lineas: CreateAsientoLineaDto[] = [
+      {
+        cuenta_id: cxp.cuenta_pasivo_id,
+        tercero_id: cxp.tercero_id,
+        debito: montoPago,
+        credito: 0,
+        base_impuesto: 0,
+        glosa_detalle: `Abono/Pago Fac ${cxp.numero_factura_proveedor} - ${cxp.tercero.nombre_completo}`,
+        documento_referencia: cxp.numero_factura_proveedor,
+      },
+      {
+        cuenta_id: dto.cuenta_banco_id,
+        tercero_id: cxp.tercero_id,
+        debito: 0,
+        credito: montoPago,
+        base_impuesto: 0,
+        glosa_detalle: `Desembolso ${dto.metodo_pago ?? 'TRANSFERENCIA'}${dto.referencia_transaccion ? ` - Ref: ${dto.referencia_transaccion}` : ''}`,
+        documento_referencia: dto.referencia_transaccion ?? cxp.numero_factura_proveedor,
+      },
+    ];
+
+    const asientoEgreso = await this.asientosService.create({
+      empresa_id: dto.empresa_id,
+      tipo_comprobante: TipoComprobante.EGR,
+      fecha_contable: dto.fecha_pago,
+      glosa_general:
+        dto.glosa ||
+        `Comprobante de Egreso - Pago Factura ${cxp.numero_factura_proveedor} a ${cxp.tercero.nombre_completo}`,
+      origen_sistema: 'CXP',
+      origen_documento_tipo: 'COMPROBANTE_EGRESO',
+      origen_documento_id:
+        dto.referencia_transaccion ??
+        `EGR-${cxp.numero_factura_proveedor}-${Date.now()}`,
+      lineas,
+    });
+
+    const nuevoSaldo = Math.round((saldoPendiente - montoPago) * 100) / 100;
+    cxp.saldo_pendiente = nuevoSaldo;
+    cxp.estado =
+      nuevoSaldo === 0
+        ? EstadoCuentaPorPagar.PAGADA_TOTAL
+        : EstadoCuentaPorPagar.PAGADA_PARCIAL;
+
+    await this.cxpRepo.save(cxp);
+
+    const pago = this.pagoRepo.create({
+      empresa_id: dto.empresa_id,
+      cuenta_por_pagar_id: cxp.id,
+      asiento_id: asientoEgreso.id,
+      cuenta_banco_id: dto.cuenta_banco_id,
+      monto_pagado: montoPago,
+      fecha_pago: dto.fecha_pago,
+      metodo_pago: dto.metodo_pago ?? MetodoPago.TRANSFERENCIA,
+      referencia_transaccion: dto.referencia_transaccion ?? null,
+      glosa: dto.glosa ?? null,
+    });
+
+    const guardado = await this.pagoRepo.save(pago);
+
+    const res = await this.pagoRepo.findOne({
+      where: { id: guardado.id },
+      relations: {
+        asiento: true,
+        cuenta_banco: true,
+        cuenta_por_pagar: true,
+      },
+    });
+
+    return res as PagoCxp;
+  }
+
+  async listarPagos(cuenta_por_pagar_id: string): Promise<PagoCxp[]> {
+    return await this.pagoRepo.find({
+      where: { cuenta_por_pagar_id },
+      relations: {
+        asiento: true,
+        cuenta_banco: true,
+      },
+      order: { created_at: 'DESC' },
+    });
+  }
 }
+

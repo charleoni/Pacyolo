@@ -11,7 +11,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { CxpService } from './cxp.service.js';
 import { CausarFacturaCxpDto } from './dto/causar-factura-cxp.dto.js';
 import { FilterCxpDto } from './dto/filter-cxp.dto.js';
+import { RegistrarPagoCxpDto } from './dto/registrar-pago-cxp.dto.js';
 import { CuentaPorPagar } from './entities/cuenta-por-pagar.entity.js';
+import { PagoCxp } from './entities/pago-cxp.entity.js';
 
 @ApiTags('Cuentas por Pagar (CxP)')
 @Controller('cxp')
@@ -51,6 +53,26 @@ export class CxpController {
     return this.cxpService.obtenerResumenCartera(empresa_id);
   }
 
+  @Post('pagar')
+  @ApiOperation({
+    summary: 'Registrar pago o abono a una factura (Comprobante de Egreso EGR)',
+    description: 'Abona o liquida en su totalidad una factura pendiente, generando automáticamente el comprobante de egreso (EGR), cruzando la cuenta por pagar con banco/caja y actualizando el saldo.',
+  })
+  @ApiResponse({ status: 201, description: 'Pago registrado exitosamente.', type: PagoCxp })
+  @ApiResponse({ status: 400, description: 'Monto excede el saldo o cuenta de banco no auxiliar.' })
+  @ApiResponse({ status: 404, description: 'Cuenta por pagar no encontrada.' })
+  pagar(@Body() pagarDto: RegistrarPagoCxpDto): Promise<PagoCxp> {
+    return this.cxpService.registrarPago(pagarDto);
+  }
+
+  @Get(':id/pagos')
+  @ApiOperation({ summary: 'Listar historial de pagos y egresos de una cuenta por pagar' })
+  @ApiParam({ name: 'id', description: 'UUID de la cuenta por pagar' })
+  @ApiResponse({ status: 200, description: 'Historial de pagos.', type: [PagoCxp] })
+  listarPagos(@Param('id', ParseUUIDPipe) id: string): Promise<PagoCxp[]> {
+    return this.cxpService.listarPagos(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Consultar detalle de una cuenta por pagar' })
   @ApiParam({ name: 'id', description: 'UUID de la cuenta por pagar' })
@@ -60,3 +82,4 @@ export class CxpController {
     return this.cxpService.findOne(id);
   }
 }
+

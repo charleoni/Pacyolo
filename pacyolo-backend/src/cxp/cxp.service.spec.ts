@@ -2,13 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CxpService } from './cxp.service.js';
 import { EstadoCuentaPorPagar } from './entities/cuenta-por-pagar.entity.js';
+import { MetodoPago } from './entities/pago-cxp.entity.js';
 import { TipoComprobante } from '../asientos/entities/asiento.entity.js';
 
 describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
   let service: CxpService;
   let mockCxpRepo: any;
+  let mockPagoRepo: any;
   let mockEmpresaRepo: any;
   let mockTerceroRepo: any;
+  let mockPucRepo: any;
   let mockMapeoService: any;
   let mockImpuestosService: any;
   let mockAsientosService: any;
@@ -17,6 +20,7 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
   const mockProveedorId = '22222222-2222-2222-2222-222222222222';
   const mockCuentaGastoId = '33333333-3333-3333-3333-333333333333';
   const mockCuentaPasivoId = '44444444-4444-4444-4444-444444444444';
+  const mockCuentaBancoId = '55555555-5555-5555-5555-555555555555';
 
   beforeEach(() => {
     mockCxpRepo = {
@@ -27,12 +31,24 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
       createQueryBuilder: vi.fn(),
     };
 
+    mockPagoRepo = {
+      findOne: vi.fn(),
+      find: vi.fn(),
+      create: vi.fn((data) => ({ id: 'new-pago-id', ...data })),
+      save: vi.fn(async (data) => data),
+    };
+
     mockEmpresaRepo = {
       findOne: vi.fn(),
     };
 
     mockTerceroRepo = {
       findOne: vi.fn(),
+    };
+
+    mockPucRepo = {
+      findOne: vi.fn(),
+      find: vi.fn(),
     };
 
     mockMapeoService = {
@@ -49,8 +65,10 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
 
     service = new CxpService(
       mockCxpRepo as any,
+      mockPagoRepo as any,
       mockEmpresaRepo as any,
       mockTerceroRepo as any,
+      mockPucRepo as any,
       mockMapeoService as any,
       mockImpuestosService as any,
       mockAsientosService as any,
@@ -75,7 +93,7 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
       subtotal: 2000000,
       total_iva: 380000,
       total_retenciones: 50000,
-      total_neto: 2330000, // 2.000.000 + 380.000 - 50.000
+      total_neto: 2330000,
       detalles: [],
       lineas_asiento_sugeridas: [
         {
@@ -149,6 +167,137 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
     );
   });
 
+  it('debe registrar el pago total de una factura con comprobante EGR y saldo cero', async () => {
+    const cxpMock = {
+      id: 'cxp-1',
+      empresa_id: mockEmpresaId,
+      tercero_id: mockProveedorId,
+      cuenta_pasivo_id: mockCuentaPasivoId,
+      numero_factura_proveedor: 'FAC-8888',
+      monto_total: 1500000,
+      saldo_pendiente: 1500000,
+      estado: EstadoCuentaPorPagar.PENDIENTE,
+      tercero: { nombre_completo: 'Proveedor Industrial' },
+    };
+
+    mockCxpRepo.findOne.mockResolvedValue(cxpMock);
+    mockPucRepo.findOne.mockResolvedValue({
+      id: mockCuentaBancoId,
+      empresa_id: mockEmpresaId,
+      codigo: '11100501',
+      nombre: 'Cuenta Corriente',
+      permite_movimiento: true,
+    });
+
+    mockAsientosService.create.mockResolvedValue({
+      id: 'asiento-egr-id',
+      numero_comprobante: 'EGR-000001',
+      total_debito: 1500000,
+      total_credito: 1500000,
+    });
+
+    mockPagoRepo.findOne.mockResolvedValue({
+      id: 'pago-1',
+      monto_pagado: 1500000,
+      metodo_pago: MetodoPago.TRANSFERENCIA,
+      asiento: { numero_comprobante: 'EGR-000001' },
+      cuenta_por_pagar: { saldo_pendiente: 0, estado: EstadoCuentaPorPagar.PAGADA_TOTAL },
+    });
+
+    const pagoDto = {
+      empresa_id: mockEmpresaId,
+      cuenta_por_pagar_id: 'cxp-1',
+      cuenta_banco_id: mockCuentaBancoId,
+      monto_pago: 1500000,
+      fecha_pago: '2026-10-17',
+      metodo_pago: MetodoPago.TRANSFERENCIA,
+      referencia_transaccion: 'TRX-123456',
+    };
+
+    const res = await service.registrarPago(pagoDto);
+
+    expect(res).toBeDefined();
+    expect(res.monto_pagado).toBe(1500000);
+    expect(cxpMock.saldo_pendiente).toBe(0);
+    expect(cxpMock.estado).toBe(EstadoCuentaPorPagar.PAGADA_TOTAL);
+    expect(mockAsientosService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipo_comprobante: TipoComprobante.EGR,
+      }),
+    );
+  });
+
+  it('debe registrar un abono parcial y cambiar el estado a PAGADA_PARCIAL', async () => {
+    const cxpMock = {
+      id: 'cxp-1',
+      empresa_id: mockEmpresaId,
+      tercero_id: mockProveedorId,
+      cuenta_pasivo_id: mockCuentaPasivoId,
+      numero_factura_proveedor: 'FAC-8888',
+      monto_total: 2000000,
+      saldo_pendiente: 2000000,
+      estado: EstadoCuentaPorPagar.PENDIENTE,
+      tercero: { nombre_completo: 'Proveedor Industrial' },
+    };
+
+    mockCxpRepo.findOne.mockResolvedValue(cxpMock);
+    mockPucRepo.findOne.mockResolvedValue({
+      id: mockCuentaBancoId,
+      empresa_id: mockEmpresaId,
+      codigo: '11100501',
+      nombre: 'Cuenta Corriente',
+      permite_movimiento: true,
+    });
+
+    mockAsientosService.create.mockResolvedValue({
+      id: 'asiento-egr-id',
+      numero_comprobante: 'EGR-000002',
+    });
+
+    mockPagoRepo.findOne.mockResolvedValue({
+      id: 'pago-1',
+      monto_pagado: 800000,
+      cuenta_por_pagar: { saldo_pendiente: 1200000, estado: EstadoCuentaPorPagar.PAGADA_PARCIAL },
+    });
+
+    const pagoDto = {
+      empresa_id: mockEmpresaId,
+      cuenta_por_pagar_id: 'cxp-1',
+      cuenta_banco_id: mockCuentaBancoId,
+      monto_pago: 800000, // Abono de $800.000 sobre $2.000.000
+      fecha_pago: '2026-10-17',
+    };
+
+    const res = await service.registrarPago(pagoDto);
+
+    expect(res).toBeDefined();
+    expect(cxpMock.saldo_pendiente).toBe(1200000);
+    expect(cxpMock.estado).toBe(EstadoCuentaPorPagar.PAGADA_PARCIAL);
+  });
+
+  it('debe rechazar el pago si el monto excede el saldo pendiente de la factura', async () => {
+    const cxpMock = {
+      id: 'cxp-1',
+      empresa_id: mockEmpresaId,
+      tercero_id: mockProveedorId,
+      saldo_pendiente: 500000,
+      estado: EstadoCuentaPorPagar.PAGADA_PARCIAL,
+      tercero: { nombre_completo: 'Proveedor' },
+    };
+
+    mockCxpRepo.findOne.mockResolvedValue(cxpMock);
+
+    const pagoDto = {
+      empresa_id: mockEmpresaId,
+      cuenta_por_pagar_id: 'cxp-1',
+      cuenta_banco_id: mockCuentaBancoId,
+      monto_pago: 600000, // ¡Excede los $500.000!
+      fecha_pago: '2026-10-17',
+    };
+
+    await expect(service.registrarPago(pagoDto)).rejects.toThrow(BadRequestException);
+  });
+
   it('debe rechazar la causación si el proveedor no pertenece a la empresa', async () => {
     mockEmpresaRepo.findOne.mockResolvedValue({ id: mockEmpresaId });
     mockTerceroRepo.findOne.mockResolvedValue(null);
@@ -172,7 +321,7 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
     mockMapeoService.findByCodigo.mockResolvedValue({
       id: 'template-id',
       codigo_concepto: 'COMPRA_INVENTARIO',
-      activo: false, // ¡Inactiva!
+      activo: false,
     });
 
     const dto = {
@@ -190,8 +339,8 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
 
   it('debe consolidar el resumen de cartera clasificando facturas por vencer y vencidas', async () => {
     const facturas = [
-      { saldo_pendiente: 1000000, fecha_vencimiento: '2099-12-31' }, // Por vencer
-      { saldo_pendiente: 500000, fecha_vencimiento: '2020-01-01' }, // Vencida
+      { saldo_pendiente: 1000000, fecha_vencimiento: '2099-12-31' },
+      { saldo_pendiente: 500000, fecha_vencimiento: '2020-01-01' },
     ];
 
     mockCxpRepo.find.mockResolvedValue(facturas);

@@ -10,6 +10,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
   let terceroId: string;
   let cuentaCajaId: string;
   let cuentaBancoId: string;
+  let cxpId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -262,6 +263,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(Number(res.body.saldo_pendiente)).toBe(2888350);
     expect(res.body.estado).toBe('PENDIENTE');
     expect(Number(res.body.asiento.total_debito)).toBe(Number(res.body.asiento.total_credito));
+    cxpId = res.body.id;
   });
 
   it('14. Debe CONSULTAR el resumen de cartera de proveedores reflejando la deuda por vencer', async () => {
@@ -275,7 +277,53 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.total_vencida).toBe(0);
     expect(res.body.total_facturas_pendientes).toBeGreaterThanOrEqual(1);
   });
+
+  it('15. Debe PAGAR con 201 la factura generando comprobante de egreso EGR y liquidando saldo a cero', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/cxp/pagar')
+      .send({
+        empresa_id: empresaId,
+        cuenta_por_pagar_id: cxpId,
+        cuenta_banco_id: cuentaBancoId,
+        monto_pago: 2888350,
+        fecha_pago: '2026-10-17',
+        metodo_pago: 'TRANSFERENCIA',
+        referencia_transaccion: 'TRX-BANCOLOMBIA-9921',
+        glosa: 'Pago total factura proveedor por transferencia bancaria',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(Number(res.body.monto_pagado)).toBe(2888350);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^EGR-\d{6}$/);
+    expect(Number(res.body.asiento.total_debito)).toBe(2888350);
+    expect(Number(res.body.asiento.total_credito)).toBe(2888350);
+    expect(Number(res.body.cuenta_por_pagar.saldo_pendiente)).toBe(0);
+    expect(res.body.cuenta_por_pagar.estado).toBe('PAGADA_TOTAL');
+  });
+
+  it('16. Debe LISTAR con 200 el historial de pagos de la factura mostrando el comprobante EGR', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/${cxpId}/pagos`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].asiento.numero_comprobante).toMatch(/^EGR-\d{6}$/);
+    expect(Number(res.body[0].monto_pagado)).toBe(2888350);
+  });
+
+  it('17. Debe CONSULTAR la cartera de proveedores reflejando deuda cero tras el pago total', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/cartera/${empresaId}`)
+      .expect(200);
+
+    expect(res.body.total_cartera).toBe(0);
+    expect(res.body.total_facturas_pendientes).toBe(0);
+  });
 });
+
 
 
 

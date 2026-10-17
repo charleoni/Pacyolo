@@ -27,8 +27,8 @@
 | **2.2** | Motor Tributario | Servicio de cálculo `ImpuestosService`: evalúa base gravable vs base mínima, calcula tarifas y devuelve el desglose de líneas de débito/crédito con cuentas NIIF. | 2h | `[x]` Completado | 17/10/2026 |
 | **2.3** | Mapeo de Conceptos | Entidad y servicio de plantillas (`cont_plantillas_mapeo`) para traducir conceptos ("COMPRA_MERCANCIA", "HONORARIOS", "MANTENIMIENTO") a cuentas de gasto/costo y pasivo. | 2h | `[x]` Completado | 17/10/2026 |
 | **2.4** | Módulo de CxP | Entidad `cont_cuentas_por_pagar`, DTOs y servicio de causación: genera la factura de compra, calcula retenciones y crea el asiento contable balanceado. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.5** | Pago y Egreso (EGR) | Servicio y endpoints para pagar facturas de proveedores: creación del comprobante de egreso (`EGR`), cruce de saldo en CxP y abono a banco/caja. | 2h | `[ ]` Pendiente | - |
-| **2.6** | Pruebas & Documentación | Pruebas automatizadas (unitarias + E2E) con casos reales de la DIAN + actualización de Swagger y colección de Postman/Thunder Client. | 2h | `[ ]` Pendiente | - |
+| **2.5** | Pago y Egreso (EGR) | Servicio y endpoints para pagar facturas de proveedores: creación del comprobante de egreso (`EGR`), cruce de saldo en CxP y abono a banco/caja. | 2h | `[x]` Completado | 17/10/2026 |
+| **2.6** | Pruebas & Documentación | Pruebas automatizadas (unitarias + E2E) con casos reales de la DIAN + actualización de Swagger y colección de Postman/Thunder Client. | 2h | `[x]` Completado | 17/10/2026 |
 
 ---
 
@@ -50,7 +50,7 @@
 | Sesión # | Fecha | Horas Dedicadas | Tareas Abordadas | Logros del Día | Bloqueos / Notas |
 | :---: | :---: | :---: | :--- | :--- | :--- |
 | **1** | 17/10/2026 | 2h+ | **Sprint 1 Completo (1.1 a 1.8)** | Cimientos del Core Ledger NIIF completados al 100%. Repositorio Git enlazado a GitHub, base de datos `pacyolo_dev` conectada en PostgreSQL con 5 tablas creadas (`core_empresas`, `core_terceros`, `cont_puc_cuentas`, `cont_asientos`, `cont_asiento_lineas`). Motor de partida doble con consecutivos automáticos, endpoints documentados en Swagger y suites de tests unitarios y E2E pasando con 100% de éxito. Colección Postman generada. | **HITO ALCANZADO: SPRINT 1 COMPLETADO EXITOSAMENTE.** |
-| **2** | 17/10/2026 | 2h+ | **Cierre Sprint 1, Tareas 2.1 a 2.4 (Módulo CxP)** | Release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el ciclo completo de Cuentas por Pagar (`cont_cuentas_por_pagar`): endpoint `POST /api/v1/cxp/causar` que recibe proveedor y concepto, liquida retenciones e IVA, asienta el comprobante contable de causación `CAU` en partida doble exacta y registra la deuda por pagar con control de vencimiento y cartera ejecutiva (`GET /api/v1/cxp/cartera/:empresa_id`). 18 tests unitarios y 14 tests E2E pasando al 100%. | Todo listo para abordar Tarea 2.5 (Pago de Facturas y Comprobantes de Egreso EGR). |
+| **2** | 17/10/2026 | 2h+ | **Sprint 2 Completo (2.1 a 2.6)** | Release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el motor tributario colombiano (Retefuente, ReteICA, IVA), mapeo de conceptos y ciclo completo de CxP: causación (`POST /api/v1/cxp/causar`), cartera de proveedores (`GET /api/v1/cxp/cartera/:empresa_id`), pago y comprobantes de egreso (`POST /api/v1/cxp/pagar`, `GET /api/v1/cxp/:id/pagos`). 21 pruebas unitarias y 17 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 2 COMPLETADO EXITOSAMENTE.** Listo para merge y tag `v0.2.0-sprint2`. |
 
 ---
 
