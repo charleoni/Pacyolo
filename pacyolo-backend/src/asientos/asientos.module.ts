@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Asiento } from './entities/asiento.entity.js';
-import { AsientoLinea } from './entities/asiento-linea.entity.js';
+import { Asiento, AsientoLinea } from './entities/asiento.entity.js';
+import { PucCuenta } from '../puc/entities/puc.entity.js';
+import { AsientosService } from './asientos.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Asiento, AsientoLinea])],
-  exports: [TypeOrmModule],
+  imports: [TypeOrmModule.forFeature([Asiento, AsientoLinea, PucCuenta])],
+  providers: [AsientosService],
+  exports: [AsientosService, TypeOrmModule],
 })
 export class AsientosModule {}
