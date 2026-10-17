@@ -236,7 +236,47 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.cuenta_credito).toBeDefined();
     expect(res.body.cuenta_credito.codigo).toBe('220505');
   });
+
+  it('13. Debe CAUSAR con 201 una factura de compra a proveedor (CxP) generando asiento CAU y registro de deuda', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/cxp/causar')
+      .send({
+        empresa_id: empresaId,
+        tercero_id: terceroId,
+        codigo_concepto: 'COMPRA_INVENTARIO',
+        numero_factura_proveedor: 'FAC-E2E-001',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 2500000,
+        glosa: 'Factura E2E de compra de mercancías',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.asiento_id).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+    expect(Number(res.body.subtotal)).toBe(2500000);
+    expect(Number(res.body.total_iva)).toBe(475000); // 19%
+    expect(Number(res.body.total_retenciones)).toBe(86650); // 2.5% + 0.966%
+    expect(Number(res.body.monto_total)).toBe(2888350); // Neto a pagar al proveedor
+    expect(Number(res.body.saldo_pendiente)).toBe(2888350);
+    expect(res.body.estado).toBe('PENDIENTE');
+    expect(Number(res.body.asiento.total_debito)).toBe(Number(res.body.asiento.total_credito));
+  });
+
+  it('14. Debe CONSULTAR el resumen de cartera de proveedores reflejando la deuda por vencer', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/cartera/${empresaId}`)
+      .expect(200);
+
+    expect(res.body.empresa_id).toBe(empresaId);
+    expect(res.body.total_cartera).toBe(2888350);
+    expect(res.body.total_por_vencer).toBe(2888350);
+    expect(res.body.total_vencida).toBe(0);
+    expect(res.body.total_facturas_pendientes).toBeGreaterThanOrEqual(1);
+  });
 });
+
 
 
 

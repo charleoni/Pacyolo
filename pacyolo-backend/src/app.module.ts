@@ -9,6 +9,7 @@ import { PucModule } from './puc/puc.module.js';
 import { AsientosModule } from './asientos/asientos.module.js';
 import { ImpuestosModule } from './impuestos/impuestos.module.js';
 import { MapeoModule } from './mapeo/mapeo.module.js';
+import { CxpModule } from './cxp/cxp.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MapeoModule } from './mapeo/mapeo.module.js';
     AsientosModule,
     ImpuestosModule,
     MapeoModule,
+    CxpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
