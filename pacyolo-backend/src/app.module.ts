@@ -5,6 +5,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { EmpresasModule } from './empresas/empresas.module.js';
 import { TercerosModule } from './terceros/terceros.module.js';
+import { PucModule } from './puc/puc.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { TercerosModule } from './terceros/terceros.module.js';
     }),
     EmpresasModule,
     TercerosModule,
+    PucModule,
   ],
   controllers: [AppController],
   providers: [AppService],

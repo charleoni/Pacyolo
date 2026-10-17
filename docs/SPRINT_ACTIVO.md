@@ -23,7 +23,7 @@
 | **1.1** | Setup Entorno | Inicializar estructura de carpetas en `C:\proyectos\PACYOLO` (`pacyolo-backend`, `pacyolo-bd`), setup de Git (`.gitignore`) y configuración de conexión PostgreSQL / Docker. | 2h | `[x]` Completado | 17/10/2026 |
 | **1.2** | Scaffolding API | Inicializar proyecto NestJS limpio con TypeORM, ConfigModule, validadores globales (`class-validator`) y Swagger UI configurado en `/api/docs`. | 2h | `[x]` Completado | 17/10/2026 |
 | **1.3** | Modelo Base (Tenants & Terceros) | Migrar y purificar desde Conjuntos: `EmpresaEntity` (Tenant/NIT con parámetro `modo_contabilizacion`) y `TerceroEntity` (Directorio único con validación de documento/RUT). | 2h | `[x]` Completado | 17/10/2026 |
-| **1.4** | Catálogo PUC NIIF | Migrar `PucEntity` (jerarquía de 5 niveles, banderas `exige_tercero`, `exige_centro_costo`) + Seeder de cuentas estándar NIIF Colombia adaptado. | 2h | `[ ]` Pendiente | -- |
+| **1.4** | Catálogo PUC NIIF | Migrar `PucEntity` (jerarquía de 5 niveles, banderas `exige_tercero`, `exige_centro_costo`) + Seeder de cuentas estándar NIIF Colombia adaptado. | 2h | `[x]` Completado | 17/10/2026 |
 | **1.5** | Entidades de Asientos | Migrar y purificar `AsientoEntity` (Cabecera, tipos `ING`, `EGR`, `DIA`, consecutivos, metadatos de integración) y `AsientoLineaEntity` (Débito/Crédito). | 2h | `[ ]` Pendiente | -- |
 | **1.6** | Motor de Partida Doble | Implementar `JournalService` con la regla inviolable `SUM(Débitos) == SUM(Créditos)`, secuenciador transaccional por tipo de comprobante y prevención de descuadres. | 2h | `[ ]` Pendiente | -- |
 | **1.7** | Endpoints de Comprobantes | Crear `POST /api/v1/asientos` y `GET /api/v1/asientos` con filtros por fecha, tipo y empresa, documentados en Swagger con ejemplos interactivos. | 2h | `[ ]` Pendiente | -- |
@@ -38,7 +38,7 @@
 
 | Sesión # | Fecha | Horas Dedicadas | Tareas Abordadas | Logros del Día | Bloqueos / Notas |
 | :---: | :---: | :---: | :--- | :--- | :--- |
-| **1** | 17/10/2026 | 2h+ | Tareas 1.1, 1.2 y 1.3 | Repositorio Git en GitHub, BD `pacyolo_dev` creada con esquemas `core` y `contabilidad`, NestJS creado con Swagger y TypeORM. Módulos y entidades de `Empresas` y `Terceros` creados con cálculo de DV DIAN (Módulo 11), sincronizados en PostgreSQL (`core.core_empresas` y `core.core_terceros`). | Conexión y tablas verificadas con éxito en PostgreSQL. |
+| **1** | 17/10/2026 | 2h+ | Tareas 1.1, 1.2, 1.3 y 1.4 | Git en GitHub, BD `pacyolo_dev` con esquemas `core` y `contabilidad`. Módulos `Empresas` y `Terceros` creados. Módulo `PUC` NIIF Colombia con sembrador universal de 6 clases y jerarquía multinivel. Tablas creadas y verificadas en PostgreSQL (`core_empresas`, `core_terceros`, `cont_puc_cuentas`). | Resuelto de forma limpia y automatizada. |
 
 ---
 
