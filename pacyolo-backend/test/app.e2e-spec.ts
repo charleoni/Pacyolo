@@ -10,6 +10,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
   let terceroId: string;
   let cuentaCajaId: string;
   let cuentaBancoId: string;
+  let cxpId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -161,4 +162,169 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     expect(res.body[0].numero_comprobante).toBe('DIA-000001');
   });
+
+  it('8. Debe SEMBRAR con 201 las reglas estándar de impuestos y retenciones para la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/impuestos/sembrar/${empresaId}`)
+      .expect(201);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const codigos = res.body.map((r: any) => r.codigo);
+    expect(codigos).toContain('RETE_COMPRAS_2.5');
+    expect(codigos).toContain('RETE_SERVICIOS_4.0');
+    expect(codigos).toContain('RETE_HONORARIOS_10.0');
+  });
+
+  it('9. Debe LISTAR con 200 las reglas tributarias de la empresa con sus cuentas PUC asociadas', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/impuestos?empresa_id=${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const reteCompras = res.body.find((r: any) => r.codigo === 'RETE_COMPRAS_2.5');
+    expect(reteCompras).toBeDefined();
+    expect(reteCompras.cuenta_credito).toBeDefined();
+    expect(reteCompras.cuenta_credito.codigo).toBe('236540');
+    expect(Number(reteCompras.base_minima)).toBe(1270000);
+  });
+
+  it('10. Debe CALCULAR con 200 retenciones e IVA para una compra de $2.500.000 con desglose contable', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/impuestos/calcular')
+      .send({
+        empresa_id: empresaId,
+        tipo_operacion: 'COMPRA_GASTO',
+        subtotal: 2500000,
+        reglas: [
+          { regla_id_o_codigo: 'IVA_19_DESCONTABLE' },
+          { regla_id_o_codigo: 'RETE_COMPRAS_2.5' },
+          { regla_id_o_codigo: 'RETEICA_BOGOTA_9.66' },
+        ],
+      })
+      .expect(200);
+
+    expect(res.body.subtotal).toBe(2500000);
+    expect(res.body.total_iva).toBe(475000);
+    expect(res.body.total_retenciones).toBe(86650);
+    expect(res.body.total_neto).toBe(2888350);
+    expect(res.body.detalles).toHaveLength(3);
+    expect(res.body.lineas_asiento_sugeridas).toHaveLength(3);
+  });
+
+  it('11. Debe SEMBRAR con 201 las plantillas estándar de mapeo conceptual para la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/mapeo-conceptos/sembrar/${empresaId}`)
+      .expect(201);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const codigos = res.body.map((p: any) => p.codigo_concepto);
+    expect(codigos).toContain('COMPRA_INVENTARIO');
+    expect(codigos).toContain('HONORARIOS_PROFESIONALES');
+    expect(codigos).toContain('SERVICIOS_ASEO_VIGILANCIA');
+  });
+
+  it('12. Debe CONSULTAR con 200 la plantilla por código de concepto mnemónico', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/mapeo-conceptos/codigo/${empresaId}/COMPRA_INVENTARIO`)
+      .expect(200);
+
+    expect(res.body.codigo_concepto).toBe('COMPRA_INVENTARIO');
+    expect(res.body.cuenta_debito).toBeDefined();
+    expect(res.body.cuenta_debito.codigo).toBe('1435');
+    expect(res.body.cuenta_credito).toBeDefined();
+    expect(res.body.cuenta_credito.codigo).toBe('220505');
+  });
+
+  it('13. Debe CAUSAR con 201 una factura de compra a proveedor (CxP) generando asiento CAU y registro de deuda', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/cxp/causar')
+      .send({
+        empresa_id: empresaId,
+        tercero_id: terceroId,
+        codigo_concepto: 'COMPRA_INVENTARIO',
+        numero_factura_proveedor: 'FAC-E2E-001',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 2500000,
+        glosa: 'Factura E2E de compra de mercancías',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.asiento_id).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+    expect(Number(res.body.subtotal)).toBe(2500000);
+    expect(Number(res.body.total_iva)).toBe(475000); // 19%
+    expect(Number(res.body.total_retenciones)).toBe(86650); // 2.5% + 0.966%
+    expect(Number(res.body.monto_total)).toBe(2888350); // Neto a pagar al proveedor
+    expect(Number(res.body.saldo_pendiente)).toBe(2888350);
+    expect(res.body.estado).toBe('PENDIENTE');
+    expect(Number(res.body.asiento.total_debito)).toBe(Number(res.body.asiento.total_credito));
+    cxpId = res.body.id;
+  });
+
+  it('14. Debe CONSULTAR el resumen de cartera de proveedores reflejando la deuda por vencer', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/cartera/${empresaId}`)
+      .expect(200);
+
+    expect(res.body.empresa_id).toBe(empresaId);
+    expect(res.body.total_cartera).toBe(2888350);
+    expect(res.body.total_por_vencer).toBe(2888350);
+    expect(res.body.total_vencida).toBe(0);
+    expect(res.body.total_facturas_pendientes).toBeGreaterThanOrEqual(1);
+  });
+
+  it('15. Debe PAGAR con 201 la factura generando comprobante de egreso EGR y liquidando saldo a cero', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/cxp/pagar')
+      .send({
+        empresa_id: empresaId,
+        cuenta_por_pagar_id: cxpId,
+        cuenta_banco_id: cuentaBancoId,
+        monto_pago: 2888350,
+        fecha_pago: '2026-10-17',
+        metodo_pago: 'TRANSFERENCIA',
+        referencia_transaccion: 'TRX-BANCOLOMBIA-9921',
+        glosa: 'Pago total factura proveedor por transferencia bancaria',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(Number(res.body.monto_pagado)).toBe(2888350);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^EGR-\d{6}$/);
+    expect(Number(res.body.asiento.total_debito)).toBe(2888350);
+    expect(Number(res.body.asiento.total_credito)).toBe(2888350);
+    expect(Number(res.body.cuenta_por_pagar.saldo_pendiente)).toBe(0);
+    expect(res.body.cuenta_por_pagar.estado).toBe('PAGADA_TOTAL');
+  });
+
+  it('16. Debe LISTAR con 200 el historial de pagos de la factura mostrando el comprobante EGR', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/${cxpId}/pagos`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].asiento.numero_comprobante).toMatch(/^EGR-\d{6}$/);
+    expect(Number(res.body[0].monto_pagado)).toBe(2888350);
+  });
+
+  it('17. Debe CONSULTAR la cartera de proveedores reflejando deuda cero tras el pago total', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/cxp/cartera/${empresaId}`)
+      .expect(200);
+
+    expect(res.body.total_cartera).toBe(0);
+    expect(res.body.total_facturas_pendientes).toBe(0);
+  });
 });
+
+
+
+
+
