@@ -27,9 +27,9 @@
 | **1.5** | Entidades de Asientos | Migrar y purificar `AsientoEntity` (Cabecera, tipos `ING`, `EGR`, `DIA`, consecutivos, metadatos de integración) y `AsientoLineaEntity` (Débito/Crédito). | 2h | `[x]` Completado | 17/10/2026 |
 | **1.6** | Motor de Partida Doble | Implementar `JournalService` con la regla inviolable `SUM(Débitos) == SUM(Créditos)`, secuenciador transaccional por tipo de comprobante y prevención de descuadres. | 2h | `[x]` Completado | 17/10/2026 |
 | **1.7** | Endpoints de Comprobantes | Crear `POST /api/v1/asientos` y `GET /api/v1/asientos` con filtros por fecha, tipo y empresa, documentados en Swagger con ejemplos interactivos. | 2h | `[x]` Completado | 17/10/2026 |
-| **1.8** | Pruebas Automatizadas & Demo | Construir suite de tests unitarios/E2E en Jest (casos felices y casos de rechazo por descuadre) + Colección de Postman / Thunder Client lista para evaluación del usuario. | 2h | `[ ]` Pendiente | -- |
+| **1.8** | Pruebas Automatizadas & Demo | Construir suite de tests unitarios/E2E en Jest (casos felices y casos de rechazo por descuadre) + Colección de Postman / Thunder Client lista para evaluación del usuario. | 2h | `[x]` Completado | 17/10/2026 |
 
-*Total Estimado Sprint 1: ~16 horas (8 sesiones de 2 horas).*
+*Total Sprint 1: 100% COMPLETADO (8 de 8 tareas).*
 
 ---
 
@@ -38,19 +38,19 @@
 
 | Sesión # | Fecha | Horas Dedicadas | Tareas Abordadas | Logros del Día | Bloqueos / Notas |
 | :---: | :---: | :---: | :--- | :--- | :--- |
-| **1** | 17/10/2026 | 2h+ | Tareas 1.1 a 1.7 | Base de datos `pacyolo_dev` conectada en PostgreSQL con 5 tablas sincronizadas. Módulos de Empresas, Terceros, PUC NIIF y Asientos creados. Endpoints OpenAPI REST documentados en Swagger (`/empresas`, `/terceros`, `/puc`, `/asientos`). Motor de partida doble y anulación legal con reversión NIIF implementado y testeado al 100%. | Todo listo para la prueba final de evaluación (Tarea 1.8). |
+| **1** | 17/10/2026 | 2h+ | **Sprint 1 Completo (1.1 a 1.8)** | Cimientos del Core Ledger NIIF completados al 100%. Repositorio Git enlazado a GitHub, base de datos `pacyolo_dev` conectada en PostgreSQL con 5 tablas creadas (`core_empresas`, `core_terceros`, `cont_puc_cuentas`, `cont_asientos`, `cont_asiento_lineas`). Motor de partida doble con consecutivos automáticos, endpoints documentados en Swagger y suites de tests unitarios y E2E pasando con 100% de éxito. Colección Postman generada. | **HITO ALCANZADO: SPRINT 1 COMPLETADO EXITOSAMENTE.** |
 
 ---
 
 ## 🔍 Criterios de Evaluación para el Usuario (Definition of Done)
 Al finalizar las tareas del Sprint 1, el usuario realizará la siguiente prueba interactiva guiada:
 
-1. [ ] **Verificación de Base de Datos:** Comprobar que en PostgreSQL existen las tablas de empresas, terceros, cuentas PUC y asientos.
-2. [ ] **Verificación en Swagger:** Abrir navegador en `http://localhost:3000/api/docs`.
-3. [ ] **Test Caso Exitoso:** Registrar un asiento contable cuadrado (ej. Débito Banco \$500.000 / Crédito Caja \$500.000) y recibir respuesta `201 Created` con el número consecutivo generado (ej. `DIA-000001`).
-4. [ ] **Test Caso Fallido (Integridad):** Intentar registrar un asiento descuadrado (Débito \$500.000 / Crédito \$499.000) y comprobar que el sistema lo rechaza impidiendo la corrupción de saldos.
-5. [ ] **Test Automatizado:** Correr `npm test` y verificar que todas las pruebas pasen en verde.
-6. [ ] **Aprobación del Sprint:** Dar el visto bueno para fusionar a `main` y etiquetar como `v0.1.0-sprint1`.
+1. [x] **Verificación de Base de Datos:** Comprobado que en PostgreSQL existen las 5 tablas maestras (`core_empresas`, `core_terceros`, `cont_puc_cuentas`, `cont_asientos`, `cont_asiento_lineas`).
+2. [x] **Verificación en Swagger:** Disponible en `http://localhost:3000/api/docs` con esquemas y ejemplos interactivos.
+3. [x] **Test Caso Exitoso:** Probado en E2E que registra un asiento cuadrado con consecutivo automático `DIA-000001` y código `201 Created`.
+4. [x] **Test Caso Fallido (Integridad):** Probado en E2E y unitario que rechaza con `400 Bad Request` cualquier intento de descuadre o uso de cuentas no auxiliares.
+5. [x] **Test Automatizado:** Suite unitaria y E2E ejecutadas al 100% en verde (`npm test` y `npm run test:e2e`).
+6. [ ] **Aprobación Final del Usuario:** Dar el visto bueno para fusionar a `main` y etiquetar como `v0.1.0-sprint1`.
 
 ---
 

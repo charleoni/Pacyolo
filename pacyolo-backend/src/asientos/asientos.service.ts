@@ -106,15 +106,16 @@ export class AsientosService {
 
     try {
       // Cálculo de consecutivo secuencial ininterrumpido por tipo de comprobante
-      const maxRes = await queryRunner.manager
-        .createQueryBuilder(Asiento, 'a')
-        .select('COALESCE(MAX(a.consecutivo), 0)', 'max')
-        .where('a.empresa_id = :empresaId', { empresaId: dto.empresa_id })
-        .andWhere('a.tipo_comprobante = :tipo', { tipo: dto.tipo_comprobante })
-        .setLock('pessimistic_write')
-        .getRawOne();
+      const ultimoAsiento = await queryRunner.manager.findOne(Asiento, {
+        where: {
+          empresa_id: dto.empresa_id,
+          tipo_comprobante: dto.tipo_comprobante,
+        },
+        order: { consecutivo: 'DESC' },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-      const siguienteConsecutivo = Number(maxRes.max) + 1;
+      const siguienteConsecutivo = (ultimoAsiento?.consecutivo ?? 0) + 1;
       const numeroComprobante = `${dto.tipo_comprobante}-${String(siguienteConsecutivo).padStart(6, '0')}`;
 
       // Crear cabecera

@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "PACYOLO — API Contable NIIF (Sprint 1)",
+    "description": "Colección completa para evaluar los endpoints del Sprint 1: Empresas, PUC, Terceros y Asientos Contables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Empresas",
+      "item": [
+        {
+          "name": "1.1 Crear Empresa (Tenant)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nit\": \"901555444\",\n  \"razon_social\": \"Comercializadora Andina S.A.S.\",\n  \"regimen_tributario\": \"COMUN\",\n  \"modo_contabilizacion_integracion\": \"INMEDIATA\"\n}"
+            },
+            "url": { "raw": "http://localhost:3000/api/v1/empresas", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "empresas"] }
+          }
+        },
+        {
+          "name": "1.2 Listar Empresas",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/api/v1/empresas", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "empresas"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. PUC (Catálogo NIIF)",
+      "item": [
+        {
+          "name": "2.1 Sembrar Catálogo NIIF para Empresa",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "http://localhost:3000/api/v1/puc/sembrar/{{empresa_id}}", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "puc", "sembrar", "{{empresa_id}}"] }
+          }
+        },
+        {
+          "name": "2.2 Consultar Árbol PUC",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/api/v1/puc/arbol?empresa_id={{empresa_id}}", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "puc", "arbol"], "query": [{ "key": "empresa_id", "value": "{{empresa_id}}" }] }
+          }
+        },
+        {
+          "name": "2.3 Consultar Cuentas Auxiliares (Movimiento)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/api/v1/puc/auxiliares?empresa_id={{empresa_id}}", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "puc", "auxiliares"], "query": [{ "key": "empresa_id", "value": "{{empresa_id}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Terceros",
+      "item": [
+        {
+          "name": "3.1 Crear Tercero",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"tipo_identificacion\": \"NIT\",\n  \"numero_identificacion\": \"800111222\",\n  \"nombre_completo\": \"Distribuciones Globales S.A.\",\n  \"es_proveedor\": true\n}"
+            },
+            "url": { "raw": "http://localhost:3000/api/v1/terceros", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "terceros"] }
+          }
+        },
+        {
+          "name": "3.2 Listar Terceros de Empresa",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/api/v1/terceros?empresa_id={{empresa_id}}", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "terceros"], "query": [{ "key": "empresa_id", "value": "{{empresa_id}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Asientos Contables (Core Ledger)",
+      "item": [
+        {
+          "name": "4.1 Registrar Asiento Cuadrado (Partida Doble)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"tipo_comprobante\": \"DIA\",\n  \"fecha_contable\": \"2026-10-17\",\n  \"glosa_general\": \"Traslado de fondos Caja a Bancos\",\n  \"lineas\": [\n    {\n      \"cuenta_id\": \"{{cuenta_banco_id}}\",\n      \"debito\": 1500000,\n      \"credito\": 0,\n      \"glosa_detalle\": \"Consignación a Banco Nacional\"\n    },\n    {\n      \"cuenta_id\": \"{{cuenta_caja_id}}\",\n      \"debito\": 0,\n      \"credito\": 1500000,\n      \"glosa_detalle\": \"Salida de efectivo Caja General\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "http://localhost:3000/api/v1/asientos", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "asientos"] }
+          }
+        },
+        {
+          "name": "4.2 Probar Rechazo por Descuadre (Error 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresa_id}}\",\n  \"tipo_comprobante\": \"DIA\",\n  \"fecha_contable\": \"2026-10-17\",\n  \"glosa_general\": \"Asiento Descuadrado Intencional\",\n  \"lineas\": [\n    {\n      \"cuenta_id\": \"{{cuenta_banco_id}}\",\n      \"debito\": 1500000,\n      \"credito\": 0,\n      \"glosa_detalle\": \"Débito Banco\"\n    },\n    {\n      \"cuenta_id\": \"{{cuenta_caja_id}}\",\n      \"debito\": 0,\n      \"credito\": 1499900,\n      \"glosa_detalle\": \"Crédito Caja (Descuadre de $100)\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "http://localhost:3000/api/v1/asientos", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "asientos"] }
+          }
+        },
+        {
+          "name": "4.3 Consultar Libro Diario",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:3000/api/v1/asientos?empresa_id={{empresa_id}}", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "v1", "asientos"], "query": [{ "key": "empresa_id", "value": "{{empresa_id}}" }] }
+          }
+        }
+      ]
+    }
+  ]
+}
