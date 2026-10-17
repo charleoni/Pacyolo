@@ -22,7 +22,7 @@
 | :-: | :--- | :--- | :-: | :-: | :-: |
 | **1.1** | Setup Entorno | Inicializar estructura de carpetas en `C:\proyectos\PACYOLO` (`pacyolo-backend`, `pacyolo-bd`), setup de Git (`.gitignore`) y configuración de conexión PostgreSQL / Docker. | 2h | `[x]` Completado | 17/10/2026 |
 | **1.2** | Scaffolding API | Inicializar proyecto NestJS limpio con TypeORM, ConfigModule, validadores globales (`class-validator`) y Swagger UI configurado en `/api/docs`. | 2h | `[x]` Completado | 17/10/2026 |
-| **1.3** | Modelo Base (Tenants & Terceros) | Migrar y purificar desde Conjuntos: `EmpresaEntity` (Tenant/NIT con parámetro `modo_contabilizacion`) y `TerceroEntity` (Directorio único con validación de documento/RUT). | 2h | `[ ]` Pendiente | -- |
+| **1.3** | Modelo Base (Tenants & Terceros) | Migrar y purificar desde Conjuntos: `EmpresaEntity` (Tenant/NIT con parámetro `modo_contabilizacion`) y `TerceroEntity` (Directorio único con validación de documento/RUT). | 2h | `[x]` Completado | 17/10/2026 |
 | **1.4** | Catálogo PUC NIIF | Migrar `PucEntity` (jerarquía de 5 niveles, banderas `exige_tercero`, `exige_centro_costo`) + Seeder de cuentas estándar NIIF Colombia adaptado. | 2h | `[ ]` Pendiente | -- |
 | **1.5** | Entidades de Asientos | Migrar y purificar `AsientoEntity` (Cabecera, tipos `ING`, `EGR`, `DIA`, consecutivos, metadatos de integración) y `AsientoLineaEntity` (Débito/Crédito). | 2h | `[ ]` Pendiente | -- |
 | **1.6** | Motor de Partida Doble | Implementar `JournalService` con la regla inviolable `SUM(Débitos) == SUM(Créditos)`, secuenciador transaccional por tipo de comprobante y prevención de descuadres. | 2h | `[ ]` Pendiente | -- |
@@ -38,7 +38,7 @@
 
 | Sesión # | Fecha | Horas Dedicadas | Tareas Abordadas | Logros del Día | Bloqueos / Notas |
 | :---: | :---: | :---: | :--- | :--- | :--- |
-| **1** | 17/10/2026 | 2h | Tareas 1.1 y 1.2 | Repositorio Git vinculado a GitHub, base de datos `pacyolo_dev` creada con esquemas `core` y `contabilidad`, proyecto NestJS `pacyolo-backend` creado, TypeORM conectado, Swagger en `/api/docs` y build validado. | Resuelto ajuste de IP del host de PostgreSQL a `100.120.112.79`. |
+| **1** | 17/10/2026 | 2h+ | Tareas 1.1, 1.2 y 1.3 | Repositorio Git en GitHub, BD `pacyolo_dev` creada con esquemas `core` y `contabilidad`, NestJS creado con Swagger y TypeORM. Módulos y entidades de `Empresas` y `Terceros` creados con cálculo de DV DIAN (Módulo 11), sincronizados en PostgreSQL (`core.core_empresas` y `core.core_terceros`). | Conexión y tablas verificadas con éxito en PostgreSQL. |
 
 ---
 

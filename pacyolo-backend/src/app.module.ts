@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { EmpresasModule } from './empresas/empresas.module.js';
+import { TercerosModule } from './terceros/terceros.module.js';
 
 @Module({
   imports: [
@@ -21,10 +23,12 @@ import { AppService } from './app.service.js';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME', 'pacyolo_dev'),
         autoLoadEntities: true,
-        synchronize: true, // Habilitado temporalmente para desarrollo de Sprint 1
+        synchronize: true, // Sincroniza automáticamente entidades en desarrollo
         ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
       }),
     }),
+    EmpresasModule,
+    TercerosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
