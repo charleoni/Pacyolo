@@ -211,6 +211,32 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.detalles).toHaveLength(3);
     expect(res.body.lineas_asiento_sugeridas).toHaveLength(3);
   });
+
+  it('11. Debe SEMBRAR con 201 las plantillas estándar de mapeo conceptual para la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/mapeo-conceptos/sembrar/${empresaId}`)
+      .expect(201);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const codigos = res.body.map((p: any) => p.codigo_concepto);
+    expect(codigos).toContain('COMPRA_INVENTARIO');
+    expect(codigos).toContain('HONORARIOS_PROFESIONALES');
+    expect(codigos).toContain('SERVICIOS_ASEO_VIGILANCIA');
+  });
+
+  it('12. Debe CONSULTAR con 200 la plantilla por código de concepto mnemónico', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/mapeo-conceptos/codigo/${empresaId}/COMPRA_INVENTARIO`)
+      .expect(200);
+
+    expect(res.body.codigo_concepto).toBe('COMPRA_INVENTARIO');
+    expect(res.body.cuenta_debito).toBeDefined();
+    expect(res.body.cuenta_debito.codigo).toBe('1435');
+    expect(res.body.cuenta_credito).toBeDefined();
+    expect(res.body.cuenta_credito.codigo).toBe('220505');
+  });
 });
+
 
 
