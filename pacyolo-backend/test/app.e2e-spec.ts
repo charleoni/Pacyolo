@@ -322,6 +322,100 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.total_cartera).toBe(0);
     expect(res.body.total_facturas_pendientes).toBe(0);
   });
+
+  it('18. Debe INGESTAR con 201 una Factura de Venta desde API externa en modo INMEDIATA y generar CxC y comprobante CAU', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'SHOPIFY_STORE',
+        origen_documento_id: 'ORDER-E2E-1001',
+        numero_factura: 'FAC-VENTA-001',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 1000000,
+        modo_contabilizacion: 'INMEDIATA',
+        observaciones: 'Venta por Shopify tienda virtual',
+      })
+      .expect(201);
+
+    expect(res.body.idempotente).toBe(false);
+    expect(res.body.tipo).toBe('CONTABILIZADO_INMEDIATO');
+    expect(res.body.cuenta_por_cobrar).toBeDefined();
+    expect(Number(res.body.cuenta_por_cobrar.subtotal)).toBe(1000000);
+    expect(Number(res.body.cuenta_por_cobrar.total_impuestos)).toBe(190000); // 19% IVA
+    expect(Number(res.body.cuenta_por_cobrar.total_factura)).toBe(1190000);
+    expect(Number(res.body.cuenta_por_cobrar.saldo_pendiente)).toBe(1190000);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+
+    // Verificación de Idempotencia: reenviar la misma factura no debe duplicar
+    const resIdempotente = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'SHOPIFY_STORE',
+        origen_documento_id: 'ORDER-E2E-1001',
+        numero_factura: 'FAC-VENTA-001',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 1000000,
+      })
+      .expect(201);
+
+    expect(resIdempotente.body.idempotente).toBe(true);
+    expect(resIdempotente.body.cuenta_por_cobrar.id).toBe(res.body.cuenta_por_cobrar.id);
+  });
+
+  it('19. Debe INGESTAR con 201 una Factura de Venta en modo REVISION_PREVIA, dejarla en borrador y luego APROBARLA', async () => {
+    // 1. Envío en modo REVISION_PREVIA
+    const resBorrador = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'FACTURADOR_DIAN',
+        origen_documento_id: 'DIAN-SETT-8821',
+        numero_factura: 'FAC-VENTA-002',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_SERVICIOS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 500000,
+        modo_contabilizacion: 'REVISION_PREVIA',
+        observaciones: 'Factura para revisión previa por contador',
+      })
+      .expect(201);
+
+    expect(resBorrador.body.idempotente).toBe(false);
+    expect(resBorrador.body.tipo).toBe('BORRADOR_INTEGRACION');
+    expect(resBorrador.body.borrador.estado).toBe('PENDIENTE_REVISION');
+    const borradorId = resBorrador.body.borrador.id;
+
+    // 2. Consultar bandeja de borradores
+    const resList = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/borradores/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(resList.body)).toBe(true);
+    const encontrado = resList.body.find((b: any) => b.id === borradorId);
+    expect(encontrado).toBeDefined();
+
+    // 3. Aprobar borrador
+    const resAprobar = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorId}/aprobar`)
+      .send({ revisado_por: 'CONTADOR_LIDER' })
+      .expect(200);
+
+    expect(resAprobar.body.borrador.estado).toBe('APROBADO');
+    expect(resAprobar.body.asiento).toBeDefined();
+    expect(resAprobar.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+    expect(resAprobar.body.cuenta_por_cobrar).toBeDefined();
+    expect(Number(resAprobar.body.cuenta_por_cobrar.total_factura)).toBe(595000); // 500k + 19% IVA (95k)
+  });
 });
 
 
