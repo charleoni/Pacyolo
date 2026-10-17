@@ -161,4 +161,32 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     expect(res.body[0].numero_comprobante).toBe('DIA-000001');
   });
+
+  it('8. Debe SEMBRAR con 201 las reglas estándar de impuestos y retenciones para la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/impuestos/sembrar/${empresaId}`)
+      .expect(201);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const codigos = res.body.map((r: any) => r.codigo);
+    expect(codigos).toContain('RETE_COMPRAS_2.5');
+    expect(codigos).toContain('RETE_SERVICIOS_4.0');
+    expect(codigos).toContain('RETE_HONORARIOS_10.0');
+  });
+
+  it('9. Debe LISTAR con 200 las reglas tributarias de la empresa con sus cuentas PUC asociadas', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/impuestos?empresa_id=${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(4);
+    const reteCompras = res.body.find((r: any) => r.codigo === 'RETE_COMPRAS_2.5');
+    expect(reteCompras).toBeDefined();
+    expect(reteCompras.cuenta_credito).toBeDefined();
+    expect(reteCompras.cuenta_credito.codigo).toBe('236540');
+    expect(Number(reteCompras.base_minima)).toBe(1270000);
+  });
 });
+
