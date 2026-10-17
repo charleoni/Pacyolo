@@ -24,7 +24,7 @@
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :-: | :-: | :-: |
 | **2.1** | Reglas de Impuestos | Entidad `cont_impuestos_reglas`, DTOs y CRUD para configurar retenciones (Retefuente compras/servicios/honorarios, ReteICA, ReteIVA, IVA) con bases mínimas y cuentas contables asociadas. | 2h | `[x]` Completado | 17/10/2026 |
-| **2.2** | Motor Tributario | Servicio de cálculo `ImpuestosService`: evalúa base gravable vs base mínima, calcula tarifas y devuelve el desglose de líneas de débito/crédito con cuentas NIIF. | 2h | `[ ]` Pendiente | - |
+| **2.2** | Motor Tributario | Servicio de cálculo `ImpuestosService`: evalúa base gravable vs base mínima, calcula tarifas y devuelve el desglose de líneas de débito/crédito con cuentas NIIF. | 2h | `[x]` Completado | 17/10/2026 |
 | **2.3** | Mapeo de Conceptos | Entidad y servicio de plantillas (`cont_plantillas_mapeo`) para traducir conceptos ("COMPRA_MERCANCIA", "HONORARIOS", "MANTENIMIENTO") a cuentas de gasto/costo y pasivo. | 2h | `[ ]` Pendiente | - |
 | **2.4** | Módulo de CxP | Entidad `cont_cuentas_por_pagar`, DTOs y servicio de causación: genera la factura de compra, calcula retenciones y crea el asiento contable balanceado. | 2h | `[ ]` Pendiente | - |
 | **2.5** | Pago y Egreso (EGR) | Servicio y endpoints para pagar facturas de proveedores: creación del comprobante de egreso (`EGR`), cruce de saldo en CxP y abono a banco/caja. | 2h | `[ ]` Pendiente | - |
@@ -50,7 +50,7 @@
 | Sesión # | Fecha | Horas Dedicadas | Tareas Abordadas | Logros del Día | Bloqueos / Notas |
 | :---: | :---: | :---: | :--- | :--- | :--- |
 | **1** | 17/10/2026 | 2h+ | **Sprint 1 Completo (1.1 a 1.8)** | Cimientos del Core Ledger NIIF completados al 100%. Repositorio Git enlazado a GitHub, base de datos `pacyolo_dev` conectada en PostgreSQL con 5 tablas creadas (`core_empresas`, `core_terceros`, `cont_puc_cuentas`, `cont_asientos`, `cont_asiento_lineas`). Motor de partida doble con consecutivos automáticos, endpoints documentados en Swagger y suites de tests unitarios y E2E pasando con 100% de éxito. Colección Postman generada. | **HITO ALCANZADO: SPRINT 1 COMPLETADO EXITOSAMENTE.** |
-| **2** | 17/10/2026 | 2h+ | **Cierre Sprint 1 & Tarea 2.1 (Impuestos Reglas)** | Merge y release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el módulo de impuestos y retenciones con entidad `cont_impuestos_reglas`, DTOs con validaciones estrictas de cuentas auxiliares, endpoints REST documentados en Swagger y seeder automático de reglas tributarias estándar (Retefuente compras 2.5%, servicios 4.0%, honorarios 10.0%, ReteICA 9.66x1000, IVA 19%). 8 tests unitarios y 9 tests E2E pasando al 100%. | Todo listo para abordar Tarea 2.2 (Motor de Cálculo Tributario). |
+| **2** | 17/10/2026 | 2h+ | **Cierre Sprint 1, Tarea 2.1 (Reglas) & Tarea 2.2 (Cálculo)** | Release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el configurador de reglas tributarias y el Motor de Cálculo Tributario (`POST /api/v1/impuestos/calcular`). Evalúa bases mínimas legales por regla, calcula retenciones (Retefuente, ReteICA, ReteIVA) e IVA según tipo de operación (`COMPRA_GASTO` o `VENTA_INGRESO`), y genera las líneas de asiento contables pre-armadas listas para la causación. 10 tests unitarios y 10 tests E2E pasando al 100%. | Todo listo para abordar Tarea 2.3 (Mapeo de Conceptos Contables). |
 
 ---
 

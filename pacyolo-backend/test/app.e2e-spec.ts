@@ -188,5 +188,29 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(reteCompras.cuenta_credito.codigo).toBe('236540');
     expect(Number(reteCompras.base_minima)).toBe(1270000);
   });
+
+  it('10. Debe CALCULAR con 200 retenciones e IVA para una compra de $2.500.000 con desglose contable', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/impuestos/calcular')
+      .send({
+        empresa_id: empresaId,
+        tipo_operacion: 'COMPRA_GASTO',
+        subtotal: 2500000,
+        reglas: [
+          { regla_id_o_codigo: 'IVA_19_DESCONTABLE' },
+          { regla_id_o_codigo: 'RETE_COMPRAS_2.5' },
+          { regla_id_o_codigo: 'RETEICA_BOGOTA_9.66' },
+        ],
+      })
+      .expect(200);
+
+    expect(res.body.subtotal).toBe(2500000);
+    expect(res.body.total_iva).toBe(475000);
+    expect(res.body.total_retenciones).toBe(86650);
+    expect(res.body.total_neto).toBe(2888350);
+    expect(res.body.detalles).toHaveLength(3);
+    expect(res.body.lineas_asiento_sugeridas).toHaveLength(3);
+  });
 });
+
 

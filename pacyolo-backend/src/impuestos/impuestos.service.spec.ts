@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { ImpuestosService } from './impuestos.service.js';
 import { TipoImpuesto } from './entities/impuesto-regla.entity.js';
+import { TipoOperacionTributaria } from './dto/calcular-impuestos.dto.js';
 
 describe('ImpuestosService — Reglas Tributarias e Impuestos', () => {
   let service: ImpuestosService;
@@ -129,4 +130,110 @@ describe('ImpuestosService — Reglas Tributarias e Impuestos', () => {
 
     await expect(service.create(dto)).rejects.toThrow(BadRequestException);
   });
+
+  describe('calcularImpuestos — Motor de Liquidación y Retenciones', () => {
+    it('debe liquidar IVA y retenciones correctamente cuando el valor supera las bases mínimas', async () => {
+      mockEmpresaRepo.findOne.mockResolvedValue({ id: mockEmpresaId });
+
+      const reglaIva = {
+        id: 'regla-iva-id',
+        empresa_id: mockEmpresaId,
+        codigo: 'IVA_19_DESCONTABLE',
+        nombre: 'IVA Descontable 19%',
+        tipo_impuesto: TipoImpuesto.IVA,
+        porcentaje: 19.0,
+        base_minima: 0,
+        activo: true,
+        cuenta_debito: { id: 'c-iva', codigo: '240802', nombre: 'IVA Descontable' },
+        cuenta_credito: { id: 'c-iva', codigo: '240802', nombre: 'IVA Descontable' },
+      };
+
+      const reglaRete = {
+        id: 'regla-rete-id',
+        empresa_id: mockEmpresaId,
+        codigo: 'RETE_COMPRAS_2.5',
+        nombre: 'Retefuente Compras 2.5%',
+        tipo_impuesto: TipoImpuesto.RETEFUENTE,
+        porcentaje: 2.5,
+        base_minima: 1270000,
+        activo: true,
+        cuenta_credito: { id: 'c-rete', codigo: '236540', nombre: 'Retención Compras' },
+        cuenta_debito: null,
+      };
+
+      const reglaReteIca = {
+        id: 'regla-ica-id',
+        empresa_id: mockEmpresaId,
+        codigo: 'RETEICA_BOGOTA_9.66',
+        nombre: 'ReteICA 9.66x1000',
+        tipo_impuesto: TipoImpuesto.RETEICA,
+        porcentaje: 0.966,
+        base_minima: 188000,
+        activo: true,
+        cuenta_credito: { id: 'c-ica', codigo: '2368', nombre: 'ReteICA' },
+        cuenta_debito: null,
+      };
+
+      mockImpuestoRepo.findOne.mockImplementation(({ where }: any) => {
+        if (where.codigo === 'IVA_19_DESCONTABLE') return Promise.resolve(reglaIva);
+        if (where.codigo === 'RETE_COMPRAS_2.5') return Promise.resolve(reglaRete);
+        if (where.codigo === 'RETEICA_BOGOTA_9.66') return Promise.resolve(reglaReteIca);
+        return Promise.resolve(null);
+      });
+
+      const resultado = await service.calcularImpuestos({
+        empresa_id: mockEmpresaId,
+        tipo_operacion: TipoOperacionTributaria.COMPRA_GASTO,
+        subtotal: 2500000,
+        reglas: [
+          { regla_id_o_codigo: 'IVA_19_DESCONTABLE' },
+          { regla_id_o_codigo: 'RETE_COMPRAS_2.5' },
+          { regla_id_o_codigo: 'RETEICA_BOGOTA_9.66' },
+        ],
+      });
+
+      expect(resultado.subtotal).toBe(2500000);
+      expect(resultado.total_iva).toBe(475000); // 19% de 2.500.000
+      expect(resultado.total_retenciones).toBe(86650); // 62.500 (Rete) + 24.150 (ICA)
+      expect(resultado.total_neto).toBe(2888350); // 2.500.000 + 475.000 - 86.650
+      expect(resultado.detalles).toHaveLength(3);
+      expect(resultado.detalles.every((d) => d.aplica)).toBe(true);
+      expect(resultado.lineas_asiento_sugeridas).toHaveLength(3);
+    });
+
+    it('debe omitir la retención (valor: 0) cuando la base no alcanza la base mínima legal', async () => {
+      mockEmpresaRepo.findOne.mockResolvedValue({ id: mockEmpresaId });
+
+      const reglaRete = {
+        id: 'regla-rete-id',
+        empresa_id: mockEmpresaId,
+        codigo: 'RETE_COMPRAS_2.5',
+        nombre: 'Retefuente Compras 2.5%',
+        tipo_impuesto: TipoImpuesto.RETEFUENTE,
+        porcentaje: 2.5,
+        base_minima: 1270000,
+        activo: true,
+        cuenta_credito: { id: 'c-rete', codigo: '236540', nombre: 'Retención Compras' },
+        cuenta_debito: null,
+      };
+
+      mockImpuestoRepo.findOne.mockResolvedValue(reglaRete);
+
+      const resultado = await service.calcularImpuestos({
+        empresa_id: mockEmpresaId,
+        tipo_operacion: TipoOperacionTributaria.COMPRA_GASTO,
+        subtotal: 500000, // Menor a la base mínima de 1.270.000
+        reglas: [{ regla_id_o_codigo: 'RETE_COMPRAS_2.5' }],
+      });
+
+      expect(resultado.subtotal).toBe(500000);
+      expect(resultado.total_retenciones).toBe(0);
+      expect(resultado.total_neto).toBe(500000);
+      expect(resultado.detalles[0].aplica).toBe(false);
+      expect(resultado.detalles[0].valor).toBe(0);
+      expect(resultado.detalles[0].motivo_no_aplica).toContain('inferior a la base mínima');
+      expect(resultado.lineas_asiento_sugeridas).toHaveLength(0);
+    });
+  });
 });
+

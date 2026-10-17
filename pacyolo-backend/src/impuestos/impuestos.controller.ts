@@ -16,6 +16,8 @@ import { ImpuestosService } from './impuestos.service.js';
 import { CreateImpuestoReglaDto } from './dto/create-impuesto-regla.dto.js';
 import { UpdateImpuestoReglaDto } from './dto/update-impuesto-regla.dto.js';
 import { FilterImpuestoReglaDto } from './dto/filter-impuesto-regla.dto.js';
+import { CalcularImpuestosDto } from './dto/calcular-impuestos.dto.js';
+import { CalculoImpuestosResultadoDto } from './dto/calculo-impuestos-resultado.dto.js';
 import { ImpuestoRegla } from './entities/impuesto-regla.entity.js';
 
 @ApiTags('Impuestos y Retenciones')
@@ -33,6 +35,22 @@ export class ImpuestosController {
   @ApiResponse({ status: 409, description: 'Código de regla ya existe para esta empresa.' })
   create(@Body() createDto: CreateImpuestoReglaDto): Promise<ImpuestoRegla> {
     return this.impuestosService.create(createDto);
+  }
+
+  @Post('calcular')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Motor de cálculo tributario: liquidar retenciones e IVA',
+    description: 'Evalúa el subtotal contra las bases mínimas legales de las reglas solicitadas, calcula IVA y retenciones practicadas, y devuelve el neto financiero junto con las líneas contables sugeridas.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Liquidación tributaria calculada con éxito.',
+    type: CalculoImpuestosResultadoDto,
+  })
+  @ApiResponse({ status: 404, description: 'Empresa o reglas de impuesto no encontradas.' })
+  calcular(@Body() calcularDto: CalcularImpuestosDto): Promise<CalculoImpuestosResultadoDto> {
+    return this.impuestosService.calcularImpuestos(calcularDto);
   }
 
   @Get()

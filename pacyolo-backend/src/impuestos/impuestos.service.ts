@@ -12,6 +12,15 @@ import { PucCuenta } from '../puc/entities/puc.entity.js';
 import { CreateImpuestoReglaDto } from './dto/create-impuesto-regla.dto.js';
 import { UpdateImpuestoReglaDto } from './dto/update-impuesto-regla.dto.js';
 import { FilterImpuestoReglaDto } from './dto/filter-impuesto-regla.dto.js';
+import {
+  CalcularImpuestosDto,
+  TipoOperacionTributaria,
+} from './dto/calcular-impuestos.dto.js';
+import {
+  CalculoImpuestosResultadoDto,
+  DetalleImpuestoCalculadoDto,
+  LineaSugeridaDto,
+} from './dto/calculo-impuestos-resultado.dto.js';
 
 @Injectable()
 export class ImpuestosService {
@@ -239,6 +248,135 @@ export class ImpuestosService {
     }
 
     return resultado;
+  }
+
+  /**
+   * Motor de Cálculo Tributario:
+   * Evalúa base gravable vs bases mínimas legales, calcula retenciones/IVA
+   * y genera las líneas contables sugeridas para la causación.
+   */
+  async calcularImpuestos(dto: CalcularImpuestosDto): Promise<CalculoImpuestosResultadoDto> {
+    const empresa = await this.empresaRepo.findOne({ where: { id: dto.empresa_id } });
+    if (!empresa) {
+      throw new NotFoundException(`La empresa con ID ${dto.empresa_id} no existe.`);
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let totalIva = 0;
+    let totalRetenciones = 0;
+    const detalles: DetalleImpuestoCalculadoDto[] = [];
+    const lineasSugeridas: LineaSugeridaDto[] = [];
+
+    for (const item of dto.reglas) {
+      const esUuid = uuidRegex.test(item.regla_id_o_codigo);
+      const regla = await this.impuestoRepo.findOne({
+        where: esUuid
+          ? { id: item.regla_id_o_codigo, empresa_id: dto.empresa_id }
+          : { codigo: item.regla_id_o_codigo, empresa_id: dto.empresa_id },
+        relations: {
+          cuenta_credito: true,
+          cuenta_debito: true,
+        },
+      });
+
+      if (!regla) {
+        throw new NotFoundException(
+          `No se encontró la regla tributaria '${item.regla_id_o_codigo}' para esta empresa.`,
+        );
+      }
+
+      if (!regla.activo) {
+        continue;
+      }
+
+      const base = item.base_especifica !== undefined ? Number(item.base_especifica) : Number(dto.subtotal);
+      const baseMinima = Number(regla.base_minima);
+      const porcentaje = Number(regla.porcentaje);
+      const aplica = base >= baseMinima;
+
+      let valor = 0;
+      let motivoNoAplica: string | undefined;
+
+      if (aplica) {
+        valor = Math.round((base * (porcentaje / 100)) * 100) / 100;
+      } else {
+        motivoNoAplica = `Base ($${base.toLocaleString('es-CO')}) inferior a la base mínima legal ($${baseMinima.toLocaleString('es-CO')})`;
+      }
+
+      const esCompra = dto.tipo_operacion === TipoOperacionTributaria.COMPRA_GASTO;
+      const esIva = regla.tipo_impuesto === TipoImpuesto.IVA;
+
+      let efecto: 'DEBITO' | 'CREDITO';
+      let cuentaAfectada: PucCuenta;
+
+      if (esCompra) {
+        if (esIva) {
+          efecto = 'DEBITO'; // IVA descontable
+          cuentaAfectada = regla.cuenta_debito || regla.cuenta_credito;
+          if (aplica) totalIva += valor;
+        } else {
+          efecto = 'CREDITO'; // Retención en la fuente practicada (pasivo por pagar a la DIAN)
+          cuentaAfectada = regla.cuenta_credito;
+          if (aplica) totalRetenciones += valor;
+        }
+      } else {
+        // VENTA_INGRESO
+        if (esIva) {
+          efecto = 'CREDITO'; // IVA generado por pagar
+          cuentaAfectada = regla.cuenta_credito;
+          if (aplica) totalIva += valor;
+        } else {
+          efecto = 'DEBITO'; // Anticipo de retenciones a favor
+          cuentaAfectada = regla.cuenta_debito || regla.cuenta_credito;
+          if (aplica) totalRetenciones += valor;
+        }
+      }
+
+      detalles.push({
+        regla_id: regla.id,
+        codigo: regla.codigo,
+        nombre: regla.nombre,
+        tipo_impuesto: regla.tipo_impuesto,
+        porcentaje,
+        base_calculo: base,
+        base_minima: baseMinima,
+        aplica,
+        motivo_no_aplica: motivoNoAplica,
+        valor,
+        cuenta_afectada: {
+          id: cuentaAfectada.id,
+          codigo: cuentaAfectada.codigo,
+          nombre: cuentaAfectada.nombre,
+          efecto,
+        },
+      });
+
+      if (aplica && valor > 0) {
+        lineasSugeridas.push({
+          cuenta_id: cuentaAfectada.id,
+          cuenta_codigo: cuentaAfectada.codigo,
+          cuenta_nombre: cuentaAfectada.nombre,
+          debito: efecto === 'DEBITO' ? valor : 0,
+          credito: efecto === 'CREDITO' ? valor : 0,
+          base_impuesto: base,
+          glosa_detalle: `${regla.nombre} (${porcentaje}%)`,
+        });
+      }
+    }
+
+    const subtotal = Number(dto.subtotal);
+    totalIva = Math.round(totalIva * 100) / 100;
+    totalRetenciones = Math.round(totalRetenciones * 100) / 100;
+    const totalNeto = Math.round((subtotal + totalIva - totalRetenciones) * 100) / 100;
+
+    return {
+      subtotal,
+      total_iva: totalIva,
+      total_retenciones: totalRetenciones,
+      total_neto: totalNeto,
+      detalles,
+      lineas_asiento_sugeridas: lineasSugeridas,
+    };
   }
 
   private async validarCuentaAuxiliar(
