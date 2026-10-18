@@ -4,6 +4,29 @@ Todas las versiones notables de este proyecto están documentadas en este archiv
 
 ---
 
+## [v0.7.0-sprint7] - 2026-10-17
+### ⚙️ Tablas Maestras Paramétricas Dinámicas & Erradicación de Enums Hardcodeados
+- **Arquitectura Paramétrica Universal (Cero Enums):**
+  - Implementación de 6 tablas relacionales en esquemas `core` y `contabilidad` con soporte multi-tenant (semillas globales por defecto o personalizables por empresa):
+    1. `core_tipos_identificacion`: Códigos DIAN (13, 31, 22, 11, etc.), nombres oficiales y bandera para obligatoriedad de Dígito de Verificación (DV).
+    2. `core_tipos_persona`: Persona Natural vs Persona Jurídica, con flag para exigencia de razón social.
+    3. `core_regimenes_fiscales`: Responsabilidades tributarias DIAN (`O-13`, `R-99-PN`, `O-47`, `O-23`, `O-15`), régimen de IVA y responsabilidades fiscales.
+    4. `core_clasificaciones_tercero`: Clasificaciones comerciales (`CLIENTE`, `PROVEEDOR`, `EMPLEADO`, `CONTRATISTA`, `ACCIONISTA`, `ACREEDOR`).
+    5. `cont_tipos_comprobante`: Configuración de comprobantes contables (`CAU`, `EGR`, `ING`, `CC`, `AJU`, etc.) con prefijo oficial y consecutivo dinámico.
+    6. `core_metodos_pago`: Medios de pago DIAN (`10`, `47`, `42`, `20`, `48`, `49`, `1`), exigencia de referencia bancaria y trazabilidad.
+- **Backend (`ParametrosModule`):**
+  - Servicio `ParametrosService` con sembrado automático de semillas oficiales en arranque mediante `OnModuleInit` (con compatibilidad de `IsNull()` en TypeORM).
+  - Controlador REST (`ParametrosController`) con endpoints completos: listado (`GET /api/v1/parametros/:catalogo`), creación (`POST /api/v1/parametros/:catalogo`), toggle de estado activo/inactivo (`PATCH /api/v1/parametros/:catalogo/:id/estado`) y restauración de semillas (`POST /api/v1/parametros/sembrar`).
+  - Desacoplamiento de `Tercero` y `CreateTerceroDto` de enums TypeScript hacia columnas dinámicas en PostgreSQL.
+- **Frontend Web (`pacyolo-web`):**
+  - Panel integral de Configuración y Maestras en `/dashboard/configuracion/maestras` con navegación por pestañas, buscador reactivo, interruptores de estado, modal de creación rápida e impresión oficial (`window.print()`).
+  - Formularios de Terceros, Asiento Contable y CxP refactorizados para cargar sus opciones dinámicamente desde el backend, con validación reactiva del Dígito de Verificación condicionada a la parametrización del tipo de documento.
+- **Garantía de Calidad:**
+  - 58 pruebas unitarias (13 suites) y 33 pruebas E2E pasando al 100%.
+  - Compilación frontend y backend sin advertencias ni errores.
+
+---
+
 ## [v0.6.0-sprint6] - 2026-10-17
 ### 🚀 Operación Contable Manual en Web & Módulo de Auditoría Inmutable
 - **Auditoría Inmutable Transversal (`core_audit_logs`):**

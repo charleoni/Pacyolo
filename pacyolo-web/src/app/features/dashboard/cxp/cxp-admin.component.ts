@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 
 interface ProveedorItem {
   id: string;
@@ -397,10 +398,10 @@ interface PagoHistorial {
                   [(ngModel)]="nuevoPago.metodo_pago"
                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-                  <option value="CONSIGNACION">Consignación</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="EFECTIVO">Efectivo / Caja</option>
+                  <option value="">-- Seleccionar Medio de Pago --</option>
+                  <option *ngFor="let m of metodosPago()" [value]="m.codigo">
+                    {{ m.nombre }} {{ m.codigo_dian ? ('(DIAN ' + m.codigo_dian + ')') : '' }}
+                  </option>
                 </select>
               </div>
 
@@ -505,6 +506,7 @@ export class CxpAdminComponent implements OnInit {
   proveedores = signal<ProveedorItem[]>([]);
   conceptos = signal<ConceptoMapeo[]>([]);
   cuentasBanco = signal<CuentaBancoItem[]>([]);
+  metodosPago = signal<ParametroItem[]>([]);
 
   mostrarModalCausar = signal<boolean>(false);
   facturaAPagar = signal<CuentaPorPagarItem | null>(null);
@@ -533,6 +535,7 @@ export class CxpAdminComponent implements OnInit {
 
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private parametrosService = inject(ParametrosService);
 
   ngOnInit(): void {
     this.cargarDatos();
@@ -588,6 +591,18 @@ export class CxpAdminComponent implements OnInit {
         },
         error: (err) => console.error('Error cargando bancos:', err),
       });
+
+    // Métodos de Pago dinámicos
+    this.parametrosService.obtenerMetodosPago().subscribe({
+      next: (data) => {
+        const activos = data.filter((d) => d.activo);
+        this.metodosPago.set(activos);
+        if (activos.length > 0 && !this.nuevoPago.metodo_pago) {
+          this.nuevoPago.metodo_pago = activos[0].codigo;
+        }
+      },
+      error: (err) => console.error('Error cargando métodos de pago:', err),
+    });
   }
 
   sembrarConceptos(): void {

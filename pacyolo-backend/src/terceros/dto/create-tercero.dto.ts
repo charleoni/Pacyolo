@@ -9,27 +9,21 @@ import {
   IsBoolean,
   IsUUID,
 } from 'class-validator';
-import {
-  TipoPersona,
-  TipoIdentificacion,
-  RegimenIva,
-} from '../entities/tercero.entity.js';
-
 export class CreateTerceroDto {
   @ApiProperty({ description: 'ID de la empresa (Tenant) al que pertenece el tercero' })
   @IsUUID()
   @IsNotEmpty()
   empresa_id: string;
 
-  @ApiPropertyOptional({ enum: TipoPersona, default: TipoPersona.NATURAL })
-  @IsEnum(TipoPersona)
+  @ApiPropertyOptional({ example: 'NATURAL', default: 'NATURAL' })
+  @IsString()
   @IsOptional()
-  tipo_persona?: TipoPersona;
+  tipo_persona?: string;
 
-  @ApiProperty({ enum: TipoIdentificacion, example: TipoIdentificacion.CC })
-  @IsEnum(TipoIdentificacion)
+  @ApiProperty({ example: 'CC' })
+  @IsString()
   @IsNotEmpty()
-  tipo_identificacion: TipoIdentificacion;
+  tipo_identificacion: string;
 
   @ApiProperty({ example: '1020304050', description: 'Número de documento o NIT sin guiones' })
   @IsString()
@@ -67,10 +61,10 @@ export class CreateTerceroDto {
   @IsOptional()
   codigo_municipio?: string;
 
-  @ApiPropertyOptional({ enum: RegimenIva, default: RegimenIva.NO_RESPONSABLE })
-  @IsEnum(RegimenIva)
+  @ApiPropertyOptional({ example: 'NO_RESPONSABLE_IVA', default: 'NO_RESPONSABLE_IVA' })
+  @IsString()
   @IsOptional()
-  regimen_iva?: RegimenIva;
+  regimen_iva?: string;
 
   @ApiPropertyOptional({ default: false })
   @IsBoolean()

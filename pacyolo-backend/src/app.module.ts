@@ -15,6 +15,7 @@ import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { UsuariosModule } from './usuarios/usuarios.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
+import { ParametrosModule } from './parametros/parametros.module.js';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module.js';
     UsuariosModule,
     AuthModule,
     AuditoriaModule,
+    ParametrosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

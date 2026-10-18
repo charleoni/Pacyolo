@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 
 export interface Tercero {
   id: string;
-  tipo_persona: 'NATURAL' | 'JURIDICA';
-  tipo_identificacion: 'NIT' | 'CC' | 'CE' | 'PASAPORTE' | 'TI';
+  tipo_persona: string;
+  tipo_identificacion: string;
   numero_identificacion: string;
   digito_verificacion?: number | null;
   nombre_completo: string;
@@ -15,7 +16,7 @@ export interface Tercero {
   telefono?: string;
   direccion?: string;
   codigo_municipio?: string;
-  regimen_iva: 'RESPONSABLE' | 'NO_RESPONSABLE';
+  regimen_iva: string;
   es_gran_contribuyente: boolean;
   es_autorretenedor: boolean;
   es_cliente: boolean;
@@ -200,11 +201,10 @@ export interface Tercero {
                 (change)="onCambioIdentificacion()"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
-                <option value="NIT">NIT — Número de Identificación Tributaria</option>
-                <option value="CC">CC — Cédula de Ciudadanía</option>
-                <option value="CE">CE — Cédula de Extranjería</option>
-                <option value="PASAPORTE">PASAPORTE</option>
-                <option value="TI">TI — Tarjeta de Identidad</option>
+                <option value="">-- Seleccionar Tipo Documento --</option>
+                <option *ngFor="let t of tiposIdentificacion()" [value]="t.codigo">
+                  {{ t.codigo }} — {{ t.nombre }} {{ t.codigo_dian ? ('(DIAN ' + t.codigo_dian + ')') : '' }}
+                </option>
               </select>
             </div>
 
@@ -218,7 +218,7 @@ export interface Tercero {
                   placeholder="Ej: 900123456"
                   class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
-                <div *ngIf="nuevoTercero.tipo_identificacion === 'NIT'" class="w-16 text-center">
+                <div *ngIf="aplicaDigitoVerificacion()" class="w-16 text-center">
                   <span class="block text-[9px] text-slate-500 font-mono">DV DIAN</span>
                   <span class="inline-block px-2.5 py-1 text-xs font-black bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/30">
                     {{ nuevoTercero.digito_verificacion !== undefined ? nuevoTercero.digito_verificacion : '-' }}
@@ -243,19 +243,23 @@ export interface Tercero {
                 [(ngModel)]="nuevoTercero.tipo_persona"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
-                <option value="JURIDICA">JURÍDICA (Empresa / Entidad)</option>
-                <option value="NATURAL">NATURAL (Persona / Independiente)</option>
+                <option value="">-- Seleccionar Tipo Persona --</option>
+                <option *ngFor="let tp of tiposPersona()" [value]="tp.codigo">
+                  {{ tp.nombre }} ({{ tp.codigo }})
+                </option>
               </select>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Régimen de IVA *</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Régimen de IVA / Fiscal *</label>
               <select
                 [(ngModel)]="nuevoTercero.regimen_iva"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
-                <option value="NO_RESPONSABLE">NO RESPONSABLE DE IVA</option>
-                <option value="RESPONSABLE">RESPONSABLE DE IVA (Común)</option>
+                <option value="">-- Seleccionar Régimen Fiscal --</option>
+                <option *ngFor="let r of regimenesFiscales()" [value]="r.codigo">
+                  {{ r.nombre }}
+                </option>
               </select>
             </div>
 
@@ -341,6 +345,10 @@ export interface Tercero {
 })
 export class TercerosAdminComponent implements OnInit {
   terceros = signal<Tercero[]>([]);
+  tiposIdentificacion = signal<ParametroItem[]>([]);
+  tiposPersona = signal<ParametroItem[]>([]);
+  regimenesFiscales = signal<ParametroItem[]>([]);
+
   mostrarModal = signal<boolean>(false);
   guardando = signal<boolean>(false);
   errorMsg = signal<string | null>(null);
@@ -349,15 +357,15 @@ export class TercerosAdminComponent implements OnInit {
   filtroTipo = 'TODOS';
 
   nuevoTercero = {
-    tipo_persona: 'JURIDICA' as 'NATURAL' | 'JURIDICA',
-    tipo_identificacion: 'NIT' as 'NIT' | 'CC' | 'CE' | 'PASAPORTE' | 'TI',
+    tipo_persona: 'JURIDICA',
+    tipo_identificacion: 'NIT',
     numero_identificacion: '',
     digito_verificacion: undefined as number | undefined,
     nombre_completo: '',
     email: '',
     telefono: '',
     direccion: '',
-    regimen_iva: 'RESPONSABLE' as 'RESPONSABLE' | 'NO_RESPONSABLE',
+    regimen_iva: 'RESPONSABLE_IVA',
     es_cliente: false,
     es_proveedor: true,
     es_empleado: false,
@@ -367,9 +375,28 @@ export class TercerosAdminComponent implements OnInit {
 
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private parametrosService = inject(ParametrosService);
 
   ngOnInit(): void {
     this.cargarTerceros();
+    this.cargarTablasMaestras();
+  }
+
+  cargarTablasMaestras(): void {
+    this.parametrosService.obtenerTiposIdentificacion().subscribe({
+      next: (data) => this.tiposIdentificacion.set(data.filter((d) => d.activo)),
+      error: (err) => console.error('Error cargando tipos id:', err),
+    });
+
+    this.parametrosService.obtenerTiposPersona().subscribe({
+      next: (data) => this.tiposPersona.set(data.filter((d) => d.activo)),
+      error: (err) => console.error('Error cargando tipos persona:', err),
+    });
+
+    this.parametrosService.obtenerRegimenesFiscales().subscribe({
+      next: (data) => this.regimenesFiscales.set(data.filter((d) => d.activo)),
+      error: (err) => console.error('Error cargando regimenes:', err),
+    });
   }
 
   cargarTerceros(): void {
@@ -450,8 +477,15 @@ export class TercerosAdminComponent implements OnInit {
     return 11 - residuo;
   }
 
+  aplicaDigitoVerificacion(): boolean {
+    const tipo = this.tiposIdentificacion().find(
+      (t) => t.codigo === this.nuevoTercero.tipo_identificacion,
+    );
+    return tipo?.aplica_digito_verificacion === true;
+  }
+
   onCambioIdentificacion(): void {
-    if (this.nuevoTercero.tipo_identificacion === 'NIT') {
+    if (this.aplicaDigitoVerificacion()) {
       this.nuevoTercero.digito_verificacion = this.calcularDvDian(this.nuevoTercero.numero_identificacion);
     } else {
       this.nuevoTercero.digito_verificacion = undefined;
