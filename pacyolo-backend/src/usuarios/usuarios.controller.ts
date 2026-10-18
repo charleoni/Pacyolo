@@ -14,6 +14,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service.js';
 import { CreateUsuarioDto } from './dto/create-usuario.dto.js';
 import { AsignarRolEmpresaDto } from './dto/asignar-rol-empresa.dto.js';
+import { UpdateRolEmpresaDto } from './dto/update-rol-empresa.dto.js';
 import { RolUsuario } from './enums/rol-usuario.enum.js';
 
 @ApiTags('Usuarios & Control de Acceso (RBAC)')
@@ -46,9 +47,25 @@ export class UsuariosController {
 
   @Post('asignar-rol')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Asignar o cambiar el rol de un usuario en una empresa' })
+  @ApiOperation({ summary: 'Asignar o vincular un rol de usuario a una empresa' })
   async asignarRol(@Body() dto: AsignarRolEmpresaDto) {
     return await this.usuariosService.asignarRolEmpresa(dto);
+  }
+
+  @Patch(':usuario_id/empresa/:empresa_id/rol')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Actualizar el rol de un usuario en una empresa específica' })
+  async updateRol(
+    @Param('usuario_id', ParseUUIDPipe) usuario_id: string,
+    @Param('empresa_id', ParseUUIDPipe) empresa_id: string,
+    @Body() dto: UpdateRolEmpresaDto,
+  ) {
+    return await this.usuariosService.updateRolEnEmpresa(
+      usuario_id,
+      empresa_id,
+      dto.rol,
+      dto.modificado_por,
+    );
   }
 
   @Delete(':usuario_id/empresa/:empresa_id')
@@ -61,3 +78,4 @@ export class UsuariosController {
     return await this.usuariosService.desactivarDeEmpresa(usuario_id, empresa_id);
   }
 }
+

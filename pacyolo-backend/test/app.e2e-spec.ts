@@ -700,7 +700,54 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.empresas.length).toBeGreaterThanOrEqual(1);
     expect(res.body.empresas[0].empresa_id).toBe(empresaId);
   });
+
+  let usuarioGestionId: string;
+
+  it('30. Debe ACTUALIZAR el rol de un usuario en la empresa con 200 (PATCH /api/v1/usuarios/:id/empresa/:empresa_id/rol)', async () => {
+    // 1. Crear un usuario auxiliar
+    const emailAux = `auxiliar_${Date.now()}@pacyolo.test`;
+    const resUser = await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailAux,
+        password: 'PasswordSegura2026*',
+        nombres: 'Mateo',
+        apellidos: 'Vargas',
+        empresa_id: empresaId,
+        rol: 'AUXILIAR_CONTABLE',
+      })
+      .expect(201);
+
+    usuarioGestionId = resUser.body.id;
+
+    // 2. Cambiar de AUXILIAR_CONTABLE a CONTADOR_LIDER
+    const resUpdate = await request(app.getHttpServer())
+      .patch(`/api/v1/usuarios/${usuarioGestionId}/empresa/${empresaId}/rol`)
+      .send({
+        rol: 'CONTADOR_LIDER',
+      })
+      .expect(200);
+
+    expect(resUpdate.body.rol).toBe('CONTADOR_LIDER');
+    expect(resUpdate.body.activo).toBe(true);
+  });
+
+  it('31. Debe REVOCAR/DESACTIVAR acceso de un usuario a la empresa con 204 (DELETE /api/v1/usuarios/:id/empresa/:empresa_id)', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/v1/usuarios/${usuarioGestionId}/empresa/${empresaId}`)
+      .expect(204);
+
+    // Verificar en la lista que su membresía ya no está activa
+    const resList = await request(app.getHttpServer())
+      .get(`/api/v1/usuarios/empresa/${empresaId}`)
+      .expect(200);
+
+    const miembro = resList.body.find((m: any) => m.usuario_id === usuarioGestionId);
+    expect(miembro).toBeDefined();
+    expect(miembro.activo).toBe(false);
+  });
 });
+
 
 
 

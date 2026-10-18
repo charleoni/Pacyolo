@@ -147,6 +147,35 @@ export class UsuariosService {
   }
 
   /**
+   * Actualizar rol de un usuario existente en una empresa específica
+   */
+  async updateRolEnEmpresa(
+    usuario_id: string,
+    empresa_id: string,
+    nuevoRol: RolUsuario,
+    modificado_por?: string,
+  ): Promise<UsuarioEmpresa> {
+    const membrecia = await this.usuarioEmpresaRepo.findOne({
+      where: { usuario_id, empresa_id },
+      relations: { usuario: true, empresa: true },
+    });
+
+    if (!membrecia) {
+      throw new NotFoundException(
+        `El usuario no tiene una membresía registrada en la empresa especificada.`,
+      );
+    }
+
+    membrecia.rol = nuevoRol;
+    membrecia.activo = true;
+    if (modificado_por) {
+      membrecia.asignado_por = modificado_por;
+    }
+
+    return await this.usuarioEmpresaRepo.save(membrecia);
+  }
+
+  /**
    * Desactivar o revocar acceso de un usuario a una empresa
    */
   async desactivarDeEmpresa(usuario_id: string, empresa_id: string): Promise<void> {
@@ -162,3 +191,4 @@ export class UsuariosService {
     await this.usuarioEmpresaRepo.save(membrecia);
   }
 }
+
