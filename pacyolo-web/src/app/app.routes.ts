@@ -58,6 +58,15 @@ export const routes: Routes = [
         path: 'configuracion/maestras',
         component: TablasMaestrasComponent,
       },
+      {
+        path: 'parametros/maestras',
+        component: TablasMaestrasComponent,
+      },
+      {
+        path: 'parametros',
+        redirectTo: 'parametros/maestras',
+        pathMatch: 'full',
+      },
     ],
   },
   {

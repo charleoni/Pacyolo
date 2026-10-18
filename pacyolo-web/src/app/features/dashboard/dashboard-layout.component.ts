@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, signal, HostListener, inject, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { EmpresaSesion } from '../../core/models/auth.model';
 
@@ -119,13 +119,53 @@ import { EmpresaSesion } from '../../core/models/auth.model';
         >
           🛡️ Pistas de Auditoría
         </a>
-        <a
-          routerLink="/dashboard/configuracion/maestras"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          ⚙️ Tablas Maestras
-        </a>
+
+        <!-- Menú Desplegable Vertical: Parámetros -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenuParametros($event)"
+            [class]="esRutaParametrosActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>⚙️ Parámetros</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuParametrosAbierto()"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuParametrosAbierto()) {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-2 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3.5 py-1.5 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Configuración del Sistema</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/parametros/maestras"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenuParametros()"
+                class="flex items-center gap-3 px-3.5 py-2.5 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm shrink-0">
+                  ⚙️
+                </div>
+                <div>
+                  <span class="block font-medium text-slate-200 leading-snug">Tablas Maestras</span>
+                  <span class="text-[10px] text-slate-400 leading-tight block">Tipos de doc, regímenes y catálogos sin enums</span>
+                </div>
+              </a>
+            </div>
+          }
+        </div>
       </nav>
 
       <!-- Contenedor Principal -->
@@ -136,7 +176,32 @@ import { EmpresaSesion } from '../../core/models/auth.model';
   `,
 })
 export class DashboardLayoutComponent {
-  constructor(public readonly authService: AuthService) {}
+  public readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly elementRef = inject(ElementRef);
+
+  menuParametrosAbierto = signal<boolean>(false);
+
+  toggleMenuParametros(event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuParametrosAbierto.update((v) => !v);
+  }
+
+  cerrarMenuParametros(): void {
+    this.menuParametrosAbierto.set(false);
+  }
+
+  esRutaParametrosActiva(): boolean {
+    const url = this.router.url;
+    return url.includes('/parametros') || url.includes('/configuracion');
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.cerrarMenuParametros();
+    }
+  }
 
   onCambiarEmpresa(event: Event): void {
     const empresaId = (event.target as HTMLSelectElement).value;
