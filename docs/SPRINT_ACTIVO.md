@@ -3,38 +3,47 @@
 
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
-*Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/03-integracion-webhooks`  
-*Última Versión Publicada:* `v0.2.0-sprint2` (Fusionado en `develop` y `main`)
+*Rama Activa:* `sprint/04-frontend-angular`  
+*Última Versión Publicada:* `v0.3.0-sprint3` (Fusionado en `develop` y `main`)
 
 ---
 
-## 🎯 SPRINT 3: Interfaz de Integración Externa (API-First / Webhooks & Idempotencia)
-- **Objetivo del Sprint:** Permitir que sistemas externos (ERPs comerciales, facturadores electrónicos, plataformas de nómina o e-commerce) sincronicen transacciones en PACYOLO con endpoints desacoplados (`POST /api/v1/integracion/facturas-venta`, `POST /api/v1/integracion/recaudos`), garantizando idempotencia estricta, soporte para modo `INMEDIATA` vs `REVISION_PREVIA` (borradores pendientes de aprobación), y notificación asíncrona mediante Webhooks firmados.
+## 🎯 SPRINT 4: Frontend Web Autónomo (Angular 19 / Standalone Components)
+- **Objetivo del Sprint:** Crear una interfaz web moderna, ágil y reactiva (`pacyolo-web`) que permita a contadores, auxiliares y supervisores operar el core ledger visualmente: seleccionar tenant activo, explorar el árbol del PUC NIIF, consultar el libro diario y gestionar la bandeja de borradores de integración externa.
 - **Entregables Evaluativos para el Usuario:**
-  - Endpoint de ingesta de Facturas de Venta (`POST /api/v1/integracion/facturas-venta`) con cálculo automático de cuentas por cobrar (CxC), IVA generado y autorretenciones.
-  - Endpoint de Recaudos / Cobros (`POST /api/v1/integracion/recaudos`) que cancela saldos de CxC e ingresa dinero a cuentas bancarias/caja.
-  - Soporte de modo de contabilización: `INMEDIATA` (genera comprobante contable directo) o `REVISION_PREVIA` (queda en bandeja de borradores `PENDIENTE_REVISION`).
-  - Bandeja y endpoints para listar, aprobar o rechazar comprobantes en borrador.
-  - Sistema de Webhooks con firma HMAC-SHA256 para notificar al sistema externo cuando un comprobante es aprobado o rechazado.
-  - Suite de pruebas unitarias y E2E que validen ingesta masiva, idempotencia y despacho de webhooks.
+  - Scaffolding de la aplicación Angular (`pacyolo-web`) con Angular Material o Tailwind CSS y consumo de API con `HttpClient`.
+  - Componente de cabecera con selector persistente de Empresa / Tenant activo.
+  - Explorador interactivo del PUC (árbol jerárquico NIIF con badges de cuentas auxiliares que permiten movimiento).
+  - Vista del Libro Diario de Asientos con detalle de líneas contables y filtros por rango de fecha y tipo de comprobante (`DIA`, `ING`, `EGR`, `CAU`).
+  - Bandeja visual de revisión de borradores de integración con acciones de "Aprobar" y "Rechazar".
+  - Suite de pruebas de componentes unitarios e integración E2E.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 3 (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 4 (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **3.1** | Ingesta Facturas Venta | DTOs, endpoint `POST /api/v1/integracion/facturas-venta`, mapeo de conceptos de venta, validación de idempotencia (`origen_sistema` + `origen_documento_id`) y generación de CxC / comprobante `FAC` o borrador. | 2h | `[x]` Completado | 17/10/2026 |
-| **3.2** | Ingesta Recaudos (CxC) | Endpoint `POST /api/v1/integracion/recaudos` para registrar cobros de facturas de clientes, cruce de saldos de cartera CxC y comprobante de ingreso `ING`. | 2h | `[x]` Completado | 17/10/2026 |
-| **3.3** | Bandeja de Borradores | Endpoints para consultar documentos en revisión (`GET /api/v1/integracion/borradores`), aprobar borrador (`POST /api/v1/integracion/borradores/:id/aprobar`) generando asiento contable, o rechazarlo (`POST /api/v1/integracion/borradores/:id/rechazar`). | 2h | `[x]` Completado | 17/10/2026 |
-| **3.4** | Motor de Webhooks | Entidad y servicio de suscripción de Webhooks (`core_webhooks`), cola o despachador de eventos HTTP con firma criptográfica HMAC-SHA256 y reintentos ante fallos. | 2h | `[x]` Completado | 17/10/2026 |
-| **3.5** | Pruebas & Documentación | Pruebas unitarias y E2E de sincronización externa, simulación de webhook receiver y documentación OpenAPI / Postman. | 2h | `[x]` Completado | 17/10/2026 |
+| **4.1** | Scaffolding & Setup | Inicialización de `pacyolo-web` (Angular Standalone, Router, Signals/RxJS, interceptores HTTP para prefijo `/api/v1` y manejo de errores). | 2h | `[ ]` Pendiente | - |
+| **4.2** | Contexto Tenant | Selector de Empresa / Tenant en el Header con almacenamiento en `LocalStorage` y servicio reactivo de estado global. | 2h | `[ ]` Pendiente | - |
+| **4.3** | Explorador del PUC | Vista de catálogo contable interactivo: búsqueda en tiempo real por código o nombre y visualización jerárquica de niveles NIIF. | 2h | `[ ]` Pendiente | - |
+| **4.4** | Libro Diario & Asientos | Tabla interactiva de asientos contables con paginación, filtros por comprobante y modal con desglose de partida doble de líneas. | 2h | `[ ]` Pendiente | - |
+| **4.5** | Bandeja de Borradores | Vista de auditoría para revisar facturas y recaudos pendientes de aprobación con botones interactivos de Aprobar y Rechazar (con modal de motivo). | 2h | `[ ]` Pendiente | - |
+| **4.6** | Pruebas & Build | Pruebas de componentes, compilación optimizada para producción (`ng build`) y documentación de despliegue. | 2h | `[ ]` Pendiente | - |
 
 ---
 
 ## 📜 Historial de Sprints Cerrados
+
+### ✅ SPRINT 3: Interfaz de Integración Externa (API-First / Webhooks) (COMPLETADO 100%)
+- **Versión de Cierre:** `v0.3.0-sprint3` (17/10/2026).
+- **Logros:**
+  - Ingesta de Facturas de Venta (`POST /api/v1/integracion/facturas-venta`) con cálculo automático de CxC e IVA generado.
+  - Ingesta de Recaudos / Cobros (`POST /api/v1/integracion/recaudos`) con cruce de saldos de clientes y emisión de comprobante `ING`.
+  - Soporte de modo dual: `INMEDIATA` vs `REVISION_PREVIA`.
+  - Bandeja de borradores con filtros avanzados por tipo, origen y fechas, con aprobación dual y rechazo justificado.
+  - Motor de Webhooks (`core_webhooks`) con firma HMAC-SHA256 (`X-Pacyolo-Signature`) y despacho asíncrono.
+  - 31 pruebas unitarias y 25 pruebas E2E pasando al 100%.
 
 ### ✅ SPRINT 2: Motor de Retenciones, Mapeo & Cuentas por Pagar (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.2.0-sprint2` (17/10/2026).
