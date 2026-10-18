@@ -143,25 +143,20 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuParametrosAbierto()) {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-2 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 max-h-[75vh] overflow-y-auto"
             >
-              <div class="px-3.5 py-1.5 border-b border-slate-800/80 mb-1">
-                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Configuración del Sistema</span>
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Parámetros del Sistema</span>
               </div>
 
               <a
                 routerLink="/dashboard/parametros/maestras"
                 routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
                 (click)="cerrarMenuParametros()"
-                class="flex items-center gap-3 px-3.5 py-2.5 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+                class="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
               >
-                <div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm shrink-0">
-                  ⚙️
-                </div>
-                <div>
-                  <span class="block font-medium text-slate-200 leading-snug">Tablas Maestras</span>
-                  <span class="text-[10px] text-slate-400 leading-tight block">Tipos de doc, regímenes y catálogos sin enums</span>
-                </div>
+                <span class="text-xs">⚙️</span>
+                <span>Tablas Maestras</span>
               </a>
             </div>
           }
