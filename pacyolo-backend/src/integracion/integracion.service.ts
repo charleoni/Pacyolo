@@ -10,11 +10,14 @@ import {
   CuentaPorCobrar,
   EstadoCuentaPorCobrar,
 } from '../cxc/entities/cuenta-por-cobrar.entity.js';
+import { RecaudoCxc } from '../cxc/entities/recaudo-cxc.entity.js';
 import { IngestarFacturaVentaDto, ModoContabilizacion } from './dto/ingestar-factura-venta.dto.js';
+import { IngestarRecaudoDto } from './dto/ingestar-recaudo.dto.js';
 import { AsientosService } from '../asientos/asientos.service.js';
 import { MapeoService } from '../mapeo/mapeo.service.js';
 import { ImpuestosService } from '../impuestos/impuestos.service.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
+import { PucCuenta } from '../puc/entities/puc.entity.js';
 import { TipoComprobante, EstadoAsiento } from '../asientos/entities/asiento.entity.js';
 import { TipoOperacionTributaria } from '../impuestos/dto/calcular-impuestos.dto.js';
 import { CreateAsientoLineaDto } from '../asientos/dto/create-asiento-linea.dto.js';
@@ -26,8 +29,12 @@ export class IntegracionService {
     private readonly borradorRepo: Repository<BorradorIntegracion>,
     @InjectRepository(CuentaPorCobrar)
     private readonly cxcRepo: Repository<CuentaPorCobrar>,
+    @InjectRepository(RecaudoCxc)
+    private readonly recaudoRepo: Repository<RecaudoCxc>,
     @InjectRepository(Tercero)
     private readonly terceroRepo: Repository<Tercero>,
+    @InjectRepository(PucCuenta)
+    private readonly pucRepo: Repository<PucCuenta>,
     private readonly asientosService: AsientosService,
     private readonly mapeoService: MapeoService,
     private readonly impuestosService: ImpuestosService,
@@ -341,5 +348,226 @@ export class IntegracionService {
     borrador.revisado_at = new Date();
 
     return await this.borradorRepo.save(borrador);
+  }
+
+  /**
+   * Ingesta de Recaudos / Cobros desde sistemas externos:
+   * 1. Idempotencia: Si origen_sistema + origen_documento_id ya existe, retorna el recaudo existente.
+   * 2. Localiza la CxC por cuenta_por_cobrar_id o por numero_factura.
+   * 3. Valida que el monto no exceda el saldo pendiente.
+   * 4. Valida la cuenta auxiliar de Banco/Caja.
+   * 5. Modo REVISION_PREVIA: Guarda en borradores cont_borradores_integracion.
+   * 6. Modo INMEDIATA: Genera comprobante de ingreso ING, cancela saldo de cartera y registra cont_recaudos_cxc.
+   */
+  async ingestarRecaudo(dto: IngestarRecaudoDto): Promise<any> {
+    // 1. Validar Idempotencia
+    const recaudoExistente = await this.recaudoRepo.findOne({
+      where: {
+        empresa_id: dto.empresa_id,
+        origen_sistema: dto.origen_sistema,
+        origen_documento_id: dto.origen_documento_id,
+      },
+      relations: {
+        asiento: true,
+        cuenta_por_cobrar: true,
+        cuenta_banco: true,
+      },
+    });
+
+    if (recaudoExistente) {
+      return {
+        idempotente: true,
+        tipo: 'CONTABILIZADO_INMEDIATO',
+        recaudo: recaudoExistente,
+        asiento: recaudoExistente.asiento,
+      };
+    }
+
+    const borradorExistente = await this.borradorRepo.findOne({
+      where: {
+        empresa_id: dto.empresa_id,
+        origen_sistema: dto.origen_sistema,
+        origen_documento_id: dto.origen_documento_id,
+      },
+      relations: {
+        asiento: true,
+      },
+    });
+
+    if (borradorExistente) {
+      return {
+        idempotente: true,
+        tipo: 'BORRADOR_INTEGRACION',
+        borrador: borradorExistente,
+      };
+    }
+
+    // 2. Localizar Cuenta por Cobrar
+    let cxc: CuentaPorCobrar | null = null;
+    if (dto.cuenta_por_cobrar_id) {
+      cxc = await this.cxcRepo.findOne({
+        where: { id: dto.cuenta_por_cobrar_id, empresa_id: dto.empresa_id },
+        relations: { tercero: true, cuenta_activo: true },
+      });
+    } else if (dto.numero_factura) {
+      cxc = await this.cxcRepo.findOne({
+        where: { numero_factura: dto.numero_factura, empresa_id: dto.empresa_id },
+        relations: { tercero: true, cuenta_activo: true },
+      });
+    }
+
+    if (!cxc) {
+      throw new NotFoundException(
+        `No se encontró ninguna Cuenta por Cobrar para la factura especificada en esta empresa.`,
+      );
+    }
+
+    const saldoPendiente = Number(cxc.saldo_pendiente);
+    const monto = Number(dto.monto_recaudo);
+
+    if (saldoPendiente <= 0) {
+      throw new BadRequestException(
+        `La factura ${cxc.numero_factura} ya se encuentra liquidada en su totalidad (saldo $0.00).`,
+      );
+    }
+
+    if (monto > saldoPendiente + 0.01) {
+      throw new BadRequestException(
+        `El monto a recaudar ($${monto.toLocaleString()}) supera el saldo pendiente de la factura ($${saldoPendiente.toLocaleString()}).`,
+      );
+    }
+
+    // 3. Validar Cuenta de Banco / Caja
+    const cuentaBanco = await this.pucRepo.findOne({
+      where: { id: dto.cuenta_banco_id, empresa_id: dto.empresa_id },
+    });
+    if (!cuentaBanco) {
+      throw new NotFoundException(
+        `La cuenta de banco/caja con ID ${dto.cuenta_banco_id} no existe en esta empresa.`,
+      );
+    }
+    if (!cuentaBanco.permite_movimiento) {
+      throw new BadRequestException(
+        `La cuenta de tesorería [${cuentaBanco.codigo} - ${cuentaBanco.nombre}] no es auxiliar de movimiento directo.`,
+      );
+    }
+
+    // 4. Preparar Líneas Contables de Ingreso:
+    // - Débito: Cuenta de Tesorería (Banco o Caja donde ingresa el dinero)
+    // - Crédito: Cuenta de Cartera Clientes (1305 donde se cancela el derecho de cobro)
+    const lineas: CreateAsientoLineaDto[] = [
+      {
+        cuenta_id: cuentaBanco.id,
+        tercero_id: cxc.tercero_id,
+        debito: monto,
+        credito: 0,
+        base_impuesto: 0,
+        glosa_detalle: `Ingreso ${dto.metodo_recaudo ?? 'TRANSFERENCIA'}${dto.referencia_transaccion ? ` - Ref: ${dto.referencia_transaccion}` : ''}`,
+        documento_referencia: dto.referencia_transaccion ?? cxc.numero_factura,
+      },
+      {
+        cuenta_id: cxc.cuenta_activo_id,
+        tercero_id: cxc.tercero_id,
+        debito: 0,
+        credito: monto,
+        base_impuesto: 0,
+        glosa_detalle: `Abono/Cancelación Cartera - Fac ${cxc.numero_factura}`,
+        documento_referencia: cxc.numero_factura,
+      },
+    ];
+
+    const modo = dto.modo_contabilizacion ?? ModoContabilizacion.INMEDIATA;
+
+    // 5. Modo REVISION_PREVIA: Guardar en bandeja de borradores
+    if (modo === ModoContabilizacion.REVISION_PREVIA) {
+      const borrador = this.borradorRepo.create({
+        empresa_id: dto.empresa_id,
+        tipo_documento: TipoBorradorIntegracion.RECAUDO_COBRO,
+        origen_sistema: dto.origen_sistema,
+        origen_documento_id: dto.origen_documento_id,
+        estado: EstadoBorradorIntegracion.PENDIENTE_REVISION,
+        payload_datos: dto as any,
+        asiento_propuesto: {
+          tipo_comprobante: TipoComprobante.ING,
+          fecha_contable: dto.fecha_recaudo,
+          glosa_general:
+            dto.glosa ||
+            `Comprobante de Ingreso - Recaudo Factura ${cxc.numero_factura} de ${cxc.tercero.nombre_completo}`,
+          monto_recaudo: monto,
+          cuenta_por_cobrar_id: cxc.id,
+          lineas,
+        },
+      });
+
+      const guardado = await this.borradorRepo.save(borrador);
+      return {
+        idempotente: false,
+        tipo: 'BORRADOR_INTEGRACION',
+        borrador: guardado,
+      };
+    }
+
+    // 6. Modo INMEDIATA: Asiento oficial ING y cruce de saldos
+    const asientoIngreso = await this.asientosService.create({
+      empresa_id: dto.empresa_id,
+      tipo_comprobante: TipoComprobante.ING,
+      fecha_contable: dto.fecha_recaudo,
+      glosa_general:
+        dto.glosa ||
+        `Comprobante de Ingreso - Recaudo Factura ${cxc.numero_factura} de ${cxc.tercero.nombre_completo}`,
+      origen_sistema: dto.origen_sistema,
+      origen_documento_tipo: 'COMPROBANTE_INGRESO',
+      origen_documento_id:
+        dto.referencia_transaccion ??
+        `ING-${cxc.numero_factura}-${Date.now()}`,
+      lineas,
+    });
+
+    const nuevoSaldo = Math.round((saldoPendiente - monto) * 100) / 100;
+    cxc.saldo_pendiente = nuevoSaldo;
+    cxc.estado =
+      nuevoSaldo === 0
+        ? EstadoCuentaPorCobrar.COBRADA_TOTAL
+        : EstadoCuentaPorCobrar.COBRADA_PARCIAL;
+
+    await this.cxcRepo.save(cxc);
+
+    const recaudo = this.recaudoRepo.create({
+      empresa_id: dto.empresa_id,
+      cuenta_por_cobrar_id: cxc.id,
+      asiento_id: asientoIngreso.id,
+      cuenta_banco_id: cuentaBanco.id,
+      monto_recaudo: monto,
+      fecha_recaudo: dto.fecha_recaudo,
+      metodo_recaudo: dto.metodo_recaudo,
+      referencia_transaccion: dto.referencia_transaccion,
+      origen_sistema: dto.origen_sistema,
+      origen_documento_id: dto.origen_documento_id,
+      glosa: dto.glosa,
+    });
+
+    const recaudoGuardado = await this.recaudoRepo.save(recaudo);
+
+    return {
+      idempotente: false,
+      tipo: 'CONTABILIZADO_INMEDIATO',
+      recaudo: recaudoGuardado,
+      asiento: asientoIngreso,
+      cuenta_por_cobrar: cxc,
+    };
+  }
+
+  /**
+   * Consultar historial de recaudos de una factura
+   */
+  async obtenerRecaudosPorCxc(cuenta_por_cobrar_id: string): Promise<RecaudoCxc[]> {
+    return await this.recaudoRepo.find({
+      where: { cuenta_por_cobrar_id },
+      relations: {
+        asiento: true,
+        cuenta_banco: true,
+      },
+      order: { created_at: 'DESC' },
+    });
   }
 }

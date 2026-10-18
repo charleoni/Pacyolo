@@ -416,6 +416,81 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(resAprobar.body.cuenta_por_cobrar).toBeDefined();
     expect(Number(resAprobar.body.cuenta_por_cobrar.total_factura)).toBe(595000); // 500k + 19% IVA (95k)
   });
+
+  it('20. Debe INGESTAR con 201 un Recaudo/Cobro de Factura en modo INMEDIATA generando comprobante ING y cancelando cartera', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001',
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+        metodo_recaudo: 'PASARELA_PAGO',
+        referencia_transaccion: 'WOMPI-AUTH-99014',
+        glosa: 'Cobro total factura de venta cliente por Wompi',
+      })
+      .expect(201);
+
+    expect(res.body.idempotente).toBe(false);
+    expect(res.body.tipo).toBe('CONTABILIZADO_INMEDIATO');
+    expect(res.body.recaudo).toBeDefined();
+    expect(Number(res.body.recaudo.monto_recaudo)).toBe(1190000);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(Number(res.body.cuenta_por_cobrar.saldo_pendiente)).toBe(0);
+    expect(res.body.cuenta_por_cobrar.estado).toBe('COBRADA_TOTAL');
+
+    // Verificación de Idempotencia del recaudo
+    const resIdempotente = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001',
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+      })
+      .expect(201);
+
+    expect(resIdempotente.body.idempotente).toBe(true);
+    expect(resIdempotente.body.recaudo.id).toBe(res.body.recaudo.id);
+  });
+
+  it('21. Debe LISTAR con 200 el historial de recaudos de una factura de venta', async () => {
+    // Primero consultamos la CxC para tener su ID
+    const cxcBuscada = await request(app.getHttpServer())
+      .get(`/api/v1/asientos?empresa_id=${empresaId}`)
+      .expect(200);
+
+    // Consultamos por endpoint de recaudos usando el número de factura
+    const resHistorial = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001', // Idempotente para obtener el cxc_id
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+      })
+      .expect(201);
+
+    const cxcId = resHistorial.body.recaudo.cuenta_por_cobrar_id;
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/cxc/${cxcId}/recaudos`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(Number(res.body[0].monto_recaudo)).toBe(1190000);
+  });
 });
 
 

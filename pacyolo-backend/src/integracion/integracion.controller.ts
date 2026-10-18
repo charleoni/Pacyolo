@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { IntegracionService } from './integracion.service.js';
 import { IngestarFacturaVentaDto } from './dto/ingestar-factura-venta.dto.js';
+import { IngestarRecaudoDto } from './dto/ingestar-recaudo.dto.js';
 import { EstadoBorradorIntegracion } from './entities/borrador-integracion.entity.js';
 
 @ApiTags('Integración Externa (API-First)')
@@ -32,6 +33,29 @@ export class IntegracionController {
   })
   async ingestarFacturaVenta(@Body() dto: IngestarFacturaVentaDto) {
     return await this.integracionService.ingestarFacturaVenta(dto);
+  }
+
+  @Post('recaudos')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Sincronizar e Ingestar Recaudo / Cobro de Factura desde pasarelas o bancos',
+    description:
+      'Registra pagos de clientes recibidos vía pasarelas (Wompi, Stripe, PayU) o extractos bancarios. Valida idempotencia, abona a tesorería (1110/1105), cancela saldo de cartera CxC y genera comprobante de ingreso ING.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Recaudo procesado exitosamente (contabilizado o en borrador)',
+  })
+  async ingestarRecaudo(@Body() dto: IngestarRecaudoDto) {
+    return await this.integracionService.ingestarRecaudo(dto);
+  }
+
+  @Get('cxc/:cxc_id/recaudos')
+  @ApiOperation({
+    summary: 'Consultar historial de recaudos / cobros de una factura de venta',
+  })
+  async obtenerRecaudosPorCxc(@Param('cxc_id', ParseUUIDPipe) cxc_id: string) {
+    return await this.integracionService.obtenerRecaudosPorCxc(cxc_id);
   }
 
   @Get('borradores/:empresa_id')

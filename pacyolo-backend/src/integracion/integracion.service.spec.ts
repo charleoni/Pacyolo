@@ -7,7 +7,9 @@ describe('IntegracionService', () => {
   let service: IntegracionService;
   let mockBorradorRepo: any;
   let mockCxcRepo: any;
+  let mockRecaudoRepo: any;
   let mockTerceroRepo: any;
+  let mockPucRepo: any;
   let mockAsientosService: any;
   let mockMapeoService: any;
   let mockImpuestosService: any;
@@ -27,7 +29,18 @@ describe('IntegracionService', () => {
       find: vi.fn(),
     };
 
+    mockRecaudoRepo = {
+      findOne: vi.fn(),
+      create: vi.fn().mockImplementation((val) => ({ id: 'recaudo-uuid-1', ...val })),
+      save: vi.fn().mockImplementation((val) => Promise.resolve({ id: 'recaudo-uuid-1', ...val })),
+      find: vi.fn(),
+    };
+
     mockTerceroRepo = {
+      findOne: vi.fn(),
+    };
+
+    mockPucRepo = {
       findOne: vi.fn(),
     };
 
@@ -46,7 +59,9 @@ describe('IntegracionService', () => {
     service = new IntegracionService(
       mockBorradorRepo,
       mockCxcRepo,
+      mockRecaudoRepo,
       mockTerceroRepo,
+      mockPucRepo,
       mockAsientosService,
       mockMapeoService,
       mockImpuestosService,
@@ -193,6 +208,70 @@ describe('IntegracionService', () => {
       expect(res.borrador.estado).toBe('PENDIENTE_REVISION');
       expect(mockAsientosService.create).not.toHaveBeenCalled();
       expect(mockCxcRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ingestarRecaudo', () => {
+    const dtoRecaudoBase = {
+      empresa_id: 'empresa-uuid-1',
+      origen_sistema: 'WOMPI',
+      origen_documento_id: 'TRX-WOMPI-9901',
+      cuenta_por_cobrar_id: 'cxc-uuid-1',
+      cuenta_banco_id: 'cuenta-banco-uuid',
+      monto_recaudo: 500000,
+      fecha_recaudo: '2026-10-17',
+    };
+
+    it('debe devolver respuesta idempotente si el recaudo ya fue registrado', async () => {
+      mockRecaudoRepo.findOne.mockResolvedValueOnce({
+        id: 'recaudo-existente-uuid',
+        monto_recaudo: 500000,
+        asiento: { id: 'asiento-ing-1', numero_comprobante: 'ING-000001' },
+      });
+
+      const res = await service.ingestarRecaudo(dtoRecaudoBase as any);
+
+      expect(res.idempotente).toBe(true);
+      expect(res.tipo).toBe('CONTABILIZADO_INMEDIATO');
+      expect(res.recaudo.id).toBe('recaudo-existente-uuid');
+      expect(mockAsientosService.create).not.toHaveBeenCalled();
+    });
+
+    it('debe registrar el recaudo, generar comprobante ING y rebajar saldo de la CxC', async () => {
+      mockRecaudoRepo.findOne.mockResolvedValueOnce(null);
+      mockBorradorRepo.findOne.mockResolvedValueOnce(null);
+
+      mockCxcRepo.findOne.mockResolvedValueOnce({
+        id: 'cxc-uuid-1',
+        numero_factura: 'FAC-VENTA-001',
+        saldo_pendiente: 1000000,
+        tercero_id: 'cliente-uuid-1',
+        cuenta_activo_id: 'cuenta-1305-uuid',
+        tercero: { nombre_completo: 'CLIENTE TEST S.A.S.' },
+      });
+
+      mockPucRepo.findOne.mockResolvedValueOnce({
+        id: 'cuenta-banco-uuid',
+        codigo: '11100501',
+        nombre: 'Bancolombia Principal',
+        permite_movimiento: true,
+      });
+
+      mockAsientosService.create.mockResolvedValueOnce({
+        id: 'asiento-ing-uuid',
+        numero_comprobante: 'ING-000001',
+        total_debito: 500000,
+        total_credito: 500000,
+      });
+
+      const res = await service.ingestarRecaudo(dtoRecaudoBase as any);
+
+      expect(res.idempotente).toBe(false);
+      expect(res.tipo).toBe('CONTABILIZADO_INMEDIATO');
+      expect(res.asiento.numero_comprobante).toBe('ING-000001');
+      expect(res.cuenta_por_cobrar.saldo_pendiente).toBe(500000);
+      expect(res.cuenta_por_cobrar.estado).toBe('COBRADA_PARCIAL');
+      expect(mockCxcRepo.save).toHaveBeenCalled();
     });
   });
 });
