@@ -14,6 +14,7 @@ import { IntegracionModule } from './integracion/integracion.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { UsuariosModule } from './usuarios/usuarios.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { AuditoriaModule } from './auditoria/auditoria.module.js';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { AuthModule } from './auth/auth.module.js';
     WebhooksModule,
     UsuariosModule,
     AuthModule,
+    AuditoriaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
