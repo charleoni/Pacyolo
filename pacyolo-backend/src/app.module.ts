@@ -11,6 +11,7 @@ import { ImpuestosModule } from './impuestos/impuestos.module.js';
 import { MapeoModule } from './mapeo/mapeo.module.js';
 import { CxpModule } from './cxp/cxp.module.js';
 import { IntegracionModule } from './integracion/integracion.module.js';
+import { WebhooksModule } from './webhooks/webhooks.module.js';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { IntegracionModule } from './integracion/integracion.module.js';
     MapeoModule,
     CxpModule,
     IntegracionModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

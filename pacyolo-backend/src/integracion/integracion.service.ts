@@ -22,6 +22,8 @@ import { PucCuenta } from '../puc/entities/puc.entity.js';
 import { TipoComprobante, EstadoAsiento } from '../asientos/entities/asiento.entity.js';
 import { TipoOperacionTributaria } from '../impuestos/dto/calcular-impuestos.dto.js';
 import { CreateAsientoLineaDto } from '../asientos/dto/create-asiento-linea.dto.js';
+import { WebhooksService } from '../webhooks/webhooks.service.js';
+import { EventoWebhook } from '../webhooks/entities/webhook.entity.js';
 
 @Injectable()
 export class IntegracionService {
@@ -39,6 +41,7 @@ export class IntegracionService {
     private readonly asientosService: AsientosService,
     private readonly mapeoService: MapeoService,
     private readonly impuestosService: ImpuestosService,
+    private readonly webhooksService: WebhooksService,
   ) {}
 
   /**
@@ -237,6 +240,23 @@ export class IntegracionService {
 
     const cxcGuardada = await this.cxcRepo.save(cxc);
 
+    // Notificar por Webhook asíncrono
+    this.webhooksService
+      .despacharEvento({
+        empresa_id: dto.empresa_id,
+        evento: EventoWebhook.FACTURA_VENTA_CONTABILIZADA,
+        payload: {
+          cuenta_por_cobrar_id: cxcGuardada.id,
+          numero_factura: cxcGuardada.numero_factura,
+          asiento_id: asiento.id,
+          numero_comprobante: asiento.numero_comprobante,
+          total_factura: cxcGuardada.total_factura,
+          origen_sistema: dto.origen_sistema,
+          origen_documento_id: dto.origen_documento_id,
+        },
+      })
+      .catch(() => {});
+
     return {
       idempotente: false,
       tipo: 'CONTABILIZADO_INMEDIATO',
@@ -341,6 +361,23 @@ export class IntegracionService {
       borrador.revisado_at = new Date();
       await this.borradorRepo.save(borrador);
 
+      // Webhook factura de venta aprobada
+      this.webhooksService
+        .despacharEvento({
+          empresa_id: borrador.empresa_id,
+          evento: EventoWebhook.FACTURA_VENTA_APROBADA,
+          payload: {
+            cuenta_por_cobrar_id: cxcGuardada.id,
+            numero_factura: cxcGuardada.numero_factura,
+            asiento_id: asiento.id,
+            numero_comprobante: asiento.numero_comprobante,
+            total_factura: cxcGuardada.total_factura,
+            origen_sistema: borrador.origen_sistema,
+            origen_documento_id: borrador.origen_documento_id,
+          },
+        })
+        .catch(() => {});
+
       return {
         borrador,
         cuenta_por_cobrar: cxcGuardada,
@@ -398,6 +435,23 @@ export class IntegracionService {
       borrador.revisado_at = new Date();
       await this.borradorRepo.save(borrador);
 
+      // Webhook recaudo aprobado
+      this.webhooksService
+        .despacharEvento({
+          empresa_id: borrador.empresa_id,
+          evento: EventoWebhook.RECAUDO_APROBADO,
+          payload: {
+            recaudo_id: recaudoGuardado.id,
+            asiento_id: asiento.id,
+            numero_comprobante: asiento.numero_comprobante,
+            monto_recaudo: monto,
+            saldo_restante: cxc.saldo_pendiente,
+            origen_sistema: borrador.origen_sistema,
+            origen_documento_id: borrador.origen_documento_id,
+          },
+        })
+        .catch(() => {});
+
       return {
         borrador,
         recaudo: recaudoGuardado,
@@ -431,7 +485,30 @@ export class IntegracionService {
     borrador.revisado_por = revisado_por;
     borrador.revisado_at = new Date();
 
-    return await this.borradorRepo.save(borrador);
+    const guardado = await this.borradorRepo.save(borrador);
+
+    // Webhook documento rechazado
+    const eventoRechazo =
+      borrador.tipo_documento === TipoBorradorIntegracion.FACTURA_VENTA
+        ? EventoWebhook.FACTURA_VENTA_RECHAZADA
+        : EventoWebhook.RECAUDO_RECHAZADO;
+
+    this.webhooksService
+      .despacharEvento({
+        empresa_id: borrador.empresa_id,
+        evento: eventoRechazo,
+        payload: {
+          borrador_id: guardado.id,
+          origen_sistema: guardado.origen_sistema,
+          origen_documento_id: guardado.origen_documento_id,
+          tipo_documento: guardado.tipo_documento,
+          motivo_rechazo: motivo,
+          revisado_por: revisado_por,
+        },
+      })
+      .catch(() => {});
+
+    return guardado;
   }
 
   /**

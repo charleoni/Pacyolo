@@ -571,6 +571,36 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(resRechazo.body.revisado_por).toBe('AUDITOR_CONTABLE');
     expect(resRechazo.body.asiento_id).toBeNull();
   });
+
+  it('24. Debe SUSCRIBIR con 201 un Webhook externo con firma HMAC-SHA256 para eventos contables', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/webhooks')
+      .send({
+        empresa_id: empresaId,
+        nombre: 'Webhook Notificaciones ERP Externo',
+        url_destino: 'https://example.com/api/webhooks/listener',
+        eventos: ['factura_venta.aprobada', 'factura_venta.contabilizada', 'recaudo.aprobado'],
+        secreto_firma: 'whsec_e2e_signature_secret_9988',
+        activo: true,
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.empresa_id).toBe(empresaId);
+    expect(res.body.url_destino).toBe('https://example.com/api/webhooks/listener');
+    expect(res.body.secreto_firma).toBe('whsec_e2e_signature_secret_9988');
+    expect(res.body.eventos).toContain('factura_venta.aprobada');
+  });
+
+  it('25. Debe LISTAR con 200 las suscripciones de webhooks de la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/webhooks/empresa/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body[0].nombre).toBe('Webhook Notificaciones ERP Externo');
+  });
 });
 
 

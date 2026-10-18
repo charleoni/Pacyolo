@@ -10,6 +10,7 @@ import { IntegracionController } from './integracion.controller.js';
 import { AsientosModule } from '../asientos/asientos.module.js';
 import { MapeoModule } from '../mapeo/mapeo.module.js';
 import { ImpuestosModule } from '../impuestos/impuestos.module.js';
+import { WebhooksModule } from '../webhooks/webhooks.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ImpuestosModule } from '../impuestos/impuestos.module.js';
     AsientosModule,
     MapeoModule,
     ImpuestosModule,
+    WebhooksModule,
   ],
   controllers: [IntegracionController],
   providers: [IntegracionService],

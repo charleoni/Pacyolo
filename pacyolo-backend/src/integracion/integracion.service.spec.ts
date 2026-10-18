@@ -56,6 +56,10 @@ describe('IntegracionService', () => {
       calcularImpuestos: vi.fn(),
     };
 
+    const mockWebhooksService = {
+      despacharEvento: vi.fn().mockResolvedValue([]),
+    };
+
     service = new IntegracionService(
       mockBorradorRepo,
       mockCxcRepo,
@@ -65,6 +69,7 @@ describe('IntegracionService', () => {
       mockAsientosService,
       mockMapeoService,
       mockImpuestosService,
+      mockWebhooksService as any,
     );
   });
 
