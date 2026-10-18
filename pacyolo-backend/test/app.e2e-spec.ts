@@ -491,6 +491,86 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body[0].asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
     expect(Number(res.body[0].monto_recaudo)).toBe(1190000);
   });
+
+  it('22. Debe INGESTAR un Recaudo en modo REVISION_PREVIA y luego APROBARLO desde la bandeja de borradores', async () => {
+    // 1. Ingestar recaudo en modo REVISION_PREVIA sobre FAC-VENTA-002 (saldo 595.000)
+    const resBorradorRecaudo = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'BANCOLOMBIA_APP',
+        origen_documento_id: 'TRX-BCO-998822',
+        numero_factura: 'FAC-VENTA-002',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 200000,
+        fecha_recaudo: '2026-10-17',
+        metodo_recaudo: 'TRANSFERENCIA',
+        referencia_transaccion: 'TRX-TRANSF-9988',
+        modo_contabilizacion: 'REVISION_PREVIA',
+        glosa: 'Abono parcial cliente pendiente de conciliación',
+      })
+      .expect(201);
+
+    expect(resBorradorRecaudo.body.tipo).toBe('BORRADOR_INTEGRACION');
+    expect(resBorradorRecaudo.body.borrador.estado).toBe('PENDIENTE_REVISION');
+    const borradorRecaudoId = resBorradorRecaudo.body.borrador.id;
+
+    // 2. Filtrar borradores por tipo_documento = RECAUDO_COBRO
+    const resFiltrados = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/borradores/${empresaId}?tipo_documento=RECAUDO_COBRO`)
+      .expect(200);
+
+    expect(Array.isArray(resFiltrados.body)).toBe(true);
+    const encontrado = resFiltrados.body.find((b: any) => b.id === borradorRecaudoId);
+    expect(encontrado).toBeDefined();
+
+    // 3. Aprobar borrador de recaudo
+    const resAprobarRec = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorRecaudoId}/aprobar`)
+      .send({ revisado_por: 'AUDITOR_TESORERIA' })
+      .expect(200);
+
+    expect(resAprobarRec.body.borrador.estado).toBe('APROBADO');
+    expect(resAprobarRec.body.asiento).toBeDefined();
+    expect(resAprobarRec.body.asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(resAprobarRec.body.cuenta_por_cobrar.saldo_pendiente).toBe(395000); // 595.000 - 200.000
+    expect(resAprobarRec.body.cuenta_por_cobrar.estado).toBe('COBRADA_PARCIAL');
+  });
+
+  it('23. Debe INGESTAR un documento en modo REVISION_PREVIA y RECHAZARLO con motivo documentado de auditoría', async () => {
+    // 1. Ingestar factura en modo REVISION_PREVIA
+    const resBorradorRechazo = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'TIENDA_NUBE',
+        origen_documento_id: 'ORDER-NUBE-RECHAZADA-99',
+        numero_factura: 'FAC-ERRONEA-99',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 100000,
+        modo_contabilizacion: 'REVISION_PREVIA',
+      })
+      .expect(201);
+
+    const borradorId = resBorradorRechazo.body.borrador.id;
+
+    // 2. Rechazar el borrador
+    const resRechazo = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorId}/rechazar`)
+      .send({
+        motivo: 'Pedido cancelado por el cliente antes del despacho',
+        revisado_por: 'AUDITOR_CONTABLE',
+      })
+      .expect(200);
+
+    expect(resRechazo.body.estado).toBe('RECHAZADO');
+    expect(resRechazo.body.motivo_rechazo).toBe('Pedido cancelado por el cliente antes del despacho');
+    expect(resRechazo.body.revisado_por).toBe('AUDITOR_CONTABLE');
+    expect(resRechazo.body.asiento_id).toBeNull();
+  });
 });
 
 

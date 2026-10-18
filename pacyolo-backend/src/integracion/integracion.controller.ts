@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { IntegracionService } from './integracion.service.js';
 import { IngestarFacturaVentaDto } from './dto/ingestar-factura-venta.dto.js';
 import { IngestarRecaudoDto } from './dto/ingestar-recaudo.dto.js';
+import { FilterBorradoresDto } from './dto/filter-borradores.dto.js';
 import { EstadoBorradorIntegracion } from './entities/borrador-integracion.entity.js';
 
 @ApiTags('Integración Externa (API-First)')
@@ -61,14 +62,13 @@ export class IntegracionController {
   @Get('borradores/:empresa_id')
   @ApiOperation({
     summary: 'Listar documentos externos en bandeja de borradores / revisión',
-    description: 'Permite a contadores o supervisores consultar facturas pendientes de aprobación.',
+    description: 'Permite a contadores o supervisores consultar facturas y recaudos pendientes de aprobación con filtros avanzados.',
   })
-  @ApiQuery({ name: 'estado', enum: EstadoBorradorIntegracion, required: false })
   async listarBorradores(
     @Param('empresa_id', ParseUUIDPipe) empresa_id: string,
-    @Query('estado') estado?: EstadoBorradorIntegracion,
+    @Query() filter: FilterBorradoresDto,
   ) {
-    return await this.integracionService.listarBorradores(empresa_id, estado);
+    return await this.integracionService.listarBorradores(empresa_id, filter);
   }
 
   @Post('borradores/:id/aprobar')

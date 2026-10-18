@@ -13,6 +13,7 @@ import {
 import { RecaudoCxc } from '../cxc/entities/recaudo-cxc.entity.js';
 import { IngestarFacturaVentaDto, ModoContabilizacion } from './dto/ingestar-factura-venta.dto.js';
 import { IngestarRecaudoDto } from './dto/ingestar-recaudo.dto.js';
+import { FilterBorradoresDto } from './dto/filter-borradores.dto.js';
 import { AsientosService } from '../asientos/asientos.service.js';
 import { MapeoService } from '../mapeo/mapeo.service.js';
 import { ImpuestosService } from '../impuestos/impuestos.service.js';
@@ -246,21 +247,39 @@ export class IntegracionService {
   }
 
   /**
-   * Listar borradores pendientes de revisión
+   * Listar borradores pendientes de revisión con filtros avanzados
    */
-  async listarBorradores(empresa_id: string, estado?: EstadoBorradorIntegracion) {
-    const where: any = { empresa_id };
-    if (estado) {
-      where.estado = estado;
+  async listarBorradores(empresa_id: string, filter?: FilterBorradoresDto) {
+    const qb = this.borradorRepo
+      .createQueryBuilder('borrador')
+      .leftJoinAndSelect('borrador.asiento', 'asiento')
+      .where('borrador.empresa_id = :empresa_id', { empresa_id });
+
+    if (filter?.estado) {
+      qb.andWhere('borrador.estado = :estado', { estado: filter.estado });
     }
-    return await this.borradorRepo.find({
-      where,
-      order: { created_at: 'DESC' },
-    });
+
+    if (filter?.tipo_documento) {
+      qb.andWhere('borrador.tipo_documento = :tipo_doc', { tipo_doc: filter.tipo_documento });
+    }
+
+    if (filter?.origen_sistema) {
+      qb.andWhere('borrador.origen_sistema = :origen', { origen: filter.origen_sistema });
+    }
+
+    if (filter?.fecha_desde) {
+      qb.andWhere('borrador.created_at >= :desde', { desde: `${filter.fecha_desde} 00:00:00` });
+    }
+
+    if (filter?.fecha_hasta) {
+      qb.andWhere('borrador.created_at <= :hasta', { hasta: `${filter.fecha_hasta} 23:59:59` });
+    }
+
+    return await qb.orderBy('borrador.created_at', 'DESC').getMany();
   }
 
   /**
-   * Aprobar un borrador: Genera el comprobante contable y la CxC
+   * Aprobar un borrador: Genera el comprobante contable y actualiza el documento final (CxC o Recaudo)
    */
   async aprobarBorrador(id: string, revisado_por: string = 'SUPERVISOR') {
     const borrador = await this.borradorRepo.findOne({ where: { id } });
@@ -274,57 +293,122 @@ export class IntegracionService {
       );
     }
 
-    const payload = borrador.payload_datos as unknown as IngestarFacturaVentaDto;
     const propuesto = borrador.asiento_propuesto;
 
-    const asiento = await this.asientosService.create({
-      empresa_id: borrador.empresa_id,
-      tipo_comprobante: propuesto.tipo_comprobante,
-      fecha_contable: propuesto.fecha_contable,
-      glosa_general: propuesto.glosa_general,
-      origen_sistema: borrador.origen_sistema,
-      origen_documento_tipo: 'FACTURA_VENTA_APROBADA',
-      origen_documento_id: borrador.origen_documento_id,
-      lineas: propuesto.lineas,
-    });
+    if (borrador.tipo_documento === TipoBorradorIntegracion.FACTURA_VENTA) {
+      const payload = borrador.payload_datos as unknown as IngestarFacturaVentaDto;
 
-    const plantilla = await this.mapeoService.findByCodigo(
-      borrador.empresa_id,
-      payload.codigo_concepto,
-    );
+      const asiento = await this.asientosService.create({
+        empresa_id: borrador.empresa_id,
+        tipo_comprobante: propuesto.tipo_comprobante,
+        fecha_contable: propuesto.fecha_contable,
+        glosa_general: propuesto.glosa_general,
+        origen_sistema: borrador.origen_sistema,
+        origen_documento_tipo: 'FACTURA_VENTA_APROBADA',
+        origen_documento_id: borrador.origen_documento_id,
+        lineas: propuesto.lineas,
+      });
 
-    const cxc = this.cxcRepo.create({
-      empresa_id: borrador.empresa_id,
-      tercero_id: payload.cliente_id,
-      asiento_id: asiento.id,
-      cuenta_activo_id: plantilla.cuenta_debito_id,
-      numero_factura: payload.numero_factura,
-      fecha_emision: payload.fecha_emision,
-      fecha_vencimiento: payload.fecha_vencimiento,
-      subtotal: Number(payload.subtotal),
-      total_impuestos: propuesto.total_iva,
-      total_retenciones: propuesto.total_retenciones,
-      total_factura: propuesto.total_neto,
-      saldo_pendiente: propuesto.total_neto,
-      estado: EstadoCuentaPorCobrar.PENDIENTE,
-      origen_sistema: borrador.origen_sistema,
-      origen_documento_id: borrador.origen_documento_id,
-      observaciones: payload.observaciones,
-    });
+      const plantilla = await this.mapeoService.findByCodigo(
+        borrador.empresa_id,
+        payload.codigo_concepto,
+      );
 
-    const cxcGuardada = await this.cxcRepo.save(cxc);
+      const cxc = this.cxcRepo.create({
+        empresa_id: borrador.empresa_id,
+        tercero_id: payload.cliente_id,
+        asiento_id: asiento.id,
+        cuenta_activo_id: plantilla.cuenta_debito_id,
+        numero_factura: payload.numero_factura,
+        fecha_emision: payload.fecha_emision,
+        fecha_vencimiento: payload.fecha_vencimiento,
+        subtotal: Number(payload.subtotal),
+        total_impuestos: propuesto.total_iva,
+        total_retenciones: propuesto.total_retenciones,
+        total_factura: propuesto.total_neto,
+        saldo_pendiente: propuesto.total_neto,
+        estado: EstadoCuentaPorCobrar.PENDIENTE,
+        origen_sistema: borrador.origen_sistema,
+        origen_documento_id: borrador.origen_documento_id,
+        observaciones: payload.observaciones,
+      });
 
-    borrador.estado = EstadoBorradorIntegracion.APROBADO;
-    borrador.asiento_id = asiento.id;
-    borrador.revisado_por = revisado_por;
-    borrador.revisado_at = new Date();
-    await this.borradorRepo.save(borrador);
+      const cxcGuardada = await this.cxcRepo.save(cxc);
 
-    return {
-      borrador,
-      cuenta_por_cobrar: cxcGuardada,
-      asiento,
-    };
+      borrador.estado = EstadoBorradorIntegracion.APROBADO;
+      borrador.asiento_id = asiento.id;
+      borrador.revisado_por = revisado_por;
+      borrador.revisado_at = new Date();
+      await this.borradorRepo.save(borrador);
+
+      return {
+        borrador,
+        cuenta_por_cobrar: cxcGuardada,
+        asiento,
+      };
+    } else if (borrador.tipo_documento === TipoBorradorIntegracion.RECAUDO_COBRO) {
+      const payload = borrador.payload_datos as unknown as IngestarRecaudoDto;
+
+      const cxc = await this.cxcRepo.findOne({
+        where: { id: propuesto.cuenta_por_cobrar_id, empresa_id: borrador.empresa_id },
+      });
+      if (!cxc) {
+        throw new NotFoundException(`La cuenta por cobrar del recaudo ya no existe.`);
+      }
+
+      const asiento = await this.asientosService.create({
+        empresa_id: borrador.empresa_id,
+        tipo_comprobante: propuesto.tipo_comprobante,
+        fecha_contable: propuesto.fecha_contable,
+        glosa_general: propuesto.glosa_general,
+        origen_sistema: borrador.origen_sistema,
+        origen_documento_tipo: 'COMPROBANTE_INGRESO_APROBADO',
+        origen_documento_id: borrador.origen_documento_id,
+        lineas: propuesto.lineas,
+      });
+
+      const monto = Number(propuesto.monto_recaudo);
+      const nuevoSaldo = Math.round((Number(cxc.saldo_pendiente) - monto) * 100) / 100;
+      cxc.saldo_pendiente = nuevoSaldo;
+      cxc.estado =
+        nuevoSaldo === 0
+          ? EstadoCuentaPorCobrar.COBRADA_TOTAL
+          : EstadoCuentaPorCobrar.COBRADA_PARCIAL;
+      await this.cxcRepo.save(cxc);
+
+      const recaudo = this.recaudoRepo.create({
+        empresa_id: borrador.empresa_id,
+        cuenta_por_cobrar_id: cxc.id,
+        asiento_id: asiento.id,
+        cuenta_banco_id: payload.cuenta_banco_id,
+        monto_recaudo: monto,
+        fecha_recaudo: payload.fecha_recaudo,
+        metodo_recaudo: payload.metodo_recaudo,
+        referencia_transaccion: payload.referencia_transaccion,
+        origen_sistema: borrador.origen_sistema,
+        origen_documento_id: borrador.origen_documento_id,
+        glosa: payload.glosa,
+      });
+
+      const recaudoGuardado = await this.recaudoRepo.save(recaudo);
+
+      borrador.estado = EstadoBorradorIntegracion.APROBADO;
+      borrador.asiento_id = asiento.id;
+      borrador.revisado_por = revisado_por;
+      borrador.revisado_at = new Date();
+      await this.borradorRepo.save(borrador);
+
+      return {
+        borrador,
+        recaudo: recaudoGuardado,
+        cuenta_por_cobrar: cxc,
+        asiento,
+      };
+    } else {
+      throw new BadRequestException(
+        `Tipo de documento '${borrador.tipo_documento}' no soportado para aprobación automática.`,
+      );
+    }
   }
 
   /**
