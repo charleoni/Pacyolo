@@ -138,24 +138,29 @@ flowchart TD
 
 ---
 
-#### MÓDULO 6: Inventarios & Kardex Permanente NIIF (NIC 2 / DUR 2420)
-> *El módulo que conecta la compra con la venta y el costo en cualquier tipo de negocio.*
+#### MÓDULO 6: Catálogo de Ítems, Inventarios & Kardex Paramétrico Universal (NIC 2 / DUR 2420)
+> *Modelo agnóstico y flexible que se adapta a cualquier actividad económica (comercio, servicios, manufactura, retail).*
 
-- **Clasificación de Artículos:**
-  - `MERCANCIA_NO_FABRICADA` (Cuenta 1435: almacén de motos, repuestos, abarrotes).
-  - `MATERIA_PRIMA` (Cuenta 1405: harina, levadura, carnes para panaderías y restaurantes).
-  - `PRODUCTO_TERMINADO` (Cuenta 1430: pan horneado, platos elaborados).
-  - `SUMINISTROS_CONSUMO` (Cuenta 1455: empaques, aceites de taller, papelería).
-- **Trazabilidad por Tipo de Negocio:**
-  - **Seriales / Chasis / Motor (VIN):** Para motos, vehículos y maquinaria. Cada unidad tiene número de motor, chasis y declaración de aduanas.
-  - **Lotes y Vencimientos:** Para alimentos perecederos en restaurantes y panaderías.
-  - **SKU y Códigos de Barras:** Para repuestos y productos estándar.
-- **Kardex Valorado Automatizado:**
-  - Método de valuación legal: **Promedio Ponderado** o **PEPS (Primeras en Entrar, Primeras en Salir)**.
-  - Movimientos: Entradas por compra, Salidas por venta, Mermas/Averías y Traslados entre bodegas.
-- **Asiento Automático de Costo de Ventas:**  
-  En cada venta, el sistema genera de forma transparente:
-  $$\text{Débito 6135 (Costo de Venta)} \quad \longleftrightarrow \quad \text{Crédito 1435 (Salida de Inventario)}$$
+- **Tipología Universal de Ítems / Catálogo:**
+  - `SERVICIO` (Sin inventario físico: corte de cabello, asesoría contable, mano de obra mecánica, transporte). Imputación directa: Venta `4155/4170` vs Costo directo `6155` o gasto.
+  - `PRODUCTO_SIMPLE` (Venta unitaria por código o código de barras: cuadernos, bolígrafos, herramientas, lubricantes). Cuenta `1435`.
+  - `PRODUCTO_FRACCIONABLE_GRANEL` (Venta por peso, longitud o volumen: carnicería por kilos/libras, ferretería por metros de cable, tornillos por libra, telas).
+  - `MATERIA_PRIMA_TRANSFORMACION` (Ingredientes o insumos que se consumen para producir: harina, azúcar, carne cruda, pintura). Cuenta `1405`.
+  - `PRODUCTO_TERMINADO` (El resultado de la transformación: tortas, platos preparados, muebles armados). Cuenta `1430`.
+  - `PRODUCTO_SERIALIZADO` (Trazabilidad única por unidad: electrodomésticos, maquinaria, motos, celulares con IMEI/Serial).
+  - `PRODUCTO_PERECEDERO_LOTE` (Control de fechas de caducidad y lotes: carnes, lácteos, medicamentos, alimentos).
+- **Atributos Parametrizables por Tenant / Industria:**
+  - **Unidades de Medida:** Unidad (`UND`), Kilogramo (`KG`), Gramo (`GR`), Metro (`MTR`), Litro (`LTR`), Galón (`GL`), Caja (`CJ`), Hora de Servicio (`HRS`).
+  - **Conversión de Unidades:** Comprar en bulto de 50 kg y vender por libras/kilos; comprar rollo de 100 m y vender por metros.
+  - **Reglas Tributarias por Ítem:**
+    - Tarifa de IVA asociada: Excluido, Exento (0%), 5%, 19%.
+    - Impuesto Nacional al Consumo (INC 8% para restaurantes y cafeterías).
+- **Kardex Permanente Valorado:**
+  - Valuación automática bajo norma legal: **Promedio Ponderado** o **PEPS (FIFO)**.
+  - Entradas por compras a proveedores, salidas automáticas por facturación de venta, mermas/desperdicios justificados y traslados entre bodegas/sucursales.
+  - **Asiento Automático de Costo:**
+    $$\text{Débito 61 (Costo de Ventas)} \quad \longleftrightarrow \quad \text{Crédito 14 (Salida de Inventarios)}$$
+    *(Si el ítem es de tipo `SERVICIO`, no afecta inventario físico y no mueve la cuenta 14).*
 
 ---
 
