@@ -8,6 +8,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { ParametrosService } from './parametros.service.js';
@@ -116,6 +117,23 @@ export class ParametrosController {
   @ApiOperation({ summary: 'Crear nuevo método de pago' })
   async crearMetodoPago(@Body() dto: CreateMetodoPagoDto) {
     return await this.parametrosService.crearMetodoPago(dto);
+  }
+
+  // 7. DEPARTAMENTOS DANE
+  @Get('departamentos')
+  @ApiOperation({ summary: 'Listar departamentos oficiales DANE' })
+  async listarDepartamentos() {
+    return await this.parametrosService.listarDepartamentos();
+  }
+
+  // 8. MUNICIPIOS DANE
+  @Get('municipios')
+  @ApiOperation({ summary: 'Buscar municipios oficiales DANE por nombre o código' })
+  async buscarMunicipios(
+    @Query('q') query?: string,
+    @Query('departamento_codigo') departamentoCodigo?: string,
+  ) {
+    return await this.parametrosService.buscarMunicipios(query, departamentoCodigo);
   }
 
   // CAMBIO DE ESTADO (ACTIVAR / DESACTIVAR)

@@ -7,6 +7,8 @@ import { RegimenFiscal } from './entities/regimen-fiscal.entity.js';
 import { ClasificacionTercero } from './entities/clasificacion-tercero.entity.js';
 import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity.js';
 import { MetodoPago } from './entities/metodo-pago.entity.js';
+import { Departamento } from './entities/departamento.entity.js';
+import { Municipio } from './entities/municipio.entity.js';
 import {
   CreateTipoIdentificacionDto,
   CreateTipoPersonaDto,
@@ -33,6 +35,10 @@ export class ParametrosService {
     private readonly comprobanteRepo: Repository<TipoComprobanteConfig>,
     @InjectRepository(MetodoPago)
     private readonly metodoPagoRepo: Repository<MetodoPago>,
+    @InjectRepository(Departamento)
+    private readonly deptoRepo: Repository<Departamento>,
+    @InjectRepository(Municipio)
+    private readonly municipioRepo: Repository<Municipio>,
   ) {}
 
   /**
@@ -139,7 +145,122 @@ export class ParametrosService {
       }
     }
 
-    this.logger.log('🌱 Catálogos de tablas maestras oficiales DIAN sembrados con éxito.');
+    // 7. Departamentos DANE Oficiales (32 Departamentos + Bogotá D.C.)
+    const deptosSemilla = [
+      { codigo: '05', nombre: 'Antioquia' },
+      { codigo: '08', nombre: 'Atlántico' },
+      { codigo: '11', nombre: 'Bogotá, D.C.' },
+      { codigo: '13', nombre: 'Bolívar' },
+      { codigo: '15', nombre: 'Boyacá' },
+      { codigo: '17', nombre: 'Caldas' },
+      { codigo: '18', nombre: 'Caquetá' },
+      { codigo: '19', nombre: 'Cauca' },
+      { codigo: '20', nombre: 'Cesar' },
+      { codigo: '23', nombre: 'Córdoba' },
+      { codigo: '25', nombre: 'Cundinamarca' },
+      { codigo: '27', nombre: 'Chocó' },
+      { codigo: '41', nombre: 'Huila' },
+      { codigo: '44', nombre: 'La Guajira' },
+      { codigo: '47', nombre: 'Magdalena' },
+      { codigo: '50', nombre: 'Meta' },
+      { codigo: '52', nombre: 'Nariño' },
+      { codigo: '54', nombre: 'Norte de Santander' },
+      { codigo: '63', nombre: 'Quindío' },
+      { codigo: '66', nombre: 'Risaralda' },
+      { codigo: '68', nombre: 'Santander' },
+      { codigo: '70', nombre: 'Sucre' },
+      { codigo: '73', nombre: 'Tolima' },
+      { codigo: '76', nombre: 'Valle del Cauca' },
+      { codigo: '81', nombre: 'Arauca' },
+      { codigo: '85', nombre: 'Casanare' },
+      { codigo: '86', nombre: 'Putumayo' },
+      { codigo: '88', nombre: 'Archipiélago de San Andrés, Providencia y Santa Catalina' },
+      { codigo: '91', nombre: 'Amazonas' },
+      { codigo: '94', nombre: 'Guainía' },
+      { codigo: '95', nombre: 'Guaviare' },
+      { codigo: '97', nombre: 'Vaupés' },
+      { codigo: '99', nombre: 'Vichada' },
+    ];
+
+    for (const d of deptosSemilla) {
+      const existe = await this.deptoRepo.findOne({ where: { codigo: d.codigo } });
+      if (!existe) {
+        await this.deptoRepo.save(this.deptoRepo.create({ ...d, pais_codigo: 'CO', activo: true }));
+      }
+    }
+
+    // 8. Municipios DANE Oficiales (Capitales y Polos Comerciales de Colombia)
+    const municipiosSemilla = [
+      { codigo: '11001', nombre: 'Bogotá, D.C.', departamento_codigo: '11', departamento_nombre: 'Bogotá, D.C.' },
+      { codigo: '05001', nombre: 'Medellín', departamento_codigo: '05', departamento_nombre: 'Antioquia' },
+      { codigo: '05088', nombre: 'Bello', departamento_codigo: '05', departamento_nombre: 'Antioquia' },
+      { codigo: '05360', nombre: 'Itagüí', departamento_codigo: '05', departamento_nombre: 'Antioquia' },
+      { codigo: '05266', nombre: 'Envigado', departamento_codigo: '05', departamento_nombre: 'Antioquia' },
+      { codigo: '05615', nombre: 'Rionegro', departamento_codigo: '05', departamento_nombre: 'Antioquia' },
+      { codigo: '76001', nombre: 'Cali', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '76520', nombre: 'Palmira', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '76109', nombre: 'Buenaventura', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '76834', nombre: 'Tuluá', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '76111', nombre: 'Buga', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '76147', nombre: 'Cartago', departamento_codigo: '76', departamento_nombre: 'Valle del Cauca' },
+      { codigo: '08001', nombre: 'Barranquilla', departamento_codigo: '08', departamento_nombre: 'Atlántico' },
+      { codigo: '08758', nombre: 'Soledad', departamento_codigo: '08', departamento_nombre: 'Atlántico' },
+      { codigo: '13001', nombre: 'Cartagena de Indias', departamento_codigo: '13', departamento_nombre: 'Bolívar' },
+      { codigo: '68001', nombre: 'Bucaramanga', departamento_codigo: '68', departamento_nombre: 'Santander' },
+      { codigo: '68276', nombre: 'Floridablanca', departamento_codigo: '68', departamento_nombre: 'Santander' },
+      { codigo: '68307', nombre: 'Girón', departamento_codigo: '68', departamento_nombre: 'Santander' },
+      { codigo: '68547', nombre: 'Piedecuesta', departamento_codigo: '68', departamento_nombre: 'Santander' },
+      { codigo: '68081', nombre: 'Barrancabermeja', departamento_codigo: '68', departamento_nombre: 'Santander' },
+      { codigo: '66001', nombre: 'Pereira', departamento_codigo: '66', departamento_nombre: 'Risaralda' },
+      { codigo: '66170', nombre: 'Dosquebradas', departamento_codigo: '66', departamento_nombre: 'Risaralda' },
+      { codigo: '17001', nombre: 'Manizales', departamento_codigo: '17', departamento_nombre: 'Caldas' },
+      { codigo: '63001', nombre: 'Armenia', departamento_codigo: '63', departamento_nombre: 'Quindío' },
+      { codigo: '47001', nombre: 'Santa Marta', departamento_codigo: '47', departamento_nombre: 'Magdalena' },
+      { codigo: '54001', nombre: 'Cúcuta', departamento_codigo: '54', departamento_nombre: 'Norte de Santander' },
+      { codigo: '73001', nombre: 'Ibagué', departamento_codigo: '73', departamento_nombre: 'Tolima' },
+      { codigo: '52001', nombre: 'Pasto', departamento_codigo: '52', departamento_nombre: 'Nariño' },
+      { codigo: '41001', nombre: 'Neiva', departamento_codigo: '41', departamento_nombre: 'Huila' },
+      { codigo: '50001', nombre: 'Villavicencio', departamento_codigo: '50', departamento_nombre: 'Meta' },
+      { codigo: '20001', nombre: 'Valledupar', departamento_codigo: '20', departamento_nombre: 'Cesar' },
+      { codigo: '23001', nombre: 'Montería', departamento_codigo: '23', departamento_nombre: 'Córdoba' },
+      { codigo: '70001', nombre: 'Sincelejo', departamento_codigo: '70', departamento_nombre: 'Sucre' },
+      { codigo: '19001', nombre: 'Popayán', departamento_codigo: '19', departamento_nombre: 'Cauca' },
+      { codigo: '15001', nombre: 'Tunja', departamento_codigo: '15', departamento_nombre: 'Boyacá' },
+      { codigo: '15238', nombre: 'Duitama', departamento_codigo: '15', departamento_nombre: 'Boyacá' },
+      { codigo: '15759', nombre: 'Sogamoso', departamento_codigo: '15', departamento_nombre: 'Boyacá' },
+      { codigo: '44001', nombre: 'Riohacha', departamento_codigo: '44', departamento_nombre: 'La Guajira' },
+      { codigo: '18001', nombre: 'Florencia', departamento_codigo: '18', departamento_nombre: 'Caquetá' },
+      { codigo: '85001', nombre: 'Yopal', departamento_codigo: '85', departamento_nombre: 'Casanare' },
+      { codigo: '27001', nombre: 'Quibdó', departamento_codigo: '27', departamento_nombre: 'Chocó' },
+      { codigo: '81001', nombre: 'Arauca', departamento_codigo: '81', departamento_nombre: 'Arauca' },
+      { codigo: '88001', nombre: 'San Andrés', departamento_codigo: '88', departamento_nombre: 'Archipiélago de San Andrés, Providencia y Santa Catalina' },
+      { codigo: '86001', nombre: 'Mocoa', departamento_codigo: '86', departamento_nombre: 'Putumayo' },
+      { codigo: '91001', nombre: 'Leticia', departamento_codigo: '91', departamento_nombre: 'Amazonas' },
+      { codigo: '95001', nombre: 'San José del Guaviare', departamento_codigo: '95', departamento_nombre: 'Guaviare' },
+      { codigo: '97001', nombre: 'Mitú', departamento_codigo: '97', departamento_nombre: 'Vaupés' },
+      { codigo: '94001', nombre: 'Inírida', departamento_codigo: '94', departamento_nombre: 'Guainía' },
+      { codigo: '99001', nombre: 'Puerto Carreño', departamento_codigo: '99', departamento_nombre: 'Vichada' },
+      { codigo: '25754', nombre: 'Soacha', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25175', nombre: 'Chía', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25899', nombre: 'Zipaquirá', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25269', nombre: 'Facatativá', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25473', nombre: 'Mosquera', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25430', nombre: 'Madrid', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25286', nombre: 'Funza', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25290', nombre: 'Fusagasugá', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25307', nombre: 'Girardot', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25126', nombre: 'Cajicá', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+      { codigo: '25214', nombre: 'Cota', departamento_codigo: '25', departamento_nombre: 'Cundinamarca' },
+    ];
+
+    for (const mun of municipiosSemilla) {
+      const existe = await this.municipioRepo.findOne({ where: { codigo: mun.codigo } });
+      if (!existe) {
+        await this.municipioRepo.save(this.municipioRepo.create({ ...mun, activo: true }));
+      }
+    }
+
+    this.logger.log('🌱 Catálogos de tablas maestras oficiales DIAN y geografía DANE sembrados con éxito.');
   }
 
   // ==========================================
@@ -270,6 +391,29 @@ export class ParametrosService {
     return await this.metodoPagoRepo.save(this.metodoPagoRepo.create({ ...dto, codigo: dto.codigo.toUpperCase() }));
   }
 
+  async listarDepartamentos(): Promise<Departamento[]> {
+    return await this.deptoRepo.find({
+      order: { nombre: 'ASC' },
+    });
+  }
+
+  async buscarMunicipios(termino?: string, departamentoCodigo?: string): Promise<Municipio[]> {
+    const qb = this.municipioRepo.createQueryBuilder('m');
+
+    if (departamentoCodigo) {
+      qb.andWhere('m.departamento_codigo = :departamentoCodigo', { departamentoCodigo });
+    }
+
+    if (termino && termino.trim().length > 0) {
+      qb.andWhere('(LOWER(m.nombre) LIKE LOWER(:term) OR m.codigo LIKE :termRaw)', {
+        term: `%${termino.trim()}%`,
+        termRaw: `%${termino.trim()}%`,
+      });
+    }
+
+    return await qb.orderBy('m.nombre', 'ASC').take(100).getMany();
+  }
+
   // ==========================================
   // INACTIVACIÓN Y ACTIVACIÓN (SOFT-DELETE)
   // ==========================================
@@ -295,6 +439,12 @@ export class ParametrosService {
         break;
       case 'metodos-pago':
         repo = this.metodoPagoRepo;
+        break;
+      case 'departamentos':
+        repo = this.deptoRepo;
+        break;
+      case 'municipios':
+        repo = this.municipioRepo;
         break;
       default:
         throw new BadRequestException(`Catálogo desconocido: '${catalogo}'`);

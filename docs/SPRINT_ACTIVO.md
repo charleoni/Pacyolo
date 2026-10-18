@@ -4,47 +4,42 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/08-facturacion-pos-cxc`  
-*Última Versión Publicada:* `v0.7.0-sprint7` (Fusionado en `develop` y `main`)
+*Rama Activa:* `sprint/07-tablas-maestras-dinamicas`  
+*Última Versión Publicada:* `v0.7.0-sprint7` (En desarrollo: Fase B - Ficha Integral de Terceros)
 
 ---
 
-## 🎯 SPRINT 8: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
-- **Objetivo del Sprint:** Implementar el motor completo de emisión y registro de ventas comerciales y de mostrador (POS), adaptable a cualquier modelo de negocio (restaurantes, peluquerías, panaderías, carnicerías, almacenes, papelerías, etc.), integrado al PUC, recaudos inmediatos en caja/bancos (`ING`) y causación de cartera de clientes (`CxC`).
+## 🎯 SPRINT 7: Tablas Maestras Dinámicas & Ficha Integral de Terceros (Cero Enums)
+- **Objetivo del Sprint:** Erradicar datos quemados y enums estáticos en todo el sistema ERP, implementando el catálogo maestro universal y extendiendo el modelo de Terceros (`core_terceros`) para soportar geografía oficial DANE (País, Departamento, Municipio), responsabilidades fiscales DIAN, actividad económica CIIU (ReteICA), desglose de nombres (Natural vs Jurídica) y datos bancarios, con flujo dual de captura (creación rápida en mostrador vs ficha completa tributaria).
 - **Entregables Evaluativos para el Usuario:**
-  - **Catálogo de Ítems / Servicios Base Paramétrico:** Entidad relacional para productos y servicios con unidades de medida, precio de venta sugerido, tarifas de IVA (0%, 5%, 19%) e INC (8%) sin enums quemados.
-  - **Módulo de Venta Mostrador / Punto de Venta (POS):**
-    - Tiras de venta rápida para mostrador con selección ágil de ítems.
-    - Soporte de Impuesto Nacional al Consumo (INC 8%) y propinas voluntarias (para gastronomía/servicios).
-    - Liquidación rápida con múltiples medios de pago simultáneos (Efectivo, Transferencia, Tarjeta, etc., alimentados de `core_metodos_pago`).
-    - Cálculo automático de devuelta/cambio y generación inmediata de comprobante contable oficial tipo `POS`.
-  - **Facturación de Venta Estándar & Causación de Cartera (`FAC` / `CxC`):**
-    - Facturación directa a clientes registrados en el directorio de terceros.
-    - Manejo de condiciones de crédito (plazos 15, 30, 60 días) o contado.
-    - Generación automática de Cuenta por Cobrar (`cont_cuentas_por_cobrar`) y comprobante contable de venta `FAC`.
-  - **Recibos de Caja / Recaudos de Cartera (`ING`):**
-    - Interfaz para abonos parciales o totales a facturas pendientes con selección del medio de pago y afectación a cuentas de tesorería (1105 / 1110).
-    - Estado de cartera actualizado en tiempo real.
-  - **Panel Ejecutivo de Cartera CxC & Antigüedad de Saldos:**
-    - Tarjetas de resumen (Total Cartera, Corriente, Vencida 1-30, 31-60, 61-90, >90 días).
-    - Tabla detallada por cliente con botón de recaudo directo e impresión.
-  - **Suite de Pruebas & Calidad:** Cobertura de tests unitarios y E2E para POS, Facturación y Cartera.
+  - **Fase A (Completada & Certificada):**
+    - 6 Catálogos relacionales dinámicos (`tipos_identificacion`, `tipos_persona`, `regimenes_fiscales`, `clasificaciones_tercero`, `tipos_comprobante`, `metodos_pago`).
+    - Panel de gestión web `/dashboard/configuracion/maestras` con tabs, interruptores activo/inactivo, modal e impresión oficial.
+    - Integración dinámica en formularios de Terceros, Asientos y CxP.
+  - **Fase B (Activa en Desarrollo):**
+    - **Catálogos Geográficos DANE (Cero Enums):** Entidades relacionales para Departamentos y Municipios (Divipola DANE) con semillas oficiales y autocompletado en backend.
+    - **Modelo de Tercero Robusto:** Campos para país (`CO`), departamento, municipio, código postal, CIIU, desglose de nombres para personas naturales (Primer Nombre, Otros Nombres, Primer Apellido, Segundo Apellido) vs Razón Social, y datos bancarios para tesorería.
+    - **Flujo Dual en Frontend (`/dashboard/terceros`):**
+      - Modal de Creación Rápida para mostrador/POS con defaults inteligentes.
+      - Modal/Pestañas de Ficha Completa para enriquecimiento contable y facturación electrónica.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 8 (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 7 — Fase B (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **8.1** | Catálogo Paramétrico de Productos & Servicios | Modelo relacional `cont_items_venta` con soporte para bienes y servicios, código, nombre, unidad de medida dinámica, tarifa IVA/INC, precio y cuentas contables asociadas. CRUD y semillas. | 2h | `[ ]` Por iniciar | - |
-| **8.2** | Motor de Mostrador / POS & Ticket de Venta | Servicio backend para emisión de venta POS con cálculo de INC (8%), propina opcional, cambio/devuelta, medios de pago dinámicos y generación automática del asiento contable `POS`. | 2h | `[ ]` Por iniciar | - |
-| **8.3** | Facturación Estándar & Causación de CxC | Endpoints para facturación a crédito/contado (`POST /api/v1/ventas/facturar`), generación de cuenta por cobrar y asiento `FAC`. Panel de cartera ejecutiva (`GET /api/v1/cxc/cartera`). | 2h | `[ ]` Por iniciar | - |
-| **8.4** | Recaudos de Cartera & Comprobantes de Ingreso | Registro de cobros (`POST /api/v1/cxc/recaudar`) afectando cuentas de tesorería y saldando facturas, generando comprobante `ING`. Filtro por cliente y antigüedad. | 2h | `[ ]` Por iniciar | - |
-| **8.5** | Interfaz Web Angular, Vistas POS & Cartera | Pantallas en frontend (`/dashboard/pos`, `/dashboard/ventas`, `/dashboard/cxc`) con diseño táctil/rápido para mostrador, gestión de cartera, impresión de tiras y pruebas E2E. | 2h | `[ ]` Por iniciar | - |
+| **7.6** | Catálogos Geográficos DANE | Entidades relacionales `core_departamentos` y `core_municipios` (Divipola DANE) en `ParametrosModule`, semillas de departamentos/ciudades principales y endpoint `GET /api/v1/parametros/municipios`. | 2h | `[x]` Completado | 17/10/2026 |
+| **7.7** | Extensión del Modelo `core_terceros` | Ampliación de la entidad `Tercero` con país, depto, municipio, dirección, código postal, código CIIU, desglose de nombres (primer/segundo nombre, apellidos), datos bancarios y DTOs con validaciones. | 2h | `[x]` Completado | 17/10/2026 |
+| **7.8** | Backend API & Pruebas Unitarias Vitest | Métodos en `TercerosService` para creación rápida con defaults y actualización de ficha completa. Suite de pruebas unitarias cubriendo ambos flujos (72 tests pasando). | 2h | `[x]` Completado | 17/10/2026 |
+| **7.9** | Frontend Web: Flujo Dual de Terceros | Actualización de `/dashboard/terceros`: botón/modal de creación rápida para mostrador + vista/modal de Ficha Completa con 4 pestañas (General, Geográfica/DANE, Fiscal/CIIU, Bancaria). | 2h | `[x]` Completado | 17/10/2026 |
+| **7.10** | Certificación, Pruebas E2E & Validación | Suite de pruebas E2E en frontend y backend, validación en navegador junto con el usuario, commit y cierre definitivo de Sprint 7. | 1h | `[ ]` En curso / Validación Usuario | 17/10/2026 |
 
 ---
 
 ## 🔮 Backlog Estratégico de Sprints Futuros (Arquitectura ERP PACYOLO)
+
+### 📌 SPRINT 8: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
 
 ### 📌 SPRINT 9: Catálogo de Ítems, Inventarios & Kardex Paramétrico (NIC 2)
 - **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).

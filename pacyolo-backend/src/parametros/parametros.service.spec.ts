@@ -8,6 +8,8 @@ import { RegimenFiscal } from './entities/regimen-fiscal.entity.js';
 import { ClasificacionTercero } from './entities/clasificacion-tercero.entity.js';
 import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity.js';
 import { MetodoPago } from './entities/metodo-pago.entity.js';
+import { Departamento } from './entities/departamento.entity.js';
+import { Municipio } from './entities/municipio.entity.js';
 
 describe('ParametrosService', () => {
   let service: ParametrosService;
@@ -21,8 +23,10 @@ describe('ParametrosService', () => {
       save: vi.fn().mockImplementation(async (entity) => ({ id: 'mock-uuid', ...entity })),
       createQueryBuilder: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         addOrderBy: vi.fn().mockReturnThis(),
+        take: vi.fn().mockReturnThis(),
         getMany: vi.fn().mockResolvedValue([]),
       }),
     };
@@ -36,6 +40,8 @@ describe('ParametrosService', () => {
         { provide: getRepositoryToken(ClasificacionTercero), useValue: mockRepo },
         { provide: getRepositoryToken(TipoComprobanteConfig), useValue: mockRepo },
         { provide: getRepositoryToken(MetodoPago), useValue: mockRepo },
+        { provide: getRepositoryToken(Departamento), useValue: mockRepo },
+        { provide: getRepositoryToken(Municipio), useValue: mockRepo },
       ],
     }).compile();
 
@@ -71,5 +77,17 @@ describe('ParametrosService', () => {
     mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', activo: true });
     const res = await service.cambiarEstado('tipos-identificacion', 'mock-id', false);
     expect(res.activo).toBe(false);
+  });
+
+  it('debe listar departamentos oficiales DANE', async () => {
+    const res = await service.listarDepartamentos();
+    expect(res).toEqual([]);
+    expect(mockRepo.find).toHaveBeenCalled();
+  });
+
+  it('debe buscar municipios oficiales DANE por término o departamento', async () => {
+    const res = await service.buscarMunicipios('Bogotá', '11');
+    expect(res).toEqual([]);
+    expect(mockRepo.createQueryBuilder).toHaveBeenCalled();
   });
 });
