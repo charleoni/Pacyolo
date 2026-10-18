@@ -4,19 +4,18 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/06-operacion-contable-web`  
-*Última Versión Publicada:* `v0.5.0-sprint5` (Fusionado en `develop` y `main`)
+*Rama Activa:* `sprint/07-facturacion-pos-cxc`  
+*Última Versión Publicada:* `v0.6.0-sprint6` (Fusionado en `develop` y `main`)
 
 ---
 
-## 🎯 SPRINT 6: Operación Contable Manual en Web (Digitación & Documentos NIIF)
-- **Objetivo del Sprint:** Dotar al Frontend Web (`pacyolo-web`) y Backend de las capacidades de captura manual para que el contador o auxiliar pueda sentarse a crear documentos contables reales directamente en el navegador con balanceo de partida doble en vivo, causación de compras con retenciones de Colombia, emisión de pagos/egresos y directorio de terceros.
+## 🎯 SPRINT 7: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
+- **Objetivo del Sprint:** Implementar el módulo de Facturación Comercial y Mostrador/POS para cualquier comercio o empresa (mostrador, peluquería, ferretería, carnicería, papelería, servicios), con emisión de tiras de caja, facturas estándar, liquidación de IVA e Impoconsumo, cobros inmediatos y gestión de cartera CxC.
 - **Entregables Evaluativos para el Usuario:**
-  - **Formulario de Comprobante Contable / Asiento de Diario:** Creación interactiva de asientos con rejilla dinámica de líneas (cuenta PUC, tercero, glosa, débito, crédito), cálculo de sumas iguales en tiempo real con indicador verde/rojo y bloqueo de guardado si hay descuadre.
-  - **Formulario de Causación de Compras & Gastos (CxP):** Selección de proveedor, concepto comercial o cuenta de gasto, cálculo automático de Retefuente, ReteICA e IVA y registro de comprobante `CAU`.
-  - **Formulario de Comprobante de Egreso / Pago (`EGR`):** Selección de factura de proveedor pendiente por pagar, afectación a Caja o Banco y cancelación de saldo.
-  - **Gestión de Terceros en Web:** Directorio de clientes y proveedores con validación automática de Dígito de Verificación (DIAN Módulo 11).
-  - **Suite de Pruebas Automatizadas:** Tests unitarios y E2E que certifiquen el flujo completo de digitación, causación y pago desde la web hacia el Core Ledger.
+  - **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).
+  - **Facturación de Venta Estándar:** Emisión de facturas a crédito o al contado con IVA (0%, 5%, 19%) y retenciones practicadas por clientes.
+  - **Recaudos (`ING`):** Recibos de caja manuales para abonos y cancelaciones de cartera de clientes.
+  - **Reporte de Cartera CxC:** Antigüedad de saldos (corriente, 30, 60, 90+ días).
 
 ---
 
@@ -24,11 +23,12 @@
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **6.1** | Formulario de Partida Doble | Componente Angular interactivo para nuevo asiento contable con selector de cuenta auxiliar del PUC, tercero, suma dinámica de débitos/créditos y envío a `POST /api/v1/asientos`. | 2h | `[ ]` Pendiente | - |
-| **6.2** | Formulario de Causación de Compras | Interfaz web para causar compras a proveedores: cálculo en vivo de bases mínimas, retenciones (Retefuente, ReteICA) e IVA descontable con envío a `POST /api/v1/cxp/causar`. | 2h | `[ ]` Pendiente | - |
-| **6.3** | Emisión de Comprobantes de Egreso | Modal / Pantalla para registrar pagos de facturas de proveedores: selección de cuenta de tesorería (Caja/Bancos), cancelación de cartera y generación de comprobante `EGR`. | 2h | `[ ]` Pendiente | - |
-| **6.4** | Directorio Web de Terceros | Pantalla para crear y consultar clientes/proveedores con cálculo y validación de Dígito de Verificación (DV) DIAN Modulo 11. | 2h | `[ ]` Pendiente | - |
-| **6.5** | Pruebas & Certificación Sprint 6 | Pruebas unitarias de componentes web, pruebas E2E de validación de comprobantes manuales, build limpio de front y back y release tag `v0.6.0-sprint6`. | 2h | `[ ]` Pendiente | - |
+| **6.0** | Auditoría Inmutable Transversal | Entidad `core_audit_logs`, `AuditInterceptor` global para captura automática de mutaciones/IP/usuario y visor de bitácora en Angular (`/dashboard/auditoria`). | 2h | `[x]` Completado | 17/10/2026 |
+| **6.1** | Formulario de Partida Doble | Componente Angular interactivo para nuevo asiento contable con selector de cuenta auxiliar del PUC, tercero, suma dinámica de débitos/créditos, visor de líneas y anulación con reversión NIIF. | 2h | `[x]` Completado | 17/10/2026 |
+| **6.2** | Formulario de Causación de Compras | Interfaz web para causar compras a proveedores: cálculo en vivo de bases mínimas, retenciones (Retefuente, ReteICA) e IVA descontable con envío a `POST /api/v1/cxp/causar`. | 2h | `[x]` Completado | 17/10/2026 |
+| **6.3** | Emisión de Comprobantes de Egreso | Modal para registrar pagos de facturas de proveedores: selección de cuenta de tesorería (Caja/Bancos), cancelación de cartera y generación de comprobante `EGR`. | 2h | `[x]` Completado | 17/10/2026 |
+| **6.4** | Directorio Web de Terceros | Pantalla para crear y consultar clientes, proveedores y empleados con cálculo y validación de Dígito de Verificación (DV) DIAN Modulo 11 en tiempo real. | 2h | `[x]` Completado | 17/10/2026 |
+| **6.5** | Pruebas & Certificación Sprint 6 | 53 pruebas unitarias y 33 pruebas E2E pasando al 100%, compilación limpia `ng build` y `nest build`, release tag `v0.6.0-sprint6`. | 2h | `[x]` Completado | 17/10/2026 |
 
 ---
 
@@ -73,8 +73,18 @@
 ---
 
 ## 📜 Historial de Sprints Cerrados
-
-### ✅ SPRINT 5: Frontend Web Autónomo (Angular Standalone) (COMPLETADO 100%)
+ 
+### ✅ SPRINT 6: Operación Contable Manual & Auditoría Inmutable (COMPLETADO 100%)
+- **Versión de Cierre:** `v0.6.0-sprint6` (17/10/2026).
+- **Logros:**
+  - **Auditoría Inmutable Transversal:** Módulo `core_audit_logs` con `AuditInterceptor` global para registrar automáticamente operaciones, mutaciones HTTP, IPs, emails y snapshots JSON ofuscados (sin claves ni tokens). Visor en Angular en `/dashboard/auditoria`.
+  - **Creación de Comprobantes Contables:** Modal interactivo de Partida Doble con rejilla dinámica de apuntes (cuentas auxiliares del PUC y terceros), balanceo de sumas iguales en tiempo real con indicador verde/rojo y bloqueo de guardado en descuadre.
+  - **Libro Diario Potenciado:** Inspección de líneas contables por comprobante y anulación formal con reversión NIIF obligatoria.
+  - **Directorio de Terceros:** Módulo web para crear y clasificar Clientes, Proveedores y Empleados con cálculo y validación de Dígito de Verificación (DV) DIAN Módulo 11 en tiempo real.
+  - **Cuentas por Pagar (CxP):** Causación de compras a proveedores con liquidación de retenciones en la fuente e IVA, panel ejecutivo de cartera (vencida vs por vencer) y emisión de pagos con comprobantes oficiales de egreso `EGR`.
+  - **Suite de Pruebas:** 53 pruebas unitarias y 33 pruebas E2E pasando al 100%, con builds limpios en frontend y backend.
++
+ ### ✅ SPRINT 5: Frontend Web Autónomo (Angular Standalone) (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.5.0-sprint5` (17/10/2026).
 - **Logros:**
   - Scaffolding de `pacyolo-web` con Angular Standalone, Signals reactivos y TailwindCSS v3.
@@ -128,3 +138,5 @@
 | **3** | 17/10/2026 | 2h+ | **Sprint 3 Completo (3.1 a 3.5)** | Rama `sprint/03-integracion-webhooks`. Entidades `cont_cuentas_por_cobrar`, `cont_recaudos_cxc`, `cont_borradores_integracion`, `core_webhooks` y `core_webhook_logs`. Endpoints de ingesta `POST /api/v1/integracion/facturas-venta` y `POST /api/v1/integracion/recaudos` con idempotencia estricta, liquidación automática de IVA y soporte dual (`INMEDIATA` vs `REVISION_PREVIA`). Bandeja de borradores con filtros avanzados por tipo, origen y rango de fechas. Aprobación de facturas y recaudos con emisión de comprobantes contables oficiales (`CAU` e `ING`), y rechazo con justificación documentada de auditoría. Motor de Webhooks con suscripciones, despacho asíncrono y firma criptográfica HMAC-SHA256 (`X-Pacyolo-Signature`). 31 pruebas unitarias y 25 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 3 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.3.0-sprint3`. |
 | **4** | 17/10/2026 | 2h+ | **Sprint 4 Completo (4.1 a 4.5)** | Rama `sprint/04-auth-rbac-seguridad`. Entidades `core_usuarios` y `core_usuarios_empresas` para relación multi-tenant N:M con rol específico por empresa (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`). Hash de contraseñas con bcrypt y generación de tokens JWT con payload contextual de empresas y roles. Endpoints `POST /api/v1/auth/login`, `GET /api/v1/auth/perfil`, administración completa de equipo de trabajo (`POST/GET/PATCH/DELETE /api/v1/usuarios`). Guards y decoradores `@Roles()` y `RolesGuard` aplicados a opciones sensibles (anulación contable protegida contra roles no autorizados). Suite con 46 pruebas unitarias y 33 pruebas E2E pasando al 100%. Compilación TypeScript limpia. | **HITO ALCANZADO: SPRINT 4 COMPLETADO EXITOSAMENTE.** |
 | **5** | 17/10/2026 | 2h+ | **Sprint 5 Completo (5.1 a 5.5)** | Rama `sprint/05-frontend-web`. Scaffolding de `pacyolo-web` con Angular Standalone, Signals y TailwindCSS v3. Implementado servicio `AuthService` reactivo con login, logout, persistencia local y almacenamiento de tenant activo. `authInterceptor` funcional que adjunta automáticamente `Authorization: Bearer <JWT>` y cabecera multi-tenant `x-empresa-id`. `authGuard` para protección de rutas privadas. `DashboardLayoutComponent` con selector de empresa activa en tiempo real. Componente `PucExplorerComponent` con buscador interactivo y visualización de niveles/imputabilidad. `LibroDiarioComponent` con formato monetario de comprobantes. `BorradoresComponent` con bandeja de revisión, aprobación y rechazo justificado. `UsuariosAdminComponent` para gestión RBAC de equipo, cambio de roles y revocación de acceso. Build y tests unitarios de Angular pasando al 100%. | **HITO ALCANZADO: SPRINT 5 COMPLETADO EXITOSAMENTE.** |
+| **6** | 17/10/2026 | 2h+ | **Sprint 6 Completo (6.0 a 6.5)** | Rama `sprint/06-operacion-contable-web`. Módulo Transversal de Auditoría Inmutable (`core_audit_logs`) con `AuditInterceptor` global para captura de mutaciones/IP/usuario y visor web en `/dashboard/auditoria`. Formulario interactivo de partida doble (`+ Nuevo Asiento Contable`) con balanceador de sumas iguales en tiempo real e inspección de líneas contables. Anulación formal de comprobantes con asiento de reversión NIIF. Directorio web de Terceros con cálculo oficial de Dígito de Verificación (DV) DIAN Módulo 11 en vivo. Módulo web de Compras & CxP: causación con liquidación tributaria, panel de cartera y comprobantes de egreso `EGR`. 53 pruebas unitarias y 33 pruebas E2E pasando al 100%. Builds limpios de front y back. | **HITO ALCANZADO: SPRINT 6 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.6.0-sprint6`. |
+

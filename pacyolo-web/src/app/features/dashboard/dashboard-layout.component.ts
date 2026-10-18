@@ -78,6 +78,20 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           📑 Catálogo PUC NIIF
         </a>
         <a
+          routerLink="/dashboard/terceros"
+          routerLinkActive="border-indigo-500 text-white font-medium"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
+        >
+          📇 Terceros (DIAN)
+        </a>
+        <a
+          routerLink="/dashboard/cxp"
+          routerLinkActive="border-indigo-500 text-white font-medium"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
+        >
+          📦 Compras & CxP
+        </a>
+        <a
           routerLink="/dashboard/asientos"
           routerLinkActive="border-indigo-500 text-white font-medium"
           class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
@@ -97,6 +111,13 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
         >
           👥 Equipo & Roles RBAC
+        </a>
+        <a
+          routerLink="/dashboard/auditoria"
+          routerLinkActive="border-indigo-500 text-white font-medium"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
+        >
+          🛡️ Pistas de Auditoría
         </a>
       </nav>
 

@@ -7,6 +7,9 @@ import { PucExplorerComponent } from './features/dashboard/puc/puc-explorer.comp
 import { LibroDiarioComponent } from './features/dashboard/asientos/libro-diario.component';
 import { BorradoresComponent } from './features/dashboard/borradores/borradores.component';
 import { UsuariosAdminComponent } from './features/dashboard/usuarios/usuarios-admin.component';
+import { AuditoriaComponent } from './features/dashboard/auditoria/auditoria.component';
+import { TercerosAdminComponent } from './features/dashboard/terceros/terceros-admin.component';
+import { CxpAdminComponent } from './features/dashboard/cxp/cxp-admin.component';
 
 export const routes: Routes = [
   {
@@ -27,6 +30,14 @@ export const routes: Routes = [
         component: PucExplorerComponent,
       },
       {
+        path: 'terceros',
+        component: TercerosAdminComponent,
+      },
+      {
+        path: 'cxp',
+        component: CxpAdminComponent,
+      },
+      {
         path: 'asientos',
         component: LibroDiarioComponent,
       },
@@ -37,6 +48,10 @@ export const routes: Routes = [
       {
         path: 'usuarios',
         component: UsuariosAdminComponent,
+      },
+      {
+        path: 'auditoria',
+        component: AuditoriaComponent,
       },
     ],
   },
