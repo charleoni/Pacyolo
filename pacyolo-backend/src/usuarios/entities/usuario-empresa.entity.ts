@@ -9,9 +9,9 @@ import {
   Unique,
   Index,
 } from 'typeorm';
-import { Usuario } from './usuario.entity.js';
 import { Empresa } from '../../empresas/entities/empresa.entity.js';
 import { RolUsuario } from '../enums/rol-usuario.enum.js';
+import type { Usuario } from './usuario.entity.js';
 
 @Entity({ name: 'core_usuarios_empresas', schema: 'core' })
 @Unique(['usuario_id', 'empresa_id'])
@@ -24,7 +24,7 @@ export class UsuarioEmpresa {
   @Column({ type: 'uuid' })
   usuario_id: string;
 
-  @ManyToOne(() => Usuario, (u) => u.empresas, { onDelete: 'CASCADE' })
+  @ManyToOne('Usuario', (u: any) => u.empresas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
