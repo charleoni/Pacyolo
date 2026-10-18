@@ -12,6 +12,7 @@ import { MapeoModule } from './mapeo/mapeo.module.js';
 import { CxpModule } from './cxp/cxp.module.js';
 import { IntegracionModule } from './integracion/integracion.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
+import { UsuariosModule } from './usuarios/usuarios.module.js';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { WebhooksModule } from './webhooks/webhooks.module.js';
     CxpModule,
     IntegracionModule,
     WebhooksModule,
+    UsuariosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

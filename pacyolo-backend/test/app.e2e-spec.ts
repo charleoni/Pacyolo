@@ -601,6 +601,39 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     expect(res.body[0].nombre).toBe('Webhook Notificaciones ERP Externo');
   });
+
+  it('26. Debe REGISTRAR con 201 un nuevo Usuario y asignarlo a la Empresa con rol CONTADOR_LIDER', async () => {
+    const emailTest = `contador_${Date.now()}@pacyolo.test`;
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailTest,
+        password: 'PasswordSegura2026*',
+        nombres: 'Laura Sofía',
+        apellidos: 'Gómez Restrepo',
+        telefono: '+57 311 999 8888',
+        empresa_id: empresaId,
+        rol: 'CONTADOR_LIDER',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.email).toBe(emailTest);
+    expect(res.body.password_hash).toBeUndefined(); // Por seguridad no debe exponerse
+    expect(res.body.activo).toBe(true);
+  });
+
+  it('27. Debe LISTAR con 200 el equipo de trabajo y roles asignados en la empresa tenant', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/usuarios/empresa/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body[0].rol).toBe('CONTADOR_LIDER');
+    expect(res.body[0].usuario).toBeDefined();
+    expect(res.body[0].usuario.nombres).toBe('Laura Sofía');
+  });
 });
 
 
