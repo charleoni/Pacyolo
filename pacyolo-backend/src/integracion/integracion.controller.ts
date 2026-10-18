@@ -8,13 +8,18 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { IntegracionService } from './integracion.service.js';
 import { IngestarFacturaVentaDto } from './dto/ingestar-factura-venta.dto.js';
 import { IngestarRecaudoDto } from './dto/ingestar-recaudo.dto.js';
 import { FilterBorradoresDto } from './dto/filter-borradores.dto.js';
 import { EstadoBorradorIntegracion } from './entities/borrador-integracion.entity.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
+import { RolUsuario } from '../usuarios/enums/rol-usuario.enum.js';
 
 @ApiTags('Integración Externa (API-First)')
 @Controller('integracion')

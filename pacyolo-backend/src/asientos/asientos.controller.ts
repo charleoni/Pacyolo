@@ -6,13 +6,20 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { AsientosService } from './asientos.service.js';
 import { CreateAsientoDto } from './dto/create-asiento.dto.js';
 import { FilterAsientoDto } from './dto/filter-asiento.dto.js';
 import { AnularAsientoDto } from './dto/anular-asiento.dto.js';
 import { Asiento } from './entities/asiento.entity.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { RolesGuard } from '../auth/roles.guard.js';
+import { RolUsuario } from '../usuarios/enums/rol-usuario.enum.js';
 
 @ApiTags('Core Ledger (Asientos Contables)')
 @Controller('asientos')
@@ -65,13 +72,19 @@ export class AsientosController {
   }
 
   @Post(':id/anular')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RolUsuario.ADMIN_EMPRESA, RolUsuario.CONTADOR_LIDER)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Anular un comprobante contable (Reversión NIIF)',
     description:
-      'Marca el comprobante como ANULADO y genera automáticamente un asiento de reversión invirtiendo débitos y créditos.',
+      'Marca el comprobante como ANULADO y genera automáticamente un asiento de reversión invirtiendo débitos y créditos. Requiere rol de Administrador o Contador Líder.',
   })
   @ApiResponse({ status: 200, description: 'Comprobante anulado y reversado', type: Asiento })
   @ApiResponse({ status: 400, description: 'El comprobante ya está anulado' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  @ApiResponse({ status: 403, description: 'No autorizado para anular comprobantes en esta empresa' })
   async anular(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() anularDto: AnularAsientoDto,

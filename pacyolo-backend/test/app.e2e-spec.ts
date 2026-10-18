@@ -11,6 +11,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
   let cuentaCajaId: string;
   let cuentaBancoId: string;
   let cxpId: string;
+  let asientoId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -151,6 +152,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(Number(res.body.total_debito)).toBe(1500000);
     expect(Number(res.body.total_credito)).toBe(1500000);
     expect(res.body.lineas).toHaveLength(2);
+    asientoId = res.body.id;
   });
 
   it('7. Debe consultar el Libro Diario de la empresa y reflejar el comprobante registrado', async () => {
@@ -746,7 +748,67 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(miembro).toBeDefined();
     expect(miembro.activo).toBe(false);
   });
+
+  it('32. Debe RECHAZAR con 401 Unauthorized si se intenta anular un comprobante sin token JWT', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .send({
+        motivo: 'Intento de anulación anónima no autorizada',
+      })
+      .expect(401);
+  });
+
+  it('33. Debe RECHAZAR con 403 Forbidden a un AUXILIAR_CONTABLE y PERMITIR con 200 a un ADMIN_EMPRESA', async () => {
+    // 1. Crear usuario con rol AUXILIAR_CONTABLE e iniciar sesión
+    const emailAuxiliar = `auxiliar_rbac_${Date.now()}@pacyolo.test`;
+    await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailAuxiliar,
+        password: 'PasswordSegura2026*',
+        nombres: 'Camilo',
+        apellidos: 'Torres',
+        empresa_id: empresaId,
+        rol: 'AUXILIAR_CONTABLE',
+      })
+      .expect(201);
+
+    const resLoginAux = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailAuxiliar,
+        password: 'PasswordSegura2026*',
+      })
+      .expect(200);
+
+    const tokenAuxiliar = resLoginAux.body.access_token;
+
+    // 2. Auxiliar intenta anular comprobante en la empresa -> 403 Forbidden
+    const resForbidden = await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .set('Authorization', `Bearer ${tokenAuxiliar}`)
+      .set('x-empresa-id', empresaId)
+      .send({
+        motivo: 'Intento de anulación por auxiliar sin rol suficiente',
+      })
+      .expect(403);
+
+    expect(resForbidden.body.message).toContain('Acceso denegado');
+
+    // 3. Administrador de Empresa (tokenJwtUsuario obtenido en test 28) anula exitosamente -> 200 OK
+    const resSuccess = await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .set('Authorization', `Bearer ${tokenJwtUsuario}`)
+      .set('x-empresa-id', empresaId)
+      .send({
+        motivo: 'Anulación oficial autorizada por el Administrador de la Empresa',
+      })
+      .expect(200);
+
+    expect(resSuccess.body.estado).toBe('ANULADO');
+  });
 });
+
 
 
 
