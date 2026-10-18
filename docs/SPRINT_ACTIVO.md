@@ -4,67 +4,72 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/07-facturacion-pos-cxc`  
+*Rama Activa:* `sprint/07-tablas-maestras-dinamicas`  
 *Última Versión Publicada:* `v0.6.0-sprint6` (Fusionado en `develop` y `main`)
 
 ---
 
-## 🎯 SPRINT 7: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
-- **Objetivo del Sprint:** Implementar el módulo de Facturación Comercial y Mostrador/POS para cualquier comercio o empresa (mostrador, peluquería, ferretería, carnicería, papelería, servicios), con emisión de tiras de caja, facturas estándar, liquidación de IVA e Impoconsumo, cobros inmediatos y gestión de cartera CxC.
+## 🎯 SPRINT 7: Motor Universal de Tablas Maestras & Parametrización Dinámica (Cero Enums)
+- **Objetivo del Sprint:** Erradicar todo hardcoding / enums en los formularios del ERP. Construir el módulo relacional de **Tablas Maestras Paramétricas** donde cada dato seleccionable (Tipos de Identificación, Tipos de Persona, Regímenes Fiscales / IVA, Clasificaciones de Terceros, Tipos de Comprobantes Contables y Métodos de Pago) tenga su propio ciclo de vida (CRUD completo, activación/desactivación, impresión, validación de integridad referencial y auditoría) tanto a nivel de semillas globales como personalizable por tenant.
 - **Entregables Evaluativos para el Usuario:**
-  - **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).
-  - **Facturación de Venta Estándar:** Emisión de facturas a crédito o al contado con IVA (0%, 5%, 19%) y retenciones practicadas por clientes.
-  - **Recaudos (`ING`):** Recibos de caja manuales para abonos y cancelaciones de cartera de clientes.
-  - **Reporte de Cartera CxC:** Antigüedad de saldos (corriente, 30, 60, 90+ días).
+  - **Módulo Backend de Maestras Paramétricas:** Entidades en PostgreSQL con CRUD completo:
+    - `core_tipos_identificacion`: Código, nombre, código DIAN, bandera de si aplica o no Dígito de Verificación.
+    - `core_tipos_persona`: Código, nombre, exige o no razón social.
+    - `core_regimenes_fiscales`: Código, nombre, responsabilidad fiscal DIAN, régimen de IVA.
+    - `core_clasificaciones_tercero`: Roles comerciales (Cliente, Proveedor, Empleado, etc.).
+    - `cont_tipos_comprobante`: Prefijo, nombre, consecutivo oficial y naturaleza.
+    - `core_metodos_pago`: Medios de pago con código DIAN.
+  - **Panel Web de Administración y Configuración (`/dashboard/configuracion/maestras`):** Interfaz para consultar, crear, editar, activar/inactivar e imprimir/exportar cada tabla maestra.
+  - **Formularios Dinámicos con Creación Rápida:** Refactorización del formulario de Terceros, Asientos y CxP para consumir las tablas maestras con botón `[+ Nuevo]` modal inline.
+  - **Suite de Pruebas Automatizadas:** Pruebas unitarias y E2E que certifiquen el CRUD y la integridad referencial.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 6 (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 7 (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **6.0** | Auditoría Inmutable Transversal | Entidad `core_audit_logs`, `AuditInterceptor` global para captura automática de mutaciones/IP/usuario y visor de bitácora en Angular (`/dashboard/auditoria`). | 2h | `[x]` Completado | 17/10/2026 |
-| **6.1** | Formulario de Partida Doble | Componente Angular interactivo para nuevo asiento contable con selector de cuenta auxiliar del PUC, tercero, suma dinámica de débitos/créditos, visor de líneas y anulación con reversión NIIF. | 2h | `[x]` Completado | 17/10/2026 |
-| **6.2** | Formulario de Causación de Compras | Interfaz web para causar compras a proveedores: cálculo en vivo de bases mínimas, retenciones (Retefuente, ReteICA) e IVA descontable con envío a `POST /api/v1/cxp/causar`. | 2h | `[x]` Completado | 17/10/2026 |
-| **6.3** | Emisión de Comprobantes de Egreso | Modal para registrar pagos de facturas de proveedores: selección de cuenta de tesorería (Caja/Bancos), cancelación de cartera y generación de comprobante `EGR`. | 2h | `[x]` Completado | 17/10/2026 |
-| **6.4** | Directorio Web de Terceros | Pantalla para crear y consultar clientes, proveedores y empleados con cálculo y validación de Dígito de Verificación (DV) DIAN Modulo 11 en tiempo real. | 2h | `[x]` Completado | 17/10/2026 |
-| **6.5** | Pruebas & Certificación Sprint 6 | 53 pruebas unitarias y 33 pruebas E2E pasando al 100%, compilación limpia `ng build` y `nest build`, release tag `v0.6.0-sprint6`. | 2h | `[x]` Completado | 17/10/2026 |
+| **7.1** | Modelo Relacional de Maestras (Backend) | Creación de entidades TypeORM para tipos de identificación, persona, regímenes, clasificaciones, tipos de comprobante y métodos de pago con soporte multi-tenant y semillas oficiales Colombia. | 2h | `[ ]` Pendiente | - |
+| **7.2** | Endpoints CRUD & Reglas de Integridad | Controladores y servicios REST (`GET`, `POST`, `PUT`, `DELETE` lógico/inactivar) con protección contra borrado si el registro está en uso por terceros o asientos. | 2h | `[ ]` Pendiente | - |
+| **7.3** | Panel Web de Tablas Maestras | Vista en Angular (`/dashboard/configuracion/maestras`) con pestañas para administrar cada catálogo, buscador, estados activo/inactivo e impresión/exportación. | 2h | `[ ]` Pendiente | - |
+| **7.4** | Refactorización Dinámica de Formularios | Conexión de los selectores de Terceros, Asientos y CxP hacia las APIs de tablas maestras con modal de creación rápida inline `[+ Nuevo Tipo]`. | 2h | `[ ]` Pendiente | - |
+| **7.5** | Pruebas, Certificación & Release | Tests unitarios, pruebas E2E en PostgreSQL, build sin errores de backend/frontend y release tag `v0.7.0-sprint7`. | 2h | `[ ]` Pendiente | - |
 
 ---
 
 ## 🔮 Backlog Estratégico de Sprints Futuros (Arquitectura ERP PACYOLO)
 
-### 📌 SPRINT 7: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
+### 📌 SPRINT 8: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
 - **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).
 - **Facturación de Venta Estándar:** Emisión de facturas a crédito o al contado con IVA (0%, 5%, 19%) y retenciones practicadas por clientes.
 - **Recaudos (`ING`):** Recibos de caja manuales para abonos y cancelaciones de cartera de clientes.
 - **Reporte de Cartera CxC:** Antigüedad de saldos (corriente, 30, 60, 90+ días).
 
-### 📌 SPRINT 8: Catálogo de Ítems, Inventarios & Kardex Paramétrico (NIC 2)
+### 📌 SPRINT 9: Catálogo de Ítems, Inventarios & Kardex Paramétrico (NIC 2)
 - **Catálogo Universal:** Soporte de `SERVICIO` (peluquería, consultoría), `PRODUCTO_SIMPLE` (papelería), `PRODUCTO_FRACCIONABLE` (carnicería/ferretería), `MATERIA_PRIMA` y `PRODUCTO_TERMINADO` (panaderías) y `SERIALIZADOS` (maquinaria/motos).
 - **Unidades de Medida & Conversión:** Bultos a kilos, rollos a metros, cajas a unidades.
 - **Kardex Valorado:** Entradas, salidas, mermas, traslados entre bodegas y valuación Promedio Ponderado.
 - **Costeo Automático de Ventas:** Generación automática del asiento `Débito 61 (Costo) <-> Crédito 14 (Inventario)`.
 
-### 📌 SPRINT 9: Tesorería, Cajas Menores & Conciliación Bancaria
+### 📌 SPRINT 10: Tesorería, Cajas Menores & Conciliación Bancaria
 - **Cajas Menores:** Fondo fijo, legalización de gastos menores con comprobantes y arqueos de caja periódicos.
 - **Cuentas Bancarias:** Control de saldos en cuentas corrientes y de ahorros.
 - **Motor de Conciliación Bancaria:** Importación de extractos bancarios oficiales (Excel/CSV de Bancolombia, Davivienda, etc.), cruce automático contra el libro auxiliar y causación automática de notas débito (4x1000 GMF, cuotas y comisiones).
 - **Informe de Conciliación:** Resumen formal para revisoría fiscal y auditoría.
 
-### 📌 SPRINT 10: Reportes Financieros Oficiales NIIF & Exportaciones
+### 📌 SPRINT 11: Reportes Financieros Oficiales NIIF & Exportaciones
 - **Balance de Comprobación:** Sumas y saldos a nivel de Clase, Grupo, Cuenta, Subcuenta y Auxiliar.
 - **Estado de Situación Financiera (Balance General NIIF):** Activo = Pasivo + Patrimonio (Corriente / No Corriente).
 - **Estado de Resultados Integral (P&G):** Ingresos, Costos, Utilidad Bruta, Gastos Operacionales, EBITDA y Utilidad Neta.
 - **Certificados Tributarios:** Generación en PDF oficial de Certificados de Retención en la Fuente con firma digital.
 - **Exportación a Excel:** Reportes tabulados con fórmulas y estructura para Medios Magnéticos DIAN.
 
-### 📌 SPRINT 11: Activos Fijos & Propiedad, Planta y Equipo (NIC 16)
+### 📌 SPRINT 12: Activos Fijos & Propiedad, Planta y Equipo (NIC 16)
 - **Ficha Técnica de Activos:** Códigos de placa, ubicación física, centro de costos y vida útil NIIF.
 - **Motor de Depreciación Mensual Automática:** Asiento de fin de mes `Débito 5160 / 5260 <-> Crédito 1592`.
 - **Deterioro y Bajas:** Retiro por obsolescencia y cálculo de utilidad/pérdida en venta de activos fijos.
 
-### 📌 SPRINT 12: Nómina Electrónica & Seguridad Social (UGPP / DIAN)
+### 📌 SPRINT 13: Nómina Electrónica & Seguridad Social (UGPP / DIAN)
 - **Contratos Laborales & Devengos:** Sueldo básico, auxilio de transporte, horas extras diurnas/nocturnas/festivas y recargos.
 - **Deducciones de Ley:** Salud (4%), Pensión (4%), Fondo de Solidaridad Pensional, retención en la fuente laboral.
 - **Aportes Patronales & Provisiones:** EPS patronal, Pensión (12%), ARL, Parafiscales (SENA, ICBF, Caja) y provisión de Cesantías, Intereses, Prima y Vacaciones.
@@ -73,7 +78,7 @@
 ---
 
 ## 📜 Historial de Sprints Cerrados
- 
+
 ### ✅ SPRINT 6: Operación Contable Manual & Auditoría Inmutable (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.6.0-sprint6` (17/10/2026).
 - **Logros:**
@@ -83,8 +88,8 @@
   - **Directorio de Terceros:** Módulo web para crear y clasificar Clientes, Proveedores y Empleados con cálculo y validación de Dígito de Verificación (DV) DIAN Módulo 11 en tiempo real.
   - **Cuentas por Pagar (CxP):** Causación de compras a proveedores con liquidación de retenciones en la fuente e IVA, panel ejecutivo de cartera (vencida vs por vencer) y emisión de pagos con comprobantes oficiales de egreso `EGR`.
   - **Suite de Pruebas:** 53 pruebas unitarias y 33 pruebas E2E pasando al 100%, con builds limpios en frontend y backend.
-+
- ### ✅ SPRINT 5: Frontend Web Autónomo (Angular Standalone) (COMPLETADO 100%)
+
+### ✅ SPRINT 5: Frontend Web Autónomo (Angular Standalone) (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.5.0-sprint5` (17/10/2026).
 - **Logros:**
   - Scaffolding de `pacyolo-web` con Angular Standalone, Signals reactivos y TailwindCSS v3.
