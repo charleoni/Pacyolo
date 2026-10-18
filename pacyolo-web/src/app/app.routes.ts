@@ -8,6 +8,7 @@ import { LibroDiarioComponent } from './features/dashboard/asientos/libro-diario
 import { BorradoresComponent } from './features/dashboard/borradores/borradores.component';
 import { UsuariosAdminComponent } from './features/dashboard/usuarios/usuarios-admin.component';
 import { AuditoriaComponent } from './features/dashboard/auditoria/auditoria.component';
+import { TablasMaestrasComponent } from './features/dashboard/configuracion/tablas-maestras.component';
 import { TercerosAdminComponent } from './features/dashboard/terceros/terceros-admin.component';
 import { CxpAdminComponent } from './features/dashboard/cxp/cxp-admin.component';
 
@@ -52,6 +53,10 @@ export const routes: Routes = [
       {
         path: 'auditoria',
         component: AuditoriaComponent,
+      },
+      {
+        path: 'configuracion/maestras',
+        component: TablasMaestrasComponent,
       },
     ],
   },

@@ -119,6 +119,13 @@ import { EmpresaSesion } from '../../core/models/auth.model';
         >
           🛡️ Pistas de Auditoría
         </a>
+        <a
+          routerLink="/dashboard/configuracion/maestras"
+          routerLinkActive="border-indigo-500 text-white font-medium"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
+        >
+          ⚙️ Tablas Maestras
+        </a>
       </nav>
 
       <!-- Contenedor Principal -->

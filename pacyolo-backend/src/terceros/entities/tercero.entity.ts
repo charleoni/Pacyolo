@@ -43,11 +43,11 @@ export class Tercero {
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
 
-  @Column({ type: 'enum', enum: TipoPersona, default: TipoPersona.NATURAL })
-  tipo_persona: TipoPersona;
+  @Column({ type: 'varchar', length: 50, default: 'NATURAL' })
+  tipo_persona: string;
 
-  @Column({ type: 'enum', enum: TipoIdentificacion })
-  tipo_identificacion: TipoIdentificacion;
+  @Column({ type: 'varchar', length: 50, default: 'NIT', nullable: true })
+  tipo_identificacion: string;
 
   @Column({ type: 'varchar', length: 30 })
   numero_identificacion: string;
@@ -71,11 +71,12 @@ export class Tercero {
   codigo_municipio: string;
 
   @Column({
-    type: 'enum',
-    enum: RegimenIva,
-    default: RegimenIva.NO_RESPONSABLE,
+    type: 'varchar',
+    length: 50,
+    default: 'NO_RESPONSABLE_IVA',
+    nullable: true,
   })
-  regimen_iva: RegimenIva;
+  regimen_iva: string;
 
   @Column({ type: 'boolean', default: false })
   es_gran_contribuyente: boolean;

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 
 interface CuentaAuxiliar {
   id: string;
@@ -75,12 +76,10 @@ interface LineaForm {
               [(ngModel)]="tipoComprobante"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
             >
-              <option value="DIA">DIA — Comprobante de Diario</option>
-              <option value="ING">ING — Comprobante de Ingreso / Caja</option>
-              <option value="EGR">EGR — Comprobante de Egreso / Pago</option>
-              <option value="CAU">CAU — Causación de Facturas</option>
-              <option value="AJU">AJU — Comprobante de Ajuste NIIF</option>
-              <option value="APE">APE — Balance de Apertura</option>
+              <option value="">-- Seleccionar Tipo Comprobante --</option>
+              <option *ngFor="let comp of tiposComprobante()" [value]="comp.codigo">
+                {{ comp.codigo }} — {{ comp.nombre }} {{ comp.prefijo ? ('[' + comp.prefijo + ']') : '' }}
+              </option>
             </select>
           </div>
 
@@ -296,6 +295,7 @@ export class CrearAsientoModalComponent implements OnInit {
 
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private parametrosService = inject(ParametrosService);
 
   tipoComprobante = 'DIA';
   fechaContable = new Date().toISOString().slice(0, 10);
@@ -308,12 +308,27 @@ export class CrearAsientoModalComponent implements OnInit {
 
   cuentasAuxiliares = signal<CuentaAuxiliar[]>([]);
   terceros = signal<TerceroItem[]>([]);
+  tiposComprobante = signal<ParametroItem[]>([]);
   guardando = signal<boolean>(false);
   errorMsg = signal<string | null>(null);
 
   ngOnInit(): void {
     this.cargarCuentas();
     this.cargarTerceros();
+    this.cargarTiposComprobante();
+  }
+
+  cargarTiposComprobante(): void {
+    this.parametrosService.obtenerTiposComprobante().subscribe({
+      next: (data) => {
+        const activos = data.filter((d) => d.activo);
+        this.tiposComprobante.set(activos);
+        if (activos.length > 0 && !this.tipoComprobante) {
+          this.tipoComprobante = activos[0].codigo;
+        }
+      },
+      error: (err) => console.error('Error cargando tipos comprobante:', err),
+    });
   }
 
   cargarCuentas(): void {
