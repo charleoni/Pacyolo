@@ -322,6 +322,285 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.total_cartera).toBe(0);
     expect(res.body.total_facturas_pendientes).toBe(0);
   });
+
+  it('18. Debe INGESTAR con 201 una Factura de Venta desde API externa en modo INMEDIATA y generar CxC y comprobante CAU', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'SHOPIFY_STORE',
+        origen_documento_id: 'ORDER-E2E-1001',
+        numero_factura: 'FAC-VENTA-001',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 1000000,
+        modo_contabilizacion: 'INMEDIATA',
+        observaciones: 'Venta por Shopify tienda virtual',
+      })
+      .expect(201);
+
+    expect(res.body.idempotente).toBe(false);
+    expect(res.body.tipo).toBe('CONTABILIZADO_INMEDIATO');
+    expect(res.body.cuenta_por_cobrar).toBeDefined();
+    expect(Number(res.body.cuenta_por_cobrar.subtotal)).toBe(1000000);
+    expect(Number(res.body.cuenta_por_cobrar.total_impuestos)).toBe(190000); // 19% IVA
+    expect(Number(res.body.cuenta_por_cobrar.total_factura)).toBe(1190000);
+    expect(Number(res.body.cuenta_por_cobrar.saldo_pendiente)).toBe(1190000);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+
+    // Verificación de Idempotencia: reenviar la misma factura no debe duplicar
+    const resIdempotente = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'SHOPIFY_STORE',
+        origen_documento_id: 'ORDER-E2E-1001',
+        numero_factura: 'FAC-VENTA-001',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 1000000,
+      })
+      .expect(201);
+
+    expect(resIdempotente.body.idempotente).toBe(true);
+    expect(resIdempotente.body.cuenta_por_cobrar.id).toBe(res.body.cuenta_por_cobrar.id);
+  });
+
+  it('19. Debe INGESTAR con 201 una Factura de Venta en modo REVISION_PREVIA, dejarla en borrador y luego APROBARLA', async () => {
+    // 1. Envío en modo REVISION_PREVIA
+    const resBorrador = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'FACTURADOR_DIAN',
+        origen_documento_id: 'DIAN-SETT-8821',
+        numero_factura: 'FAC-VENTA-002',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_SERVICIOS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 500000,
+        modo_contabilizacion: 'REVISION_PREVIA',
+        observaciones: 'Factura para revisión previa por contador',
+      })
+      .expect(201);
+
+    expect(resBorrador.body.idempotente).toBe(false);
+    expect(resBorrador.body.tipo).toBe('BORRADOR_INTEGRACION');
+    expect(resBorrador.body.borrador.estado).toBe('PENDIENTE_REVISION');
+    const borradorId = resBorrador.body.borrador.id;
+
+    // 2. Consultar bandeja de borradores
+    const resList = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/borradores/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(resList.body)).toBe(true);
+    const encontrado = resList.body.find((b: any) => b.id === borradorId);
+    expect(encontrado).toBeDefined();
+
+    // 3. Aprobar borrador
+    const resAprobar = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorId}/aprobar`)
+      .send({ revisado_por: 'CONTADOR_LIDER' })
+      .expect(200);
+
+    expect(resAprobar.body.borrador.estado).toBe('APROBADO');
+    expect(resAprobar.body.asiento).toBeDefined();
+    expect(resAprobar.body.asiento.numero_comprobante).toMatch(/^CAU-\d{6}$/);
+    expect(resAprobar.body.cuenta_por_cobrar).toBeDefined();
+    expect(Number(resAprobar.body.cuenta_por_cobrar.total_factura)).toBe(595000); // 500k + 19% IVA (95k)
+  });
+
+  it('20. Debe INGESTAR con 201 un Recaudo/Cobro de Factura en modo INMEDIATA generando comprobante ING y cancelando cartera', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001',
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+        metodo_recaudo: 'PASARELA_PAGO',
+        referencia_transaccion: 'WOMPI-AUTH-99014',
+        glosa: 'Cobro total factura de venta cliente por Wompi',
+      })
+      .expect(201);
+
+    expect(res.body.idempotente).toBe(false);
+    expect(res.body.tipo).toBe('CONTABILIZADO_INMEDIATO');
+    expect(res.body.recaudo).toBeDefined();
+    expect(Number(res.body.recaudo.monto_recaudo)).toBe(1190000);
+    expect(res.body.asiento).toBeDefined();
+    expect(res.body.asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(Number(res.body.cuenta_por_cobrar.saldo_pendiente)).toBe(0);
+    expect(res.body.cuenta_por_cobrar.estado).toBe('COBRADA_TOTAL');
+
+    // Verificación de Idempotencia del recaudo
+    const resIdempotente = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001',
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+      })
+      .expect(201);
+
+    expect(resIdempotente.body.idempotente).toBe(true);
+    expect(resIdempotente.body.recaudo.id).toBe(res.body.recaudo.id);
+  });
+
+  it('21. Debe LISTAR con 200 el historial de recaudos de una factura de venta', async () => {
+    // Primero consultamos la CxC para tener su ID
+    const cxcBuscada = await request(app.getHttpServer())
+      .get(`/api/v1/asientos?empresa_id=${empresaId}`)
+      .expect(200);
+
+    // Consultamos por endpoint de recaudos usando el número de factura
+    const resHistorial = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'WOMPI_CHECKOUT',
+        origen_documento_id: 'TRX-E2E-REC-001', // Idempotente para obtener el cxc_id
+        numero_factura: 'FAC-VENTA-001',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 1190000,
+        fecha_recaudo: '2026-10-17',
+      })
+      .expect(201);
+
+    const cxcId = resHistorial.body.recaudo.cuenta_por_cobrar_id;
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/cxc/${cxcId}/recaudos`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(Number(res.body[0].monto_recaudo)).toBe(1190000);
+  });
+
+  it('22. Debe INGESTAR un Recaudo en modo REVISION_PREVIA y luego APROBARLO desde la bandeja de borradores', async () => {
+    // 1. Ingestar recaudo en modo REVISION_PREVIA sobre FAC-VENTA-002 (saldo 595.000)
+    const resBorradorRecaudo = await request(app.getHttpServer())
+      .post('/api/v1/integracion/recaudos')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'BANCOLOMBIA_APP',
+        origen_documento_id: 'TRX-BCO-998822',
+        numero_factura: 'FAC-VENTA-002',
+        cuenta_banco_id: cuentaBancoId,
+        monto_recaudo: 200000,
+        fecha_recaudo: '2026-10-17',
+        metodo_recaudo: 'TRANSFERENCIA',
+        referencia_transaccion: 'TRX-TRANSF-9988',
+        modo_contabilizacion: 'REVISION_PREVIA',
+        glosa: 'Abono parcial cliente pendiente de conciliación',
+      })
+      .expect(201);
+
+    expect(resBorradorRecaudo.body.tipo).toBe('BORRADOR_INTEGRACION');
+    expect(resBorradorRecaudo.body.borrador.estado).toBe('PENDIENTE_REVISION');
+    const borradorRecaudoId = resBorradorRecaudo.body.borrador.id;
+
+    // 2. Filtrar borradores por tipo_documento = RECAUDO_COBRO
+    const resFiltrados = await request(app.getHttpServer())
+      .get(`/api/v1/integracion/borradores/${empresaId}?tipo_documento=RECAUDO_COBRO`)
+      .expect(200);
+
+    expect(Array.isArray(resFiltrados.body)).toBe(true);
+    const encontrado = resFiltrados.body.find((b: any) => b.id === borradorRecaudoId);
+    expect(encontrado).toBeDefined();
+
+    // 3. Aprobar borrador de recaudo
+    const resAprobarRec = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorRecaudoId}/aprobar`)
+      .send({ revisado_por: 'AUDITOR_TESORERIA' })
+      .expect(200);
+
+    expect(resAprobarRec.body.borrador.estado).toBe('APROBADO');
+    expect(resAprobarRec.body.asiento).toBeDefined();
+    expect(resAprobarRec.body.asiento.numero_comprobante).toMatch(/^ING-\d{6}$/);
+    expect(resAprobarRec.body.cuenta_por_cobrar.saldo_pendiente).toBe(395000); // 595.000 - 200.000
+    expect(resAprobarRec.body.cuenta_por_cobrar.estado).toBe('COBRADA_PARCIAL');
+  });
+
+  it('23. Debe INGESTAR un documento en modo REVISION_PREVIA y RECHAZARLO con motivo documentado de auditoría', async () => {
+    // 1. Ingestar factura en modo REVISION_PREVIA
+    const resBorradorRechazo = await request(app.getHttpServer())
+      .post('/api/v1/integracion/facturas-venta')
+      .send({
+        empresa_id: empresaId,
+        origen_sistema: 'TIENDA_NUBE',
+        origen_documento_id: 'ORDER-NUBE-RECHAZADA-99',
+        numero_factura: 'FAC-ERRONEA-99',
+        cliente_id: terceroId,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        fecha_emision: '2026-10-17',
+        fecha_vencimiento: '2026-11-17',
+        subtotal: 100000,
+        modo_contabilizacion: 'REVISION_PREVIA',
+      })
+      .expect(201);
+
+    const borradorId = resBorradorRechazo.body.borrador.id;
+
+    // 2. Rechazar el borrador
+    const resRechazo = await request(app.getHttpServer())
+      .post(`/api/v1/integracion/borradores/${borradorId}/rechazar`)
+      .send({
+        motivo: 'Pedido cancelado por el cliente antes del despacho',
+        revisado_por: 'AUDITOR_CONTABLE',
+      })
+      .expect(200);
+
+    expect(resRechazo.body.estado).toBe('RECHAZADO');
+    expect(resRechazo.body.motivo_rechazo).toBe('Pedido cancelado por el cliente antes del despacho');
+    expect(resRechazo.body.revisado_por).toBe('AUDITOR_CONTABLE');
+    expect(resRechazo.body.asiento_id).toBeNull();
+  });
+
+  it('24. Debe SUSCRIBIR con 201 un Webhook externo con firma HMAC-SHA256 para eventos contables', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/webhooks')
+      .send({
+        empresa_id: empresaId,
+        nombre: 'Webhook Notificaciones ERP Externo',
+        url_destino: 'https://example.com/api/webhooks/listener',
+        eventos: ['factura_venta.aprobada', 'factura_venta.contabilizada', 'recaudo.aprobado'],
+        secreto_firma: 'whsec_e2e_signature_secret_9988',
+        activo: true,
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.empresa_id).toBe(empresaId);
+    expect(res.body.url_destino).toBe('https://example.com/api/webhooks/listener');
+    expect(res.body.secreto_firma).toBe('whsec_e2e_signature_secret_9988');
+    expect(res.body.eventos).toContain('factura_venta.aprobada');
+  });
+
+  it('25. Debe LISTAR con 200 las suscripciones de webhooks de la empresa', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/webhooks/empresa/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body[0].nombre).toBe('Webhook Notificaciones ERP Externo');
+  });
 });
 
 

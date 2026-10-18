@@ -155,6 +155,13 @@ export class MapeoService {
     const cServiciosCxP = buscarAuxiliar('233510');
     const cServPublicosCxP = buscarAuxiliar('233525');
 
+    // Cuentas de Cartera / CxC (Activo)
+    const cClientesNacionales = buscarAuxiliar('13050501') || buscarAuxiliar('130505');
+
+    // Cuentas de Ingresos (Clase 4)
+    const cVentaComercio = buscarAuxiliar('4135');
+    const cVentaServicios = buscarAuxiliar('4175');
+
     // Cuentas de Inventario y Gastos
     const cInventario = buscarAuxiliar('1435');
     const cHonorariosGasto = buscarAuxiliar('511095') || buscarAuxiliar('511030') || buscarAuxiliar('511010');
@@ -250,6 +257,36 @@ export class MapeoService {
         cuenta_debito_id: cDiversosGasto.id,
         cuenta_credito_id: cProvNacionales.id,
         reglas_impuestos_codigos: ['IVA_19_DESCONTABLE', 'RETE_COMPRAS_2.5'],
+        aplica_retencion: true,
+        activo: true,
+      });
+    }
+
+    if (cVentaComercio && cClientesNacionales) {
+      plantillasASembrar.push({
+        empresa_id,
+        codigo_concepto: 'VENTA_MERCANCIAS',
+        nombre: 'Venta de Bienes y Mercancías',
+        descripcion: 'Venta comercial: Clientes CxC (1305 Débito) contra Ingresos Operacionales (4135 Crédito) e IVA generado',
+        tipo_concepto: TipoConceptoMapeo.VENTA_INGRESO,
+        cuenta_debito_id: cClientesNacionales.id,
+        cuenta_credito_id: cVentaComercio.id,
+        reglas_impuestos_codigos: ['IVA_19_GENERADO'],
+        aplica_retencion: true,
+        activo: true,
+      });
+    }
+
+    if (cVentaServicios && cClientesNacionales) {
+      plantillasASembrar.push({
+        empresa_id,
+        codigo_concepto: 'VENTA_SERVICIOS',
+        nombre: 'Prestación de Servicios y Actividades Conexas',
+        descripcion: 'Prestación de servicios: Clientes CxC (1305 Débito) contra Ingresos Servicios (4175 Crédito) e IVA generado',
+        tipo_concepto: TipoConceptoMapeo.VENTA_INGRESO,
+        cuenta_debito_id: cClientesNacionales.id,
+        cuenta_credito_id: cVentaServicios.id,
+        reglas_impuestos_codigos: ['IVA_19_GENERADO'],
         aplica_retencion: true,
         activo: true,
       });
