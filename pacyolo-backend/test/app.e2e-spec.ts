@@ -11,6 +11,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
   let cuentaCajaId: string;
   let cuentaBancoId: string;
   let cxpId: string;
+  let asientoId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -151,6 +152,7 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(Number(res.body.total_debito)).toBe(1500000);
     expect(Number(res.body.total_credito)).toBe(1500000);
     expect(res.body.lineas).toHaveLength(2);
+    asientoId = res.body.id;
   });
 
   it('7. Debe consultar el Libro Diario de la empresa y reflejar el comprobante registrado', async () => {
@@ -601,7 +603,214 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     expect(res.body[0].nombre).toBe('Webhook Notificaciones ERP Externo');
   });
+
+  it('26. Debe REGISTRAR con 201 un nuevo Usuario y asignarlo a la Empresa con rol CONTADOR_LIDER', async () => {
+    const emailTest = `contador_${Date.now()}@pacyolo.test`;
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailTest,
+        password: 'PasswordSegura2026*',
+        nombres: 'Laura Sofía',
+        apellidos: 'Gómez Restrepo',
+        telefono: '+57 311 999 8888',
+        empresa_id: empresaId,
+        rol: 'CONTADOR_LIDER',
+      })
+      .expect(201);
+
+    expect(res.body.id).toBeDefined();
+    expect(res.body.email).toBe(emailTest);
+    expect(res.body.password_hash).toBeUndefined(); // Por seguridad no debe exponerse
+    expect(res.body.activo).toBe(true);
+  });
+
+  it('27. Debe LISTAR con 200 el equipo de trabajo y roles asignados en la empresa tenant', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/usuarios/empresa/${empresaId}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body[0].rol).toBe('CONTADOR_LIDER');
+    expect(res.body[0].usuario).toBeDefined();
+    expect(res.body[0].usuario.nombres).toBe('Laura Sofía');
+  });
+
+  let tokenJwtUsuario: string;
+  const emailLoginTest = `usuario_jwt_${Date.now()}@pacyolo.test`;
+  const passwordLoginTest = 'PacyoloJwtPass2026*';
+
+  it('28. Debe INICIAR SESIÓN con 200 (POST /api/v1/auth/login) y retornar access_token con contexto de empresa', async () => {
+    // 1. Crear usuario primero
+    await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailLoginTest,
+        password: passwordLoginTest,
+        nombres: 'Andrés Felipe',
+        apellidos: 'Morales',
+        empresa_id: empresaId,
+        rol: 'ADMIN_EMPRESA',
+      })
+      .expect(201);
+
+    // 2. Intentar login con clave errónea -> 401
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailLoginTest,
+        password: 'ClaveTotalmenteErronea*',
+      })
+      .expect(401);
+
+    // 3. Login exitoso con credenciales correctas -> 200
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailLoginTest,
+        password: passwordLoginTest,
+      })
+      .expect(200);
+
+    expect(res.body.access_token).toBeDefined();
+    expect(res.body.token_type).toBe('Bearer');
+    expect(res.body.usuario).toBeDefined();
+    expect(res.body.usuario.email).toBe(emailLoginTest);
+    expect(res.body.usuario.empresas).toHaveLength(1);
+    expect(res.body.usuario.empresas[0].empresa_id).toBe(empresaId);
+    expect(res.body.usuario.empresas[0].rol).toBe('ADMIN_EMPRESA');
+
+    tokenJwtUsuario = res.body.access_token;
+  });
+
+  it('29. Debe OBTENER PERFIL con 200 (GET /api/v1/auth/perfil) usando Bearer JWT y rechazar 401 sin token', async () => {
+    // 1. Sin token -> 401
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/perfil')
+      .expect(401);
+
+    // 2. Con token válido -> 200
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/auth/perfil')
+      .set('Authorization', `Bearer ${tokenJwtUsuario}`)
+      .expect(200);
+
+    expect(res.body.email).toBe(emailLoginTest);
+    expect(res.body.nombres).toBe('Andrés Felipe');
+    expect(res.body.empresas).toBeDefined();
+    expect(res.body.empresas.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.empresas[0].empresa_id).toBe(empresaId);
+  });
+
+  let usuarioGestionId: string;
+
+  it('30. Debe ACTUALIZAR el rol de un usuario en la empresa con 200 (PATCH /api/v1/usuarios/:id/empresa/:empresa_id/rol)', async () => {
+    // 1. Crear un usuario auxiliar
+    const emailAux = `auxiliar_${Date.now()}@pacyolo.test`;
+    const resUser = await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailAux,
+        password: 'PasswordSegura2026*',
+        nombres: 'Mateo',
+        apellidos: 'Vargas',
+        empresa_id: empresaId,
+        rol: 'AUXILIAR_CONTABLE',
+      })
+      .expect(201);
+
+    usuarioGestionId = resUser.body.id;
+
+    // 2. Cambiar de AUXILIAR_CONTABLE a CONTADOR_LIDER
+    const resUpdate = await request(app.getHttpServer())
+      .patch(`/api/v1/usuarios/${usuarioGestionId}/empresa/${empresaId}/rol`)
+      .send({
+        rol: 'CONTADOR_LIDER',
+      })
+      .expect(200);
+
+    expect(resUpdate.body.rol).toBe('CONTADOR_LIDER');
+    expect(resUpdate.body.activo).toBe(true);
+  });
+
+  it('31. Debe REVOCAR/DESACTIVAR acceso de un usuario a la empresa con 204 (DELETE /api/v1/usuarios/:id/empresa/:empresa_id)', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/v1/usuarios/${usuarioGestionId}/empresa/${empresaId}`)
+      .expect(204);
+
+    // Verificar en la lista que su membresía ya no está activa
+    const resList = await request(app.getHttpServer())
+      .get(`/api/v1/usuarios/empresa/${empresaId}`)
+      .expect(200);
+
+    const miembro = resList.body.find((m: any) => m.usuario_id === usuarioGestionId);
+    expect(miembro).toBeDefined();
+    expect(miembro.activo).toBe(false);
+  });
+
+  it('32. Debe RECHAZAR con 401 Unauthorized si se intenta anular un comprobante sin token JWT', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .send({
+        motivo: 'Intento de anulación anónima no autorizada',
+      })
+      .expect(401);
+  });
+
+  it('33. Debe RECHAZAR con 403 Forbidden a un AUXILIAR_CONTABLE y PERMITIR con 200 a un ADMIN_EMPRESA', async () => {
+    // 1. Crear usuario con rol AUXILIAR_CONTABLE e iniciar sesión
+    const emailAuxiliar = `auxiliar_rbac_${Date.now()}@pacyolo.test`;
+    await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailAuxiliar,
+        password: 'PasswordSegura2026*',
+        nombres: 'Camilo',
+        apellidos: 'Torres',
+        empresa_id: empresaId,
+        rol: 'AUXILIAR_CONTABLE',
+      })
+      .expect(201);
+
+    const resLoginAux = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailAuxiliar,
+        password: 'PasswordSegura2026*',
+      })
+      .expect(200);
+
+    const tokenAuxiliar = resLoginAux.body.access_token;
+
+    // 2. Auxiliar intenta anular comprobante en la empresa -> 403 Forbidden
+    const resForbidden = await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .set('Authorization', `Bearer ${tokenAuxiliar}`)
+      .set('x-empresa-id', empresaId)
+      .send({
+        motivo: 'Intento de anulación por auxiliar sin rol suficiente',
+      })
+      .expect(403);
+
+    expect(resForbidden.body.message).toContain('Acceso denegado');
+
+    // 3. Administrador de Empresa (tokenJwtUsuario obtenido en test 28) anula exitosamente -> 200 OK
+    const resSuccess = await request(app.getHttpServer())
+      .post(`/api/v1/asientos/${asientoId}/anular`)
+      .set('Authorization', `Bearer ${tokenJwtUsuario}`)
+      .set('x-empresa-id', empresaId)
+      .send({
+        motivo: 'Anulación oficial autorizada por el Administrador de la Empresa',
+      })
+      .expect(200);
+
+    expect(resSuccess.body.estado).toBe('ANULADO');
+  });
 });
+
+
+
 
 
 
