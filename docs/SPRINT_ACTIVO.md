@@ -25,11 +25,11 @@
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **5.1** | Scaffolding & Core Architecture | Inicialización de `pacyolo-web` (Angular Standalone, Routing, Signals), configuración de TailwindCSS/componentes base y estructura modular. | 2h | `[ ]` Pendiente | - |
-| **5.2** | Auth & Multi-tenant State | Pantalla de Login, `AuthService`, HTTP Interceptor para JWT y cabecera `x-empresa-id`, selector de empresa activa en Navbar. | 2h | `[ ]` Pendiente | - |
-| **5.3** | Visualizador PUC & Libro Diario | Vistas de consulta del árbol de cuentas NIIF y consulta del Libro Diario de comprobantes contables con filtrado. | 2h | `[ ]` Pendiente | - |
-| **5.4** | Bandeja de Borradores de Integración | Interfaz para visualizar facturas y recaudos externos en borrador con modal de aprobación y rechazo justificado. | 2h | `[ ]` Pendiente | - |
-| **5.5** | Gestión de Usuarios & Roles (RBAC) | Vista administrativa para listar miembros del tenant, invitar colaboradores con rol y modificar roles/permisos. | 2h | `[ ]` Pendiente | - |
+| **5.1** | Scaffolding & Core Architecture | Inicialización de `pacyolo-web` (Angular Standalone, Routing, Signals), configuración de TailwindCSS/componentes base y estructura modular. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.2** | Auth & Multi-tenant State | Pantalla de Login, `AuthService`, HTTP Interceptor para JWT y cabecera `x-empresa-id`, selector de empresa activa en Navbar. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.3** | Visualizador PUC & Libro Diario | Vistas de consulta del árbol de cuentas NIIF y consulta del Libro Diario de comprobantes contables con filtrado. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.4** | Bandeja de Borradores de Integración | Interfaz para visualizar facturas y recaudos externos en borrador con modal de aprobación y rechazo justificado. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.5** | Gestión de Usuarios & Roles (RBAC) | Vista administrativa para listar miembros del tenant, invitar colaboradores con rol y modificar roles/permisos. | 2h | `[x]` Completado | 17/10/2026 |
 
 ---
 
@@ -84,17 +84,11 @@
 | **2** | 17/10/2026 | 2h+ | **Sprint 2 Completo (2.1 a 2.6)** | Release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el motor tributario colombiano (Retefuente, ReteICA, IVA), mapeo de conceptos y ciclo completo de CxP: causación (`POST /api/v1/cxp/causar`), cartera de proveedores (`GET /api/v1/cxp/cartera/:empresa_id`), pago y comprobantes de egreso (`POST /api/v1/cxp/pagar`, `GET /api/v1/cxp/:id/pagos`). 21 pruebas unitarias y 17 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 2 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.2.0-sprint2`. |
 | **3** | 17/10/2026 | 2h+ | **Sprint 3 Completo (3.1 a 3.5)** | Rama `sprint/03-integracion-webhooks`. Entidades `cont_cuentas_por_cobrar`, `cont_recaudos_cxc`, `cont_borradores_integracion`, `core_webhooks` y `core_webhook_logs`. Endpoints de ingesta `POST /api/v1/integracion/facturas-venta` y `POST /api/v1/integracion/recaudos` con idempotencia estricta, liquidación automática de IVA y soporte dual (`INMEDIATA` vs `REVISION_PREVIA`). Bandeja de borradores con filtros avanzados por tipo, origen y rango de fechas. Aprobación de facturas y recaudos con emisión de comprobantes contables oficiales (`CAU` e `ING`), y rechazo con justificación documentada de auditoría. Motor de Webhooks con suscripciones, despacho asíncrono y firma criptográfica HMAC-SHA256 (`X-Pacyolo-Signature`). 31 pruebas unitarias y 25 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 3 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.3.0-sprint3`. |
 | **4** | 17/10/2026 | 2h+ | **Sprint 4 Completo (4.1 a 4.5)** | Rama `sprint/04-auth-rbac-seguridad`. Entidades `core_usuarios` y `core_usuarios_empresas` para relación multi-tenant N:M con rol específico por empresa (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`). Hash de contraseñas con bcrypt y generación de tokens JWT con payload contextual de empresas y roles. Endpoints `POST /api/v1/auth/login`, `GET /api/v1/auth/perfil`, administración completa de equipo de trabajo (`POST/GET/PATCH/DELETE /api/v1/usuarios`). Guards y decoradores `@Roles()` y `RolesGuard` aplicados a opciones sensibles (anulación contable protegida contra roles no autorizados). Suite con 46 pruebas unitarias y 33 pruebas E2E pasando al 100%. Compilación TypeScript limpia. | **HITO ALCANZADO: SPRINT 4 COMPLETADO EXITOSAMENTE.** |
+| **5** | 17/10/2026 | 2h+ | **Sprint 5 Completo (5.1 a 5.5)** | Rama `sprint/05-frontend-web`. Scaffolding de `pacyolo-web` con Angular Standalone, Signals y TailwindCSS v4. Implementado servicio `AuthService` reactivo con login, logout, persistencia local y almacenamiento de tenant activo. `authInterceptor` funcional que adjunta automáticamente `Authorization: Bearer <JWT>` y cabecera multi-tenant `x-empresa-id`. `authGuard` para protección de rutas privadas. `DashboardLayoutComponent` con selector de empresa activa en tiempo real. Componente `PucExplorerComponent` con buscador interactivo y visualización de niveles/imputabilidad. `LibroDiarioComponent` con formato monetario de comprobantes. `BorradoresComponent` con bandeja de revisión, aprobación y rechazo justificado. `UsuariosAdminComponent` para gestión RBAC de equipo, cambio de roles y revocación de acceso. Build y tests unitarios de Angular pasando al 100%. | **HITO ALCANZADO: SPRINT 5 COMPLETADO EXITOSAMENTE.** |
 
 ---
 
 ## 🔮 Backlog de Sprints Futuros
-
-### Sprint 5: Frontend Web Autónomo (Angular)
-- Scaffolding de `pacyolo-web` con Angular Standalone.
-- Módulo de Login y Selector de Empresa activa persistente.
-- Vistas del Explorador del PUC y el Libro Diario.
-- Pantalla de Gestión de Usuarios y Roles de la Empresa.
-- Bandeja de revisión de borradores de integración.
 
 ### Sprint 6: Reportes NIIF & Certificaciones
 - Balance de Comprobación, Situación Financiera y Estado de Resultados.
