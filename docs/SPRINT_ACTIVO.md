@@ -3,35 +3,47 @@
 
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/04-auth-rbac-seguridad`  
-*Última Versión Publicada:* `v0.3.0-sprint3` (Fusionado en `develop` y `main`)
+*Rama Activa:* `sprint/05-frontend-web`  
+*Última Versión Publicada:* `v0.4.0-sprint4` (Fusionado en `develop` y `main`)
 
 ---
 
-## 🎯 SPRINT 4: Autenticación, Usuarios y Control de Acceso Basado en Roles (RBAC)
-- **Objetivo del Sprint:** Blindar la plataforma con una capa de seguridad multi-tenant de nivel empresarial: modelo de usuarios, pertenencia a empresas con roles contextuales (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`), autenticación segura mediante JWT con hash de contraseñas (Argon2 / BCrypt), y guards de autorización para proteger opciones y endpoints del sistema.
+## 🎯 SPRINT 5: Frontend Web Autónomo (Angular Standalone)
+- **Objetivo del Sprint:** Construir la interfaz de usuario web moderna, reactiva y desacoplada para PACYOLO en Angular 18/19 Standalone, conectada al backend REST/JWT: autenticación, selección de tenant activo, visualizador del PUC, Libro Diario, bandeja de revisión de borradores y gestión de usuarios/roles.
 - **Entregables Evaluativos para el Usuario:**
-  - Entidades `core_usuarios` y `core_usuarios_empresas` (relación N:M usuario-tenant con rol específico por empresa).
-  - Endpoints de autenticación: `POST /api/v1/auth/login` (emite token JWT con payload de tenant y rol), `POST /api/v1/auth/registro-inicial`, `GET /api/v1/auth/perfil`.
-  - Módulo de administración de usuarios de empresa: `POST /api/v1/usuarios` (crear/invitar usuario), `GET /api/v1/usuarios/empresa/:id`, `PATCH /api/v1/usuarios/:id/rol`, `DELETE /api/v1/usuarios/:id/desactivar`.
-  - Decoradores y Guards de NestJS (`@Roles()`, `RolesGuard`, `JwtAuthGuard`) para gobernar el acceso a opciones sensibles (ej: aprobación contable solo para `CONTADOR_LIDER` y `ADMIN_EMPRESA`).
-  - Suite de pruebas automatizadas (unitarias + E2E) que certifiquen el rechazo con 401/403 a usuarios sin privilegios.
+  - Scaffolding de `pacyolo-web` con arquitectura por features y Tailwind/DaisyUI o Angular Material.
+  - Módulo de Autenticación: Pantalla de Login, interceptor HTTP para Bearer JWT y guard de rutas.
+  - Contexto de Empresa: Selector desplegable persistente de empresa activa (inyectando `x-empresa-id` en cada petición).
+  - Explorador del PUC: Visualizador jerárquico del Plan Único de Cuentas NIIF.
+  - Libro Diario de Asientos: Consulta de comprobantes contables con detalle de débitos y créditos.
+  - Bandeja de Revisión de Integración: Aprobación y rechazo justificado de facturas y recaudos en borrador.
+  - Gestión de Usuarios y Roles: Pantalla para invitar colaboradores, asignar roles y gestionar acceso.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 4 (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 5 (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **4.1** | Modelo de Usuarios & RBAC | Entidades `core_usuarios` y `core_usuarios_empresas` con catálogo enum de roles (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`) e índices compuestos por tenant. | 2h | `[x]` Completado | 17/10/2026 |
-| **4.2** | Autenticación JWT & Hashing | Servicio y controlador `Auth`: hash seguro de contraseñas con `bcrypt`, generación y validación de tokens JWT firmados, endpoint `POST /api/v1/auth/login` y `GET /api/v1/auth/perfil`. | 2h | `[x]` Completado | 17/10/2026 |
-| **4.3** | Gestión de Usuarios de Tenant | CRUD de administración de usuarios por empresa: listar equipo de trabajo, crear usuario asignando rol, cambiar rol y desactivar acceso (`POST/GET/PATCH/DELETE /api/v1/usuarios`). | 2h | `[x]` Completado | 17/10/2026 |
-| **4.4** | Guards & Protección RBAC | Decorador `@Roles()`, `JwtAuthGuard` y `RolesGuard` aplicados a endpoints clave (asientos, impuestos, aprobación de borradores) verificando pertenencia a tenant y rol. | 2h | `[x]` Completado | 17/10/2026 |
-| **4.5** | Pruebas & Documentación | Pruebas unitarias de auth/rbac + pruebas E2E validando flujos de login, acceso autorizado y rechazo 401/403 + actualización OpenAPI / Postman. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.1** | Scaffolding & Core Architecture | Inicialización de `pacyolo-web` (Angular Standalone, Routing, Signals), configuración de TailwindCSS/componentes base y estructura modular. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.2** | Auth & Multi-tenant State | Pantalla de Login, `AuthService`, HTTP Interceptor para JWT y cabecera `x-empresa-id`, selector de empresa activa en Navbar. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.3** | Visualizador PUC & Libro Diario | Vistas de consulta del árbol de cuentas NIIF y consulta del Libro Diario de comprobantes contables con filtrado. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.4** | Bandeja de Borradores de Integración | Interfaz para visualizar facturas y recaudos externos en borrador con modal de aprobación y rechazo justificado. | 2h | `[x]` Completado | 17/10/2026 |
+| **5.5** | Gestión de Usuarios & Roles (RBAC) | Vista administrativa para listar miembros del tenant, invitar colaboradores con rol y modificar roles/permisos. | 2h | `[x]` Completado | 17/10/2026 |
 
 ---
 
 ## 📜 Historial de Sprints Cerrados
+
+### ✅ SPRINT 4: Autenticación, Usuarios y Control de Acceso RBAC (COMPLETADO 100%)
+- **Versión de Cierre:** `v0.4.0-sprint4` (17/10/2026).
+- **Logros:**
+  - Modelo de usuarios `core_usuarios` y membresías multi-tenant `core_usuarios_empresas` con roles (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`).
+  - Hashing seguro de contraseñas con `bcrypt` (salt 10) y emisión de JWT con contexto de tenant y rol.
+  - Endpoints de autenticación `POST /api/v1/auth/login` y `GET /api/v1/auth/perfil`.
+  - CRUD de administración de usuarios de tenant (`POST/GET/PATCH/DELETE /api/v1/usuarios`).
+  - Guards de autorización `@Roles()` y `RolesGuard` verificando permisos por empresa y bloqueando accesos no autorizados con 401 y 403.
+  - 46 pruebas unitarias y 33 pruebas E2E pasando al 100% en PostgreSQL. Build exitoso.
 
 ### ✅ SPRINT 3: Interfaz de Integración Externa (API-First / Webhooks) (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.3.0-sprint3` (17/10/2026).
@@ -72,17 +84,11 @@
 | **2** | 17/10/2026 | 2h+ | **Sprint 2 Completo (2.1 a 2.6)** | Release `v0.1.0-sprint1` en GitHub. Rama `sprint/02-retenciones-cxp`. Implementado el motor tributario colombiano (Retefuente, ReteICA, IVA), mapeo de conceptos y ciclo completo de CxP: causación (`POST /api/v1/cxp/causar`), cartera de proveedores (`GET /api/v1/cxp/cartera/:empresa_id`), pago y comprobantes de egreso (`POST /api/v1/cxp/pagar`, `GET /api/v1/cxp/:id/pagos`). 21 pruebas unitarias y 17 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 2 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.2.0-sprint2`. |
 | **3** | 17/10/2026 | 2h+ | **Sprint 3 Completo (3.1 a 3.5)** | Rama `sprint/03-integracion-webhooks`. Entidades `cont_cuentas_por_cobrar`, `cont_recaudos_cxc`, `cont_borradores_integracion`, `core_webhooks` y `core_webhook_logs`. Endpoints de ingesta `POST /api/v1/integracion/facturas-venta` y `POST /api/v1/integracion/recaudos` con idempotencia estricta, liquidación automática de IVA y soporte dual (`INMEDIATA` vs `REVISION_PREVIA`). Bandeja de borradores con filtros avanzados por tipo, origen y rango de fechas. Aprobación de facturas y recaudos con emisión de comprobantes contables oficiales (`CAU` e `ING`), y rechazo con justificación documentada de auditoría. Motor de Webhooks con suscripciones, despacho asíncrono y firma criptográfica HMAC-SHA256 (`X-Pacyolo-Signature`). 31 pruebas unitarias y 25 pruebas E2E pasando al 100%. Build exitoso. | **HITO ALCANZADO: SPRINT 3 COMPLETADO EXITOSAMENTE.** Fusionado a `develop` y `main`, tag `v0.3.0-sprint3`. |
 | **4** | 17/10/2026 | 2h+ | **Sprint 4 Completo (4.1 a 4.5)** | Rama `sprint/04-auth-rbac-seguridad`. Entidades `core_usuarios` y `core_usuarios_empresas` para relación multi-tenant N:M con rol específico por empresa (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`). Hash de contraseñas con bcrypt y generación de tokens JWT con payload contextual de empresas y roles. Endpoints `POST /api/v1/auth/login`, `GET /api/v1/auth/perfil`, administración completa de equipo de trabajo (`POST/GET/PATCH/DELETE /api/v1/usuarios`). Guards y decoradores `@Roles()` y `RolesGuard` aplicados a opciones sensibles (anulación contable protegida contra roles no autorizados). Suite con 46 pruebas unitarias y 33 pruebas E2E pasando al 100%. Compilación TypeScript limpia. | **HITO ALCANZADO: SPRINT 4 COMPLETADO EXITOSAMENTE.** |
+| **5** | 17/10/2026 | 2h+ | **Sprint 5 Completo (5.1 a 5.5)** | Rama `sprint/05-frontend-web`. Scaffolding de `pacyolo-web` con Angular Standalone, Signals y TailwindCSS v4. Implementado servicio `AuthService` reactivo con login, logout, persistencia local y almacenamiento de tenant activo. `authInterceptor` funcional que adjunta automáticamente `Authorization: Bearer <JWT>` y cabecera multi-tenant `x-empresa-id`. `authGuard` para protección de rutas privadas. `DashboardLayoutComponent` con selector de empresa activa en tiempo real. Componente `PucExplorerComponent` con buscador interactivo y visualización de niveles/imputabilidad. `LibroDiarioComponent` con formato monetario de comprobantes. `BorradoresComponent` con bandeja de revisión, aprobación y rechazo justificado. `UsuariosAdminComponent` para gestión RBAC de equipo, cambio de roles y revocación de acceso. Build y tests unitarios de Angular pasando al 100%. | **HITO ALCANZADO: SPRINT 5 COMPLETADO EXITOSAMENTE.** |
 
 ---
 
 ## 🔮 Backlog de Sprints Futuros
-
-### Sprint 5: Frontend Web Autónomo (Angular)
-- Scaffolding de `pacyolo-web` con Angular Standalone.
-- Módulo de Login y Selector de Empresa activa persistente.
-- Vistas del Explorador del PUC y el Libro Diario.
-- Pantalla de Gestión de Usuarios y Roles de la Empresa.
-- Bandeja de revisión de borradores de integración.
 
 ### Sprint 6: Reportes NIIF & Certificaciones
 - Balance de Comprobación, Situación Financiera y Estado de Resultados.
