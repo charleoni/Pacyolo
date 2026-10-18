@@ -634,7 +634,74 @@ describe('PACYOLO — Ciclo de Vida Contable E2E', () => {
     expect(res.body[0].usuario).toBeDefined();
     expect(res.body[0].usuario.nombres).toBe('Laura Sofía');
   });
+
+  let tokenJwtUsuario: string;
+  const emailLoginTest = `usuario_jwt_${Date.now()}@pacyolo.test`;
+  const passwordLoginTest = 'PacyoloJwtPass2026*';
+
+  it('28. Debe INICIAR SESIÓN con 200 (POST /api/v1/auth/login) y retornar access_token con contexto de empresa', async () => {
+    // 1. Crear usuario primero
+    await request(app.getHttpServer())
+      .post('/api/v1/usuarios')
+      .send({
+        email: emailLoginTest,
+        password: passwordLoginTest,
+        nombres: 'Andrés Felipe',
+        apellidos: 'Morales',
+        empresa_id: empresaId,
+        rol: 'ADMIN_EMPRESA',
+      })
+      .expect(201);
+
+    // 2. Intentar login con clave errónea -> 401
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailLoginTest,
+        password: 'ClaveTotalmenteErronea*',
+      })
+      .expect(401);
+
+    // 3. Login exitoso con credenciales correctas -> 200
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        email: emailLoginTest,
+        password: passwordLoginTest,
+      })
+      .expect(200);
+
+    expect(res.body.access_token).toBeDefined();
+    expect(res.body.token_type).toBe('Bearer');
+    expect(res.body.usuario).toBeDefined();
+    expect(res.body.usuario.email).toBe(emailLoginTest);
+    expect(res.body.usuario.empresas).toHaveLength(1);
+    expect(res.body.usuario.empresas[0].empresa_id).toBe(empresaId);
+    expect(res.body.usuario.empresas[0].rol).toBe('ADMIN_EMPRESA');
+
+    tokenJwtUsuario = res.body.access_token;
+  });
+
+  it('29. Debe OBTENER PERFIL con 200 (GET /api/v1/auth/perfil) usando Bearer JWT y rechazar 401 sin token', async () => {
+    // 1. Sin token -> 401
+    await request(app.getHttpServer())
+      .get('/api/v1/auth/perfil')
+      .expect(401);
+
+    // 2. Con token válido -> 200
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/auth/perfil')
+      .set('Authorization', `Bearer ${tokenJwtUsuario}`)
+      .expect(200);
+
+    expect(res.body.email).toBe(emailLoginTest);
+    expect(res.body.nombres).toBe('Andrés Felipe');
+    expect(res.body.empresas).toBeDefined();
+    expect(res.body.empresas.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.empresas[0].empresa_id).toBe(empresaId);
+  });
 });
+
 
 
 

@@ -24,7 +24,7 @@
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
 | **4.1** | Modelo de Usuarios & RBAC | Entidades `core_usuarios` y `core_usuarios_empresas` con catálogo enum de roles (`SUPER_ADMIN`, `ADMIN_EMPRESA`, `CONTADOR_LIDER`, `AUXILIAR_CONTABLE`, `AUDITOR_CONSULTA`) e índices compuestos por tenant. | 2h | `[x]` Completado | 17/10/2026 |
-| **4.2** | Autenticación JWT & Hashing | Servicio y controlador `Auth`: hash seguro de contraseñas con `bcrypt`, generación y validación de tokens JWT firmados, endpoint `POST /api/v1/auth/login` y `GET /api/v1/auth/perfil`. | 2h | `[ ]` Pendiente | - |
+| **4.2** | Autenticación JWT & Hashing | Servicio y controlador `Auth`: hash seguro de contraseñas con `bcrypt`, generación y validación de tokens JWT firmados, endpoint `POST /api/v1/auth/login` y `GET /api/v1/auth/perfil`. | 2h | `[x]` Completado | 17/10/2026 |
 | **4.3** | Gestión de Usuarios de Tenant | CRUD de administración de usuarios por empresa: listar equipo de trabajo, crear usuario asignando rol, cambiar rol y desactivar acceso (`POST/GET/PATCH/DELETE /api/v1/usuarios`). | 2h | `[ ]` Pendiente | - |
 | **4.4** | Guards & Protección RBAC | Decorador `@Roles()`, `JwtAuthGuard` y `RolesGuard` aplicados a endpoints clave (asientos, impuestos, aprobación de borradores) verificando pertenencia a tenant y rol. | 2h | `[ ]` Pendiente | - |
 | **4.5** | Pruebas & Documentación | Pruebas unitarias de auth/rbac + pruebas E2E validando flujos de login, acceso autorizado y rechazo 401/403 + actualización OpenAPI / Postman. | 2h | `[ ]` Pendiente | - |
