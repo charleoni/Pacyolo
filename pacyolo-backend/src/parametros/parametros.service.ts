@@ -1,6 +1,6 @@
-import { Injectable, Logger, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, DataSource } from 'typeorm';
 import { TipoIdentificacion } from './entities/tipo-identificacion.entity.js';
 import { TipoPersona } from './entities/tipo-persona.entity.js';
 import { RegimenFiscal } from './entities/regimen-fiscal.entity.js';
@@ -39,6 +39,8 @@ export class ParametrosService {
     private readonly deptoRepo: Repository<Departamento>,
     @InjectRepository(Municipio)
     private readonly municipioRepo: Repository<Municipio>,
+    @Optional()
+    private readonly dataSource?: DataSource,
   ) {}
 
   /**
@@ -264,67 +266,204 @@ export class ParametrosService {
   }
 
   // ==========================================
-  // CONSULTAS MULTI-TENANT COMBINADAS
+  // CONSULTAS MULTI-TENANT COMBINADAS & USO
   // ==========================================
 
-  async listarTiposIdentificacion(empresaId?: string): Promise<TipoIdentificacion[]> {
+  /**
+   * Consulta en tiempo real si los códigos del catálogo están siendo utilizados en registros operativos
+   * (Terceros, Asientos Contables, Pagos/Recaudos, etc.)
+   */
+  async consultarConteosUso(catalogo: string, empresaId?: string): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (!this.dataSource || typeof this.dataSource.query !== 'function') {
+      return map;
+    }
+
+    try {
+      const normCat = catalogo.toLowerCase();
+
+      if (normCat === 'tipos-identificacion') {
+        const rows = await this.dataSource.query(
+          `SELECT tipo_identificacion as codigo, COUNT(*)::int as conteo FROM core.core_terceros GROUP BY tipo_identificacion`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo).toUpperCase(), Number(r.conteo));
+        }
+      } else if (normCat === 'tipos-persona') {
+        const rows = await this.dataSource.query(
+          `SELECT tipo_persona as codigo, COUNT(*)::int as conteo FROM core.core_terceros GROUP BY tipo_persona`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo).toUpperCase(), Number(r.conteo));
+        }
+      } else if (normCat === 'regimenes-fiscales') {
+        const rows = await this.dataSource.query(
+          `SELECT regimen_iva as codigo, COUNT(*)::int as conteo FROM core.core_terceros GROUP BY regimen_iva`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo).toUpperCase(), Number(r.conteo));
+        }
+      } else if (normCat === 'clasificaciones-tercero') {
+        const rows = await this.dataSource.query(
+          `SELECT 
+             SUM(CASE WHEN es_cliente THEN 1 ELSE 0 END)::int as cliente_count,
+             SUM(CASE WHEN es_proveedor THEN 1 ELSE 0 END)::int as proveedor_count,
+             SUM(CASE WHEN es_empleado THEN 1 ELSE 0 END)::int as empleado_count
+           FROM core.core_terceros`
+        );
+        if (rows && rows[0]) {
+          map.set('CLIENTE', Number(rows[0].cliente_count || 0));
+          map.set('PROVEEDOR', Number(rows[0].proveedor_count || 0));
+          map.set('EMPLEADO', Number(rows[0].empleado_count || 0));
+        }
+      } else if (normCat === 'tipos-comprobante') {
+        const rows = await this.dataSource.query(
+          `SELECT tipo_comprobante as codigo, COUNT(*)::int as conteo FROM contabilidad.cont_asientos GROUP BY tipo_comprobante`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo).toUpperCase(), Number(r.conteo));
+        }
+      } else if (normCat === 'metodos-pago') {
+        const rows = await this.dataSource.query(
+          `SELECT metodo_pago as codigo, COUNT(*)::int as conteo FROM contabilidad.cont_pagos_cxp GROUP BY metodo_pago`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo).toUpperCase(), Number(r.conteo));
+        }
+      } else if (normCat === 'departamentos') {
+        const rows = await this.dataSource.query(
+          `SELECT departamento_codigo as codigo, COUNT(*)::int as conteo FROM core.core_terceros WHERE departamento_codigo IS NOT NULL GROUP BY departamento_codigo`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo), Number(r.conteo));
+        }
+      } else if (normCat === 'municipios') {
+        const rows = await this.dataSource.query(
+          `SELECT codigo_municipio as codigo, COUNT(*)::int as conteo FROM core.core_terceros WHERE codigo_municipio IS NOT NULL GROUP BY codigo_municipio`
+        );
+        for (const r of rows) {
+          if (r.codigo) map.set(String(r.codigo), Number(r.conteo));
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`No se pudo verificar conteos de uso para ${catalogo}: ${err.message}`);
+    }
+
+    return map;
+  }
+
+  async listarTiposIdentificacion(empresaId?: string): Promise<any[]> {
     const qb = this.tipoIdRepo.createQueryBuilder('t');
     if (empresaId) {
       qb.where('t.empresa_id = :empresaId OR t.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('t.empresa_id IS NULL');
     }
-    return await qb.orderBy('t.es_sistema', 'DESC').addOrderBy('t.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('t.es_sistema', 'DESC').addOrderBy('t.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('tipos-identificacion', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
-  async listarTiposPersona(empresaId?: string): Promise<TipoPersona[]> {
+  async listarTiposPersona(empresaId?: string): Promise<any[]> {
     const qb = this.tipoPersonaRepo.createQueryBuilder('t');
     if (empresaId) {
       qb.where('t.empresa_id = :empresaId OR t.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('t.empresa_id IS NULL');
     }
-    return await qb.orderBy('t.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('t.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('tipos-persona', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
-  async listarRegimenesFiscales(empresaId?: string): Promise<RegimenFiscal[]> {
+  async listarRegimenesFiscales(empresaId?: string): Promise<any[]> {
     const qb = this.regimenRepo.createQueryBuilder('r');
     if (empresaId) {
       qb.where('r.empresa_id = :empresaId OR r.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('r.empresa_id IS NULL');
     }
-    return await qb.orderBy('r.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('r.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('regimenes-fiscales', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
-  async listarClasificaciones(empresaId?: string): Promise<ClasificacionTercero[]> {
+  async listarClasificaciones(empresaId?: string): Promise<any[]> {
     const qb = this.clasificacionRepo.createQueryBuilder('c');
     if (empresaId) {
       qb.where('c.empresa_id = :empresaId OR c.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('c.empresa_id IS NULL');
     }
-    return await qb.orderBy('c.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('c.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('clasificaciones-tercero', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
-  async listarTiposComprobante(empresaId?: string): Promise<TipoComprobanteConfig[]> {
+  async listarTiposComprobante(empresaId?: string): Promise<any[]> {
     const qb = this.comprobanteRepo.createQueryBuilder('c');
     if (empresaId) {
       qb.where('c.empresa_id = :empresaId OR c.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('c.empresa_id IS NULL');
     }
-    return await qb.orderBy('c.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('c.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('tipos-comprobante', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
-  async listarMetodosPago(empresaId?: string): Promise<MetodoPago[]> {
+  async listarMetodosPago(empresaId?: string): Promise<any[]> {
     const qb = this.metodoPagoRepo.createQueryBuilder('m');
     if (empresaId) {
       qb.where('m.empresa_id = :empresaId OR m.empresa_id IS NULL', { empresaId });
     } else {
       qb.where('m.empresa_id IS NULL');
     }
-    return await qb.orderBy('m.codigo', 'ASC').getMany();
+    const items = await qb.orderBy('m.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('metodos-pago', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
   }
 
   // ==========================================
@@ -453,6 +592,19 @@ export class ParametrosService {
     const entidad = await repo.findOne({ where: { id } });
     if (!entidad) {
       throw new NotFoundException(`Registro no encontrado en ${catalogo}`);
+    }
+
+    // VALIDACIÓN ESTRICTA DE INTEGRIDAD REFERENCIAL:
+    // Si se intenta inactivar (activo === false), verificar si está asociado a registros en el sistema
+    if (!activo) {
+      const conteos = await this.consultarConteosUso(catalogo);
+      const codigoKey = String(entidad.codigo).toUpperCase();
+      const conteo = conteos.get(codigoKey) || conteos.get(entidad.codigo) || 0;
+      if (conteo > 0) {
+        throw new BadRequestException(
+          `No es posible inactivar el parámetro '${entidad.nombre}' (${entidad.codigo}): actualmente está asociado a ${conteo} registro(s) en el sistema.`
+        );
+      }
     }
 
     entidad.activo = activo;

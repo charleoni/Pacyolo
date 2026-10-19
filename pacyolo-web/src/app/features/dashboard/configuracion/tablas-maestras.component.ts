@@ -250,22 +250,49 @@ export interface GrupoConfig {
                           </span>
                         </td>
                         <td class="py-3 px-4 text-center">
-                          <span
-                            [class]="item.activo ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'"
-                            class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
-                          >
-                            {{ item.activo ? 'Activo' : 'Inactivo' }}
-                          </span>
+                          <div class="flex flex-col items-center gap-1">
+                            <span
+                              [class]="item.activo ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'"
+                              class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
+                            >
+                              {{ item.activo ? 'Activo' : 'Inactivo' }}
+                            </span>
+                            @if (item.en_uso) {
+                              <span class="text-[9px] font-mono text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded" title="En uso por {{ item.conteo_usos }} registro(s)">
+                                {{ item.conteo_usos }} en uso
+                              </span>
+                            }
+                          </div>
                         </td>
                         <td class="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            (click)="alternarEstado(item)"
-                            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer"
-                            [class]="item.activo ? 'text-amber-400 hover:bg-amber-950/40 border-amber-800/40' : 'text-emerald-400 hover:bg-emerald-950/40 border-emerald-800/40'"
-                          >
-                            {{ item.activo ? 'Inactivar' : 'Reactivar' }}
-                          </button>
+                          @if (item.activo) {
+                            <button
+                              type="button"
+                              (click)="alternarEstado(item)"
+                              [disabled]="item.en_uso"
+                              [title]="item.en_uso ? 'Asociado a ' + item.conteo_usos + ' registro(s) en el sistema. No se puede inactivar.' : 'Inactivar parámetro'"
+                              class="px-2.5 py-1 text-xs rounded-lg border transition inline-flex items-center gap-1 ml-auto"
+                              [class]="item.en_uso 
+                                ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border-slate-700 select-none' 
+                                : 'text-amber-400 hover:bg-amber-950/40 border-amber-800/40 cursor-pointer'"
+                            >
+                              @if (item.en_uso) {
+                                <span class="text-[10px]">🔒</span>
+                                <span>Bloqueado (En Uso)</span>
+                              } @else {
+                                <span>Inactivar</span>
+                              }
+                            </button>
+                          } @else {
+                            <button
+                              type="button"
+                              (click)="alternarEstado(item)"
+                              class="px-2.5 py-1 text-xs rounded-lg border transition text-emerald-400 hover:bg-emerald-950/40 border-emerald-800/40 cursor-pointer inline-flex items-center gap-1 ml-auto"
+                              title="Reactivar parámetro para nuevas operaciones"
+                            >
+                              <span>Reactivar</span>
+                            </button>
+                          }
                         </td>
                       </tr>
                     } @empty {

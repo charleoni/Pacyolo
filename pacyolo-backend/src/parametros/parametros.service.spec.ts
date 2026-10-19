@@ -73,10 +73,19 @@ describe('ParametrosService', () => {
     expect(mockRepo.createQueryBuilder).toHaveBeenCalled();
   });
 
-  it('debe activar o inactivar un parámetro existente', async () => {
-    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', activo: true });
+  it('debe activar o inactivar un parámetro existente si no está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'CC', nombre: 'Cédula', activo: true });
     const res = await service.cambiarEstado('tipos-identificacion', 'mock-id', false);
     expect(res.activo).toBe(false);
+  });
+
+  it('debe rechazar la inactivación con BadRequestException si el parámetro está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'NIT', nombre: 'NIT', activo: true });
+    vi.spyOn(service, 'consultarConteosUso').mockResolvedValueOnce(new Map([['NIT', 5]]));
+
+    await expect(service.cambiarEstado('tipos-identificacion', 'mock-id', false)).rejects.toThrow(
+      'No es posible inactivar el parámetro'
+    );
   });
 
   it('debe listar departamentos oficiales DANE', async () => {

@@ -35,6 +35,8 @@ export interface ParametroItem {
   exige_referencia?: boolean;
   activo: boolean;
   es_sistema: boolean;
+  en_uso?: boolean;
+  conteo_usos?: number;
   created_at: string;
 }
 
