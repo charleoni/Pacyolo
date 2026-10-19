@@ -10,6 +10,10 @@ import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity
 import { MetodoPago } from './entities/metodo-pago.entity.js';
 import { Departamento } from './entities/departamento.entity.js';
 import { Municipio } from './entities/municipio.entity.js';
+import { UnidadMedida } from './entities/unidad-medida.entity.js';
+import { CategoriaArticulo } from './entities/categoria-articulo.entity.js';
+import { Bodega } from './entities/bodega.entity.js';
+import { TipoMovimiento } from './entities/tipo-movimiento.entity.js';
 
 describe('ParametrosService', () => {
   let service: ParametrosService;
@@ -42,6 +46,10 @@ describe('ParametrosService', () => {
         { provide: getRepositoryToken(MetodoPago), useValue: mockRepo },
         { provide: getRepositoryToken(Departamento), useValue: mockRepo },
         { provide: getRepositoryToken(Municipio), useValue: mockRepo },
+        { provide: getRepositoryToken(UnidadMedida), useValue: mockRepo },
+        { provide: getRepositoryToken(CategoriaArticulo), useValue: mockRepo },
+        { provide: getRepositoryToken(Bodega), useValue: mockRepo },
+        { provide: getRepositoryToken(TipoMovimiento), useValue: mockRepo },
       ],
     }).compile();
 
@@ -119,5 +127,45 @@ describe('ParametrosService', () => {
     const res = await service.buscarMunicipios('Bogotá', '11');
     expect(res).toEqual([]);
     expect(mockRepo.createQueryBuilder).toHaveBeenCalled();
+  });
+
+  it('debe crear y listar unidades de medida oficiales DIAN/ISO', async () => {
+    const creado = await service.crearUnidadMedida({ codigo: 'UND', nombre: 'Unidad', codigo_dian: '94' });
+    expect(creado).toBeDefined();
+    expect(creado.codigo).toBe('UND');
+
+    const lista = await service.listarUnidadesMedida('emp-1');
+    expect(lista).toBeDefined();
+  });
+
+  it('debe crear y listar categorías de artículos con cuentas NIIF', async () => {
+    const creado = await service.crearCategoriaArticulo({
+      codigo: 'MERCANCIA',
+      nombre: 'Mercancía Venta',
+      cuenta_inventario: '143505',
+    });
+    expect(creado).toBeDefined();
+    expect(creado.codigo).toBe('MERCANCIA');
+
+    const lista = await service.listarCategoriasArticulos('emp-1');
+    expect(lista).toBeDefined();
+  });
+
+  it('debe crear y listar bodegas de almacenamiento', async () => {
+    const creado = await service.crearBodega({ codigo: 'BOD-01', nombre: 'Bodega Principal' });
+    expect(creado).toBeDefined();
+    expect(creado.codigo).toBe('BOD-01');
+
+    const lista = await service.listarBodegas('emp-1');
+    expect(lista).toBeDefined();
+  });
+
+  it('debe crear y listar tipos de movimientos de inventario', async () => {
+    const creado = await service.crearTipoMovimiento({ codigo: 'ENT_COMPRA', nombre: 'Entrada Compra', naturaleza: 'ENTRADA' });
+    expect(creado).toBeDefined();
+    expect(creado.codigo).toBe('ENT_COMPRA');
+
+    const lista = await service.listarTiposMovimiento('emp-1');
+    expect(lista).toBeDefined();
   });
 });

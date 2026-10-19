@@ -201,6 +201,149 @@ export class CreateMetodoPagoDto {
   activo?: boolean;
 }
 
+export class CreateUnidadMedidaDto {
+  @ApiPropertyOptional({ description: 'ID de la empresa tenant (null = global)' })
+  @IsOptional()
+  @IsUUID()
+  empresa_id?: string;
+
+  @ApiProperty({ example: 'UND' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(15)
+  codigo: string;
+
+  @ApiProperty({ example: 'Unidad' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  nombre: string;
+
+  @ApiPropertyOptional({ example: '94' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  codigo_dian?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
+}
+
+export class CreateCategoriaArticuloDto {
+  @ApiPropertyOptional({ description: 'ID de la empresa tenant (null = global)' })
+  @IsOptional()
+  @IsUUID()
+  empresa_id?: string;
+
+  @ApiProperty({ example: 'MERCANCIA' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  codigo: string;
+
+  @ApiProperty({ example: 'Mercancía para la Venta' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  nombre: string;
+
+  @ApiPropertyOptional({ example: '143505' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_inventario?: string;
+
+  @ApiPropertyOptional({ example: '613505' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_costo_venta?: string;
+
+  @ApiPropertyOptional({ example: '513505' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_gasto?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
+}
+
+export class CreateBodegaDto {
+  @ApiPropertyOptional({ description: 'ID de la empresa tenant (null = global)' })
+  @IsOptional()
+  @IsUUID()
+  empresa_id?: string;
+
+  @ApiProperty({ example: 'BOD-01' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  codigo: string;
+
+  @ApiProperty({ example: 'Bodega Principal Central' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  nombre: string;
+
+  @ApiPropertyOptional({ example: 'Carlos Pérez' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  responsable?: string;
+
+  @ApiPropertyOptional({ example: 'Zona Industrial Calle 10 # 45-20' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  direccion?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
+}
+
+export class CreateTipoMovimientoDto {
+  @ApiPropertyOptional({ description: 'ID de la empresa tenant (null = global)' })
+  @IsOptional()
+  @IsUUID()
+  empresa_id?: string;
+
+  @ApiProperty({ example: 'ENT_COMPRA' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  codigo: string;
+
+  @ApiProperty({ example: 'Entrada por Compra / Recepción' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  nombre: string;
+
+  @ApiPropertyOptional({ example: 'ENTRADA' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  naturaleza?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  afecta_costo_promedio?: boolean;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
+}
+
 export class UpdateEstadoParametroDto {
   @ApiProperty({ example: true })
   @IsBoolean()
@@ -275,4 +418,45 @@ export class UpdateParametroDto {
   @IsOptional()
   @IsBoolean()
   exige_referencia?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_inventario?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_costo_venta?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cuenta_gasto?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  responsable?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  direccion?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  naturaleza?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  afecta_costo_promedio?: boolean;
 }

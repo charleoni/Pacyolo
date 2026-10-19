@@ -33,6 +33,13 @@ export interface ParametroItem {
   prefijo?: string;
   consecutivo_actual?: number;
   exige_referencia?: boolean;
+  cuenta_inventario?: string | null;
+  cuenta_costo_venta?: string | null;
+  cuenta_gasto?: string | null;
+  responsable?: string | null;
+  direccion?: string | null;
+  naturaleza?: string | null;
+  afecta_costo_promedio?: boolean;
   activo: boolean;
   es_sistema: boolean;
   en_uso?: boolean;
@@ -116,6 +123,42 @@ export class ParametrosService {
     if (termino) params.q = termino;
     if (departamentoCodigo) params.departamento_codigo = departamentoCodigo;
     return this.http.get<MunicipioItem[]>(`${this.apiUrl}/municipios`, { params });
+  }
+
+  // 9. Unidades de Medida
+  obtenerUnidadesMedida(): Observable<ParametroItem[]> {
+    return this.http.get<ParametroItem[]>(`${this.apiUrl}/unidades-medida`);
+  }
+
+  crearUnidadMedida(data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.post<ParametroItem>(`${this.apiUrl}/unidades-medida`, data);
+  }
+
+  // 10. Categorías de Artículos
+  obtenerCategoriasArticulos(): Observable<ParametroItem[]> {
+    return this.http.get<ParametroItem[]>(`${this.apiUrl}/categorias-articulos`);
+  }
+
+  crearCategoriaArticulo(data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.post<ParametroItem>(`${this.apiUrl}/categorias-articulos`, data);
+  }
+
+  // 11. Bodegas de Almacenamiento
+  obtenerBodegas(): Observable<ParametroItem[]> {
+    return this.http.get<ParametroItem[]>(`${this.apiUrl}/bodegas`);
+  }
+
+  crearBodega(data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.post<ParametroItem>(`${this.apiUrl}/bodegas`, data);
+  }
+
+  // 12. Tipos de Movimientos de Inventario
+  obtenerTiposMovimiento(): Observable<ParametroItem[]> {
+    return this.http.get<ParametroItem[]>(`${this.apiUrl}/tipos-movimiento`);
+  }
+
+  crearTipoMovimiento(data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.post<ParametroItem>(`${this.apiUrl}/tipos-movimiento`, data);
   }
 
   // Activar / Inactivar

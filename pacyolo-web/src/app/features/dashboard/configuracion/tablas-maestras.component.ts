@@ -17,11 +17,15 @@ export type CatalogoTipo =
   | 'tipos-comprobante'
   | 'metodos-pago'
   | 'departamentos-dane'
-  | 'municipios-dane';
+  | 'municipios-dane'
+  | 'unidades-medida'
+  | 'categorias-articulos'
+  | 'bodegas'
+  | 'tipos-movimiento';
 
 export interface CatalogoConfig {
   id: CatalogoTipo;
-  grupoId: 'terceros' | 'contabilidad' | 'geografia';
+  grupoId: 'terceros' | 'contabilidad' | 'geografia' | 'inventarios';
   nombre: string;
   descripcion: string;
   icono: string;
@@ -29,7 +33,7 @@ export interface CatalogoConfig {
 }
 
 export interface GrupoConfig {
-  id: 'terceros' | 'contabilidad' | 'geografia';
+  id: 'terceros' | 'contabilidad' | 'geografia' | 'inventarios';
   nombre: string;
   icono: string;
   descripcion: string;
@@ -226,7 +230,7 @@ export interface GrupoConfig {
                         <td class="py-3 px-4 font-medium text-slate-200">{{ item.nombre }}</td>
                         <td class="py-3 px-4 text-slate-400 text-[11px]">
                           <span *ngIf="item.codigo_dian" class="inline-block mr-2 font-mono">
-                            DIAN: <b class="text-indigo-400">{{ item.codigo_dian }}</b>
+                            DIAN/ISO: <b class="text-indigo-400">{{ item.codigo_dian }}</b>
                           </span>
                           <span *ngIf="item.aplica_digito_verificacion" class="text-emerald-400 font-semibold mr-2">
                             ✓ Aplica DV
@@ -237,8 +241,26 @@ export interface GrupoConfig {
                           <span *ngIf="item.codigo_responsabilidad_dian" class="font-mono text-amber-400 mr-2">
                             Resp: {{ item.codigo_responsabilidad_dian }}
                           </span>
-                          <span *ngIf="item.exige_referencia" class="text-cyan-400 font-medium">
+                          <span *ngIf="item.exige_referencia" class="text-cyan-400 font-medium mr-2">
                             Exige Ref
+                          </span>
+                          <span *ngIf="item.cuenta_inventario" class="font-mono text-indigo-300 mr-2">
+                            Inv: <b>{{ item.cuenta_inventario }}</b>
+                          </span>
+                          <span *ngIf="item.cuenta_costo_venta" class="font-mono text-amber-300 mr-2">
+                            Costo: <b>{{ item.cuenta_costo_venta }}</b>
+                          </span>
+                          <span *ngIf="item.cuenta_gasto" class="font-mono text-rose-300 mr-2">
+                            Gasto: <b>{{ item.cuenta_gasto }}</b>
+                          </span>
+                          <span *ngIf="item.responsable" class="text-slate-300 mr-2">
+                            Resp: <b>{{ item.responsable }}</b>
+                          </span>
+                          <span *ngIf="item.direccion" class="text-slate-400 text-[10px] mr-2">
+                            📍 {{ item.direccion }}
+                          </span>
+                          <span *ngIf="item.naturaleza" class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" [class]="item.naturaleza === 'ENTRADA' ? 'bg-emerald-500/20 text-emerald-300' : (item.naturaleza === 'SALIDA' ? 'bg-rose-500/20 text-rose-300' : 'bg-cyan-500/20 text-cyan-300')">
+                            {{ item.naturaleza }}
                           </span>
                         </td>
                         <td class="py-3 px-4 text-center">
@@ -497,6 +519,91 @@ export interface GrupoConfig {
                 <span>¿Exige número de comprobante o referencia bancaria?</span>
               </label>
             </div>
+
+            <!-- Campos específicos: Unidades de Medida -->
+            <div *ngIf="catalogoActivo === 'unidades-medida'" class="space-y-3">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Código Oficial DIAN / ISO</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.codigo_dian"
+                  placeholder="Ej: 94 para unidad, KGM para kilogramo"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Campos específicos: Categorías de Artículos -->
+            <div *ngIf="catalogoActivo === 'categorias-articulos'" class="space-y-3">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Cuenta Contable Inventario (Activo 14)</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.cuenta_inventario"
+                  placeholder="Ej: 143505 (Mercancías no fabricadas)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Cuenta Costo de Venta (Costo 61/71)</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.cuenta_costo_venta"
+                  placeholder="Ej: 613505 (Comercio)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Cuenta de Gasto (Gasto 51/52)</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.cuenta_gasto"
+                  placeholder="Ej: 513505 (Servicios) o 519530 (Papelería)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Campos específicos: Bodegas -->
+            <div *ngIf="catalogoActivo === 'bodegas'" class="space-y-3">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Responsable / Encargado</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.responsable"
+                  placeholder="Ej: Carlos Pérez (Jefe de Almacén)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Ubicación / Dirección Física</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoRegistro.direccion"
+                  placeholder="Ej: Calle 10 # 45-20 Zona Industrial"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Campos específicos: Tipos de Movimiento -->
+            <div *ngIf="catalogoActivo === 'tipos-movimiento'" class="space-y-3">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Naturaleza del Movimiento</label>
+                <select
+                  [(ngModel)]="nuevoRegistro.naturaleza"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="ENTRADA">📥 ENTRADA (Suma inventario)</option>
+                  <option value="SALIDA">📤 SALIDA (Resta inventario)</option>
+                  <option value="TRASLADO">🔄 TRASLADO (Entre bodegas)</option>
+                </select>
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer text-slate-300 pt-1">
+                <input type="checkbox" [(ngModel)]="nuevoRegistro.afecta_costo_promedio" class="rounded text-indigo-600" />
+                <span>¿Afecta / recalcula el costo promedio ponderado?</span>
+              </label>
+            </div>
           </div>
 
           <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -554,6 +661,12 @@ export class TablasMaestrasComponent implements OnInit {
       nombre: 'División Política DANE',
       icono: '🗺️',
       descripcion: 'Códigos oficiales DANE para localización de terceros y retenciones',
+    },
+    {
+      id: 'inventarios',
+      nombre: 'Inventarios & Abastecimiento',
+      icono: '📦',
+      descripcion: 'Unidades de medida, bodegas, categorías de producto y tipos de movimientos',
     },
   ];
 
@@ -616,6 +729,34 @@ export class TablasMaestrasComponent implements OnInit {
       icono: '📍',
       esGeografico: true,
     },
+    {
+      id: 'unidades-medida',
+      grupoId: 'inventarios',
+      nombre: 'Unidades de Medida',
+      descripcion: 'Unidades de medida oficiales DIAN/ISO (UND, KGM, MTR, GLI, CJ, PAQ)',
+      icono: '📏',
+    },
+    {
+      id: 'categorias-articulos',
+      grupoId: 'inventarios',
+      nombre: 'Categorías de Artículos',
+      descripcion: 'Familias de productos con cuentas contables NIIF (Inventario 14, Costo 61, Gasto 51)',
+      icono: '🏷️',
+    },
+    {
+      id: 'bodegas',
+      grupoId: 'inventarios',
+      nombre: 'Bodegas de Almacenamiento',
+      descripcion: 'Ubicaciones físicas y centros de acopio (Principal, Tienda POS, Averías)',
+      icono: '🏢',
+    },
+    {
+      id: 'tipos-movimiento',
+      grupoId: 'inventarios',
+      nombre: 'Tipos de Movimientos',
+      descripcion: 'Clasificación de movimientos de almacén (Entrada Compra, Ajustes, Mermas, Traslados)',
+      icono: '🔄',
+    },
   ];
 
   nuevoRegistro: any = {
@@ -627,6 +768,13 @@ export class TablasMaestrasComponent implements OnInit {
     codigo_responsabilidad_dian: '',
     prefijo: '',
     exige_referencia: false,
+    cuenta_inventario: '',
+    cuenta_costo_venta: '',
+    cuenta_gasto: '',
+    responsable: '',
+    direccion: '',
+    naturaleza: 'ENTRADA',
+    afecta_costo_promedio: true,
   };
 
   private parametrosService = inject(ParametrosService);
@@ -702,6 +850,18 @@ export class TablasMaestrasComponent implements OnInit {
         break;
       case 'metodos-pago':
         obs = this.parametrosService.obtenerMetodosPago();
+        break;
+      case 'unidades-medida':
+        obs = this.parametrosService.obtenerUnidadesMedida();
+        break;
+      case 'categorias-articulos':
+        obs = this.parametrosService.obtenerCategoriasArticulos();
+        break;
+      case 'bodegas':
+        obs = this.parametrosService.obtenerBodegas();
+        break;
+      case 'tipos-movimiento':
+        obs = this.parametrosService.obtenerTiposMovimiento();
         break;
     }
 
@@ -788,6 +948,13 @@ export class TablasMaestrasComponent implements OnInit {
       codigo_responsabilidad_dian: item.codigo_responsabilidad_dian || '',
       prefijo: item.prefijo || '',
       exige_referencia: !!item.exige_referencia,
+      cuenta_inventario: item.cuenta_inventario || '',
+      cuenta_costo_venta: item.cuenta_costo_venta || '',
+      cuenta_gasto: item.cuenta_gasto || '',
+      responsable: item.responsable || '',
+      direccion: item.direccion || '',
+      naturaleza: item.naturaleza || 'ENTRADA',
+      afecta_costo_promedio: item.afecta_costo_promedio !== undefined ? !!item.afecta_costo_promedio : true,
       en_uso: !!item.en_uso,
       conteo_usos: item.conteo_usos || 0,
     };
@@ -807,6 +974,13 @@ export class TablasMaestrasComponent implements OnInit {
       codigo_responsabilidad_dian: '',
       prefijo: '',
       exige_referencia: false,
+      cuenta_inventario: '',
+      cuenta_costo_venta: '',
+      cuenta_gasto: '',
+      responsable: '',
+      direccion: '',
+      naturaleza: 'ENTRADA',
+      afecta_costo_promedio: true,
       en_uso: false,
       conteo_usos: 0,
     };
@@ -853,6 +1027,27 @@ export class TablasMaestrasComponent implements OnInit {
       if (this.nuevoRegistro.exige_referencia !== undefined) {
         payloadUpdate.exige_referencia = !!this.nuevoRegistro.exige_referencia;
       }
+      if (this.nuevoRegistro.cuenta_inventario !== undefined) {
+        payloadUpdate.cuenta_inventario = this.nuevoRegistro.cuenta_inventario ? this.nuevoRegistro.cuenta_inventario.trim() : null;
+      }
+      if (this.nuevoRegistro.cuenta_costo_venta !== undefined) {
+        payloadUpdate.cuenta_costo_venta = this.nuevoRegistro.cuenta_costo_venta ? this.nuevoRegistro.cuenta_costo_venta.trim() : null;
+      }
+      if (this.nuevoRegistro.cuenta_gasto !== undefined) {
+        payloadUpdate.cuenta_gasto = this.nuevoRegistro.cuenta_gasto ? this.nuevoRegistro.cuenta_gasto.trim() : null;
+      }
+      if (this.nuevoRegistro.responsable !== undefined) {
+        payloadUpdate.responsable = this.nuevoRegistro.responsable ? this.nuevoRegistro.responsable.trim() : null;
+      }
+      if (this.nuevoRegistro.direccion !== undefined) {
+        payloadUpdate.direccion = this.nuevoRegistro.direccion ? this.nuevoRegistro.direccion.trim() : null;
+      }
+      if (this.nuevoRegistro.naturaleza !== undefined) {
+        payloadUpdate.naturaleza = this.nuevoRegistro.naturaleza;
+      }
+      if (this.nuevoRegistro.afecta_costo_promedio !== undefined) {
+        payloadUpdate.afecta_costo_promedio = !!this.nuevoRegistro.afecta_costo_promedio;
+      }
 
       this.parametrosService
         .actualizarParametro(this.catalogoActivo, this.idEditando()!, payloadUpdate)
@@ -897,6 +1092,18 @@ export class TablasMaestrasComponent implements OnInit {
         break;
       case 'metodos-pago':
         obs = this.parametrosService.crearMetodoPago(payload);
+        break;
+      case 'unidades-medida':
+        obs = this.parametrosService.crearUnidadMedida(payload);
+        break;
+      case 'categorias-articulos':
+        obs = this.parametrosService.crearCategoriaArticulo(payload);
+        break;
+      case 'bodegas':
+        obs = this.parametrosService.crearBodega(payload);
+        break;
+      case 'tipos-movimiento':
+        obs = this.parametrosService.crearTipoMovimiento(payload);
         break;
     }
 

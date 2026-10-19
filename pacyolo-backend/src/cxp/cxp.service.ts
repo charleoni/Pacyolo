@@ -378,5 +378,248 @@ export class CxpService {
       order: { created_at: 'DESC' },
     });
   }
+
+  // =========================================================================
+  // REPORTES ANALÍTICOS DE CXP & PROVEEDORES (SPRINT 8)
+  // =========================================================================
+
+  async obtenerEstadoCuentaProveedor(empresaId: string, proveedorId: string): Promise<any> {
+    const proveedor = await this.terceroRepo.findOne({ where: { id: proveedorId, empresa_id: empresaId } });
+    if (!proveedor) {
+      throw new NotFoundException(`El proveedor con ID ${proveedorId} no existe.`);
+    }
+
+    const facturas = await this.cxpRepo.find({
+      where: {
+        empresa_id: empresaId,
+        tercero_id: proveedorId,
+      },
+      relations: { asiento: true },
+      order: { fecha_vencimiento: 'ASC' },
+    });
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let saldoTotal = 0;
+    let totalVencido = 0;
+    let totalCorriente = 0;
+
+    const facturasDetalle = facturas.map((f) => {
+      const saldo = Number(f.saldo_pendiente);
+      const fechaVenc = new Date(f.fecha_vencimiento);
+      fechaVenc.setHours(0, 0, 0, 0);
+
+      const diffTime = hoy.getTime() - fechaVenc.getTime();
+      const diffDias = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diasMora = diffDias > 0 ? diffDias : 0;
+      const esVencida = diffDias > 0 && saldo > 0;
+
+      saldoTotal += saldo;
+      if (esVencida) {
+        totalVencido += saldo;
+      } else {
+        totalCorriente += saldo;
+      }
+
+      return {
+        id: f.id,
+        numero_factura_proveedor: f.numero_factura_proveedor,
+        fecha_emision: f.fecha_emision,
+        fecha_vencimiento: f.fecha_vencimiento,
+        subtotal: Number(f.subtotal),
+        total_impuestos: Number((Number(f.total_iva || 0) + Number(f.total_retenciones || 0)).toFixed(2)),
+        total_factura: Number(f.monto_total),
+        abonos: Number((Number(f.monto_total) - saldo).toFixed(2)),
+        saldo_pendiente: saldo,
+        dias_mora: diasMora,
+        es_vencida: esVencida,
+        estado: f.estado,
+        comprobante: f.asiento?.numero_comprobante || null,
+      };
+    });
+
+    return {
+      proveedor: {
+        id: proveedor.id,
+        numero_identificacion: proveedor.numero_identificacion,
+        dv: proveedor.digito_verificacion ?? null,
+        nombre_completo: proveedor.nombre_completo,
+        email: proveedor.email,
+        telefono: proveedor.telefono,
+        direccion: proveedor.direccion,
+      },
+      resumen: {
+        saldo_total: Number(saldoTotal.toFixed(2)),
+        total_vencido: Number(totalVencido.toFixed(2)),
+        total_corriente: Number(totalCorriente.toFixed(2)),
+        conteo_facturas: facturas.length,
+        conteo_pendientes: facturas.filter((f) => Number(f.saldo_pendiente) > 0).length,
+      },
+      facturas: facturasDetalle,
+    };
+  }
+
+  async obtenerExtractoProveedor(empresaId: string, proveedorId: string, desde?: string, hasta?: string): Promise<any> {
+    const proveedor = await this.terceroRepo.findOne({ where: { id: proveedorId, empresa_id: empresaId } });
+    if (!proveedor) {
+      throw new NotFoundException(`El proveedor con ID ${proveedorId} no existe.`);
+    }
+
+    const qbFacturas = this.cxpRepo.createQueryBuilder('cxp')
+      .leftJoinAndSelect('cxp.asiento', 'asiento')
+      .where('cxp.empresa_id = :empresaId AND cxp.tercero_id = :proveedorId', { empresaId, proveedorId });
+    if (desde) qbFacturas.andWhere('cxp.fecha_emision >= :desde', { desde });
+    if (hasta) qbFacturas.andWhere('cxp.fecha_emision <= :hasta', { hasta });
+    const facturas = await qbFacturas.getMany();
+
+    const qbPagos = this.pagoRepo.createQueryBuilder('pago')
+      .leftJoinAndSelect('pago.asiento', 'asiento')
+      .leftJoinAndSelect('pago.cuenta_por_pagar', 'cxp')
+      .where('pago.empresa_id = :empresaId AND cxp.tercero_id = :proveedorId', { empresaId, proveedorId });
+    if (desde) qbPagos.andWhere('pago.fecha_pago >= :desde', { desde });
+    if (hasta) qbPagos.andWhere('pago.fecha_pago <= :hasta', { hasta });
+    const pagos = await qbPagos.getMany();
+
+    const movimientos: any[] = [];
+
+    for (const f of facturas) {
+      movimientos.push({
+        id: f.id,
+        tipo: 'FACTURA_COMPRA',
+        fecha: f.fecha_emision,
+        documento_referencia: f.numero_factura_proveedor,
+        comprobante: f.asiento?.numero_comprobante || null,
+        concepto: `Causación Factura Proveedor ${f.numero_factura_proveedor}`,
+        debito: 0,
+        credito: Number(f.monto_total),
+      });
+    }
+
+    for (const p of pagos) {
+      movimientos.push({
+        id: p.id,
+        tipo: 'PAGO_EGRESO',
+        fecha: p.fecha_pago,
+        documento_referencia: p.referencia_transaccion || `PAGO-${p.id.slice(0, 8)}`,
+        comprobante: p.asiento?.numero_comprobante || null,
+        concepto: p.glosa || `Pago Factura ${p.cuenta_por_pagar?.numero_factura_proveedor}`,
+        debito: Number(p.monto_pagado),
+        credito: 0,
+      });
+    }
+
+    movimientos.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+    let saldoAcumulado = 0;
+    const movimientosConSaldo = movimientos.map((m) => {
+      saldoAcumulado = Number((saldoAcumulado + m.credito - m.debito).toFixed(2));
+      return {
+        ...m,
+        saldo_acumulado: saldoAcumulado,
+      };
+    });
+
+    return {
+      proveedor: {
+        id: proveedor.id,
+        numero_identificacion: proveedor.numero_identificacion,
+        dv: proveedor.digito_verificacion ?? null,
+        nombre_completo: proveedor.nombre_completo,
+      },
+      desde: desde || null,
+      hasta: hasta || null,
+      total_cargos_facturas: Number(facturas.reduce((acc, f) => acc + Number(f.monto_total), 0).toFixed(2)),
+      total_abonos_pagos: Number(pagos.reduce((acc, p) => acc + Number(p.monto_pagado), 0).toFixed(2)),
+      saldo_final: saldoAcumulado,
+      movimientos: movimientosConSaldo,
+    };
+  }
+
+  async obtenerAnalisisEdadesCartera(empresaId: string): Promise<any> {
+    const facturas = await this.cxpRepo.find({
+      where: { empresa_id: empresaId },
+      relations: { tercero: true },
+      order: { fecha_vencimiento: 'ASC' },
+    });
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const proveedoresMap = new Map<string, any>();
+
+    let totalGlobalCorriente = 0;
+    let totalGlobal1a30 = 0;
+    let totalGlobal31a60 = 0;
+    let totalGlobal61a90 = 0;
+    let totalGlobalMas90 = 0;
+    let totalGlobalDeuda = 0;
+
+    for (const f of facturas) {
+      const saldo = Number(f.saldo_pendiente);
+      if (saldo <= 0) continue;
+
+      const provId = f.tercero_id;
+      if (!proveedoresMap.has(provId)) {
+        proveedoresMap.set(provId, {
+          proveedor_id: provId,
+          numero_identificacion: f.tercero?.numero_identificacion || '',
+          dv: f.tercero?.digito_verificacion ?? null,
+          nombre_completo: f.tercero?.nombre_completo || 'Proveedor Desconocido',
+          corriente: 0,
+          dias_1_30: 0,
+          dias_31_60: 0,
+          dias_61_90: 0,
+          dias_mas_90: 0,
+          total_proveedor: 0,
+          facturas_abiertas: 0,
+        });
+      }
+
+      const provData = proveedoresMap.get(provId);
+      provData.facturas_abiertas += 1;
+      provData.total_proveedor = Number((provData.total_proveedor + saldo).toFixed(2));
+      totalGlobalDeuda = Number((totalGlobalDeuda + saldo).toFixed(2));
+
+      const fechaVenc = new Date(f.fecha_vencimiento);
+      fechaVenc.setHours(0, 0, 0, 0);
+      const diffTime = hoy.getTime() - fechaVenc.getTime();
+      const diffDias = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDias <= 0) {
+        provData.corriente = Number((provData.corriente + saldo).toFixed(2));
+        totalGlobalCorriente = Number((totalGlobalCorriente + saldo).toFixed(2));
+      } else if (diffDias <= 30) {
+        provData.dias_1_30 = Number((provData.dias_1_30 + saldo).toFixed(2));
+        totalGlobal1a30 = Number((totalGlobal1a30 + saldo).toFixed(2));
+      } else if (diffDias <= 60) {
+        provData.dias_31_60 = Number((provData.dias_31_60 + saldo).toFixed(2));
+        totalGlobal31a60 = Number((totalGlobal31a60 + saldo).toFixed(2));
+      } else if (diffDias <= 90) {
+        provData.dias_61_90 = Number((provData.dias_61_90 + saldo).toFixed(2));
+        totalGlobal61a90 = Number((totalGlobal61a90 + saldo).toFixed(2));
+      } else {
+        provData.dias_mas_90 = Number((provData.dias_mas_90 + saldo).toFixed(2));
+        totalGlobalMas90 = Number((totalGlobalMas90 + saldo).toFixed(2));
+      }
+    }
+
+    const proveedores = Array.from(proveedoresMap.values()).sort(
+      (a, b) => b.total_proveedor - a.total_proveedor,
+    );
+
+    return {
+      totales_globales: {
+        total_corriente: totalGlobalCorriente,
+        total_1_a_30: totalGlobal1a30,
+        total_31_a_60: totalGlobal31a60,
+        total_61_a_90: totalGlobal61a90,
+        total_mas_90: totalGlobalMas90,
+        total_cartera: totalGlobalDeuda,
+        conteo_proveedores: proveedores.length,
+      },
+      proveedores,
+    };
+  }
 }
 

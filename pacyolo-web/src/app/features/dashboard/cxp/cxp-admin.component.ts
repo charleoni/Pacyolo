@@ -104,118 +104,572 @@ interface PagoHistorial {
         </div>
       </div>
 
-      <!-- Tarjetas de Cartera Ejecutiva -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
-          <span class="text-xs font-medium text-slate-400">Total Deuda a Proveedores</span>
-          <p class="text-2xl font-bold text-white mt-1">
-            {{ cartera()?.total_cartera || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
-          </p>
-          <span class="text-[11px] text-slate-500">{{ cartera()?.conteo_facturas || 0 }} facturas abiertas</span>
-        </div>
+      <!-- Pestañas de CxP & Reportes Analíticos -->
+      <div class="flex items-center gap-1 border-b border-slate-800 pb-px overflow-x-auto text-xs">
+        <button
+          type="button"
+          (click)="pestanaCxp.set('facturas')"
+          [class]="pestanaCxp() === 'facturas' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
+          class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
+        >
+          <span>📄 Cartera de Facturas & Pagos</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+            {{ facturas().length }}
+          </span>
+        </button>
 
-        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
-          <span class="text-xs font-medium text-slate-400">Cartera Por Vencer</span>
-          <p class="text-2xl font-bold text-emerald-400 mt-1">
-            {{ cartera()?.total_por_vencer || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
-          </p>
-          <span class="text-[11px] text-slate-500">Dentro del plazo comercial</span>
-        </div>
+        <button
+          type="button"
+          (click)="pestanaCxp.set('estado_cuenta'); autoSeleccionarProveedorEstado()"
+          [class]="pestanaCxp() === 'estado_cuenta' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
+          class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
+        >
+          <span>📑 Estado de Cuenta por Proveedor</span>
+        </button>
 
-        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
-          <span class="text-xs font-medium text-slate-400">Cartera Vencida</span>
-          <p class="text-2xl font-bold text-rose-400 mt-1">
-            {{ cartera()?.total_vencida || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
-          </p>
-          <span class="text-[11px] text-slate-500">Requiere pago prioritario</span>
-        </div>
+        <button
+          type="button"
+          (click)="pestanaCxp.set('extracto'); autoSeleccionarProveedorExtracto()"
+          [class]="pestanaCxp() === 'extracto' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
+          class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
+        >
+          <span>⏱️ Extracto Cronológico</span>
+        </button>
 
-        <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
-          <span class="text-xs font-medium text-slate-400">Conceptos Operativos</span>
-          <p class="text-2xl font-bold text-indigo-400 mt-1">{{ conceptos().length }}</p>
-          <span class="text-[11px] text-slate-500">Mapeos contables activos</span>
-        </div>
+        <button
+          type="button"
+          (click)="pestanaCxp.set('edades'); cargarEdadesCartera()"
+          [class]="pestanaCxp() === 'edades' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
+          class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
+        >
+          <span>📊 Matriz de Vencimiento por Edades</span>
+        </button>
       </div>
 
-      <!-- Tabla de Facturas CxP -->
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
-              <tr>
-                <th class="py-3 px-4">Factura Proveedor</th>
-                <th class="py-3 px-4">Proveedor</th>
-                <th class="py-3 px-4">Emisión / Vencimiento</th>
-                <th class="py-3 px-4 text-right">Total Factura</th>
-                <th class="py-3 px-4 text-right">Saldo Pendiente</th>
-                <th class="py-3 px-4 text-center">Estado</th>
-                <th class="py-3 px-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800/60">
-              @for (cxp of facturas(); track cxp.id) {
-                <tr class="hover:bg-slate-800/30 transition">
-                  <td class="py-3 px-4 font-mono font-bold text-white">
-                    {{ cxp.numero_factura_proveedor }}
-                    <span *ngIf="cxp.asiento?.numero_comprobante" class="block text-[10px] text-slate-500 font-mono font-normal">
-                      Asiento: {{ cxp.asiento?.numero_comprobante }}
-                    </span>
-                  </td>
-                  <td class="py-3 px-4">
-                    <span class="font-medium text-slate-200 block">{{ cxp.tercero?.nombre_completo }}</span>
-                    <span class="text-[10px] text-slate-500 font-mono">{{ cxp.tercero?.numero_identificacion }}</span>
-                  </td>
-                  <td class="py-3 px-4 font-mono text-[11px]">
-                    <span class="text-slate-400 block">{{ cxp.fecha_emision }}</span>
-                    <span [class]="esVencida(cxp.fecha_vencimiento, cxp.saldo_pendiente) ? 'text-rose-400 font-bold' : 'text-slate-500'">
-                      Vence: {{ cxp.fecha_vencimiento }}
-                    </span>
-                  </td>
-                  <td class="py-3 px-4 text-right font-mono text-white">
-                    {{ cxp.total_factura | currency:'COP':'symbol-narrow':'1.0-0' }}
-                  </td>
-                  <td class="py-3 px-4 text-right font-mono font-bold" [class]="cxp.saldo_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'">
-                    {{ cxp.saldo_pendiente | currency:'COP':'symbol-narrow':'1.0-0' }}
-                  </td>
-                  <td class="py-3 px-4 text-center">
-                    <span
-                      [ngClass]="{
-                        'bg-amber-500/10 text-amber-400 border-amber-500/20': cxp.estado === 'PENDIENTE',
-                        'bg-blue-500/10 text-blue-400 border-blue-500/20': cxp.estado === 'PAGADA_PARCIAL',
-                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20': cxp.estado === 'PAGADA_TOTAL'
-                      }"
-                      class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
-                    >
-                      {{ cxp.estado }}
-                    </span>
-                  </td>
-                  <td class="py-3 px-4 text-right whitespace-nowrap space-x-1.5">
-                    <button
-                      *ngIf="cxp.saldo_pendiente > 0"
-                      (click)="abrirModalPago(cxp)"
-                      class="px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition"
-                    >
-                      Pagar (EGR)
-                    </button>
-                    <button
-                      (click)="verHistorialPagos(cxp)"
-                      class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
-                    >
-                      Pagos
-                    </button>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="7" class="py-12 text-center text-slate-500 text-xs">
-                    No hay facturas de proveedores causadas todavía en esta empresa.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      <!-- ========================================================================= -->
+      <!-- PESTAÑA 1: CARTERA DE FACTURAS & PAGOS                                    -->
+      <!-- ========================================================================= -->
+      @if (pestanaCxp() === 'facturas') {
+        <div class="space-y-6">
+          <!-- Tarjetas de Cartera Ejecutiva -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+              <span class="text-xs font-medium text-slate-400">Total Deuda a Proveedores</span>
+              <p class="text-2xl font-bold text-white mt-1">
+                {{ cartera()?.total_cartera || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </p>
+              <span class="text-[11px] text-slate-500">{{ cartera()?.conteo_facturas || 0 }} facturas abiertas</span>
+            </div>
+
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+              <span class="text-xs font-medium text-slate-400">Cartera Por Vencer</span>
+              <p class="text-2xl font-bold text-emerald-400 mt-1">
+                {{ cartera()?.total_por_vencer || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </p>
+              <span class="text-[11px] text-slate-500">Dentro del plazo comercial</span>
+            </div>
+
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+              <span class="text-xs font-medium text-slate-400">Cartera Vencida</span>
+              <p class="text-2xl font-bold text-rose-400 mt-1">
+                {{ cartera()?.total_vencida || 0 | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </p>
+              <span class="text-[11px] text-slate-500">Requiere pago prioritario</span>
+            </div>
+
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+              <span class="text-xs font-medium text-slate-400">Conceptos Operativos</span>
+              <p class="text-2xl font-bold text-indigo-400 mt-1">{{ conceptos().length }}</p>
+              <span class="text-[11px] text-slate-500">Mapeos contables activos</span>
+            </div>
+          </div>
+
+          <!-- Tabla de Facturas CxP -->
+          <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Factura Proveedor</th>
+                    <th class="py-3 px-4">Proveedor</th>
+                    <th class="py-3 px-4">Emisión / Vencimiento</th>
+                    <th class="py-3 px-4 text-right">Total Factura</th>
+                    <th class="py-3 px-4 text-right">Saldo Pendiente</th>
+                    <th class="py-3 px-4 text-center">Estado</th>
+                    <th class="py-3 px-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  @for (cxp of facturas(); track cxp.id) {
+                    <tr class="hover:bg-slate-800/30 transition">
+                      <td class="py-3 px-4 font-mono font-bold text-white">
+                        {{ cxp.numero_factura_proveedor }}
+                        <span *ngIf="cxp.asiento?.numero_comprobante" class="block text-[10px] text-slate-500 font-mono font-normal">
+                          Asiento: {{ cxp.asiento?.numero_comprobante }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-4">
+                        <span class="font-medium text-slate-200 block">{{ cxp.tercero?.nombre_completo }}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">{{ cxp.tercero?.numero_identificacion }}</span>
+                      </td>
+                      <td class="py-3 px-4 font-mono text-[11px]">
+                        <span class="text-slate-400 block">{{ cxp.fecha_emision }}</span>
+                        <span [class]="esVencida(cxp.fecha_vencimiento, cxp.saldo_pendiente) ? 'text-rose-400 font-bold' : 'text-slate-500'">
+                          Vence: {{ cxp.fecha_vencimiento }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-4 text-right font-mono text-white">
+                        {{ cxp.total_factura | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right font-mono font-bold" [class]="cxp.saldo_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'">
+                        {{ cxp.saldo_pendiente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-center">
+                        <span
+                          [ngClass]="{
+                            'bg-amber-500/10 text-amber-400 border-amber-500/20': cxp.estado === 'PENDIENTE',
+                            'bg-blue-500/10 text-blue-400 border-blue-500/20': cxp.estado === 'PAGADA_PARCIAL',
+                            'bg-emerald-500/10 text-emerald-400 border-emerald-500/20': cxp.estado === 'PAGADA_TOTAL'
+                          }"
+                          class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
+                        >
+                          {{ cxp.estado }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-4 text-right whitespace-nowrap space-x-1.5">
+                        <button
+                          *ngIf="cxp.saldo_pendiente > 0"
+                          (click)="abrirModalPago(cxp)"
+                          class="px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition cursor-pointer"
+                        >
+                          Pagar (EGR)
+                        </button>
+                        <button
+                          (click)="verHistorialPagos(cxp)"
+                          class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer"
+                        >
+                          Pagos
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="py-12 text-center text-slate-500 text-xs">
+                        No hay facturas de proveedores causadas todavía en esta empresa.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      }
+
+      <!-- ========================================================================= -->
+      <!-- PESTAÑA 2: ESTADO DE CUENTA POR PROVEEDOR                                 -->
+      <!-- ========================================================================= -->
+      @if (pestanaCxp() === 'estado_cuenta') {
+        <div class="space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3 flex-1">
+              <label class="text-xs font-semibold text-slate-300 whitespace-nowrap">Proveedor:</label>
+              <select
+                [(ngModel)]="proveedorSeleccionadoEstado"
+                (change)="cargarEstadoCuenta()"
+                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 flex-1 max-w-md"
+              >
+                <option value="">-- Seleccionar Proveedor para Estado de Cuenta --</option>
+                @for (p of proveedores(); track p.id) {
+                  <option [value]="p.id">{{ p.numero_identificacion }} - {{ p.nombre_completo }}</option>
+                }
+              </select>
+            </div>
+
+            <button
+              (click)="imprimirReporte()"
+              class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <span>🖨️ Imprimir Estado de Cuenta</span>
+            </button>
+          </div>
+
+          @if (datosEstadoCuenta()) {
+            <!-- Tarjetas de Resumen del Proveedor -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Saldo Total Pendiente</span>
+                <p class="text-2xl font-bold text-white mt-1">
+                  {{ datosEstadoCuenta().resumen.saldo_total | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+                <span class="text-[11px] text-slate-500">{{ datosEstadoCuenta().resumen.conteo_pendientes }} facturas por cancelar</span>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Deuda en Mora (Vencida)</span>
+                <p class="text-2xl font-bold text-rose-400 mt-1">
+                  {{ datosEstadoCuenta().resumen.total_vencido | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+                <span class="text-[11px] text-rose-400/80">Plazo comercial expirado</span>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Deuda Corriente (Al Día)</span>
+                <p class="text-2xl font-bold text-emerald-400 mt-1">
+                  {{ datosEstadoCuenta().resumen.total_corriente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+                <span class="text-[11px] text-emerald-400/80">Dentro de la fecha límite</span>
+              </div>
+            </div>
+
+            <!-- Tabla de Facturas del Proveedor -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
+              <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <div>
+                  <h4 class="text-sm font-bold text-white">{{ datosEstadoCuenta().proveedor.nombre_completo }}</h4>
+                  <p class="text-xs text-slate-400 font-mono">
+                    NIT: {{ datosEstadoCuenta().proveedor.numero_identificacion }}{{ datosEstadoCuenta().proveedor.dv !== null ? '-' + datosEstadoCuenta().proveedor.dv : '' }} | {{ datosEstadoCuenta().proveedor.email || 'Sin correo' }} | {{ datosEstadoCuenta().proveedor.telefono || 'Sin teléfono' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                  <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                    <tr>
+                      <th class="py-3 px-4">Factura N°</th>
+                      <th class="py-3 px-4">Emisión</th>
+                      <th class="py-3 px-4">Vencimiento</th>
+                      <th class="py-3 px-4 text-center">Días de Mora</th>
+                      <th class="py-3 px-4 text-right">Total Factura</th>
+                      <th class="py-3 px-4 text-right">Abonos</th>
+                      <th class="py-3 px-4 text-right">Saldo Pendiente</th>
+                      <th class="py-3 px-4 text-center">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/60 font-mono">
+                    @for (fac of datosEstadoCuenta().facturas; track fac.id) {
+                      <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 font-bold text-white">
+                          {{ fac.numero_factura_proveedor }}
+                          <span *ngIf="fac.comprobante" class="block text-[10px] text-slate-500 font-normal">
+                            Asiento: {{ fac.comprobante }}
+                          </span>
+                        </td>
+                        <td class="py-3 px-4 text-slate-400 font-sans">{{ fac.fecha_emision }}</td>
+                        <td class="py-3 px-4 font-sans" [class]="fac.es_vencida ? 'text-rose-400 font-bold' : 'text-slate-300'">
+                          {{ fac.fecha_vencimiento }}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                          <span
+                            [class]="fac.dias_mora > 0 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 font-bold' : 'bg-slate-800 text-slate-400'"
+                            class="px-2 py-0.5 rounded-full text-[10px] border"
+                          >
+                            {{ fac.dias_mora > 0 ? fac.dias_mora + ' días' : 'Al día' }}
+                          </span>
+                        </td>
+                        <td class="py-3 px-4 text-right text-white">
+                          {{ fac.total_factura | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-emerald-400">
+                          {{ fac.abonos | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold" [class]="fac.saldo_pendiente > 0 ? 'text-amber-400' : 'text-emerald-400'">
+                          {{ fac.saldo_pendiente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        </td>
+                        <td class="py-3 px-4 text-center font-sans">
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300">
+                            {{ fac.estado }}
+                          </span>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="8" class="py-8 text-center text-slate-500 font-sans">
+                          Este proveedor no tiene facturas registradas.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ========================================================================= -->
+      <!-- PESTAÑA 3: EXTRACTO CRONOLÓGICO DE PROVEEDOR                              -->
+      <!-- ========================================================================= -->
+      @if (pestanaCxp() === 'extracto') {
+        <div class="space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-3 flex-1 min-w-[280px]">
+              <label class="font-semibold text-slate-300 whitespace-nowrap">Proveedor:</label>
+              <select
+                [(ngModel)]="proveedorSeleccionadoExtracto"
+                (change)="cargarExtracto()"
+                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 w-full"
+              >
+                <option value="">-- Seleccionar Proveedor --</option>
+                @for (p of proveedores(); track p.id) {
+                  <option [value]="p.id">{{ p.numero_identificacion }} - {{ p.nombre_completo }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <label class="text-slate-400">Desde:</label>
+              <input type="date" [(ngModel)]="extractoDesde" (change)="cargarExtracto()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-white" />
+              <label class="text-slate-400">Hasta:</label>
+              <input type="date" [(ngModel)]="extractoHasta" (change)="cargarExtracto()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-white" />
+            </div>
+
+            <button
+              (click)="imprimirReporte()"
+              class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <span>🖨️ Imprimir Extracto</span>
+            </button>
+          </div>
+
+          @if (datosExtracto()) {
+            <!-- Resumen de Movimientos -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Total Facturado (Cargos)</span>
+                <p class="text-2xl font-bold text-white mt-1">
+                  {{ datosExtracto().total_cargos_facturas | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Total Pagado (Abonos EGR)</span>
+                <p class="text-2xl font-bold text-emerald-400 mt-1">
+                  {{ datosExtracto().total_abonos_pagos | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Saldo Final Acumulado</span>
+                <p class="text-2xl font-bold text-amber-400 mt-1">
+                  {{ datosExtracto().saldo_final | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Tabla de Libro Auxiliar / Extracto -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                  <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                    <tr>
+                      <th class="py-3 px-4">Fecha</th>
+                      <th class="py-3 px-4">Tipo Documento</th>
+                      <th class="py-3 px-4">Referencia / Comprobante</th>
+                      <th class="py-3 px-4">Concepto / Glosa</th>
+                      <th class="py-3 px-4 text-right">Débito (Pago)</th>
+                      <th class="py-3 px-4 text-right">Crédito (Factura)</th>
+                      <th class="py-3 px-4 text-right">Saldo Acumulado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/60 font-mono">
+                    @for (mov of datosExtracto().movimientos; track mov.id) {
+                      <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 text-slate-400 font-sans">{{ mov.fecha }}</td>
+                        <td class="py-3 px-4 font-sans">
+                          <span
+                            [class]="mov.tipo === 'FACTURA_COMPRA' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                          >
+                            {{ mov.tipo === 'FACTURA_COMPRA' ? '📥 FACTURA' : '💸 PAGO EGR' }}
+                          </span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-white">
+                          {{ mov.documento_referencia }}
+                          <span *ngIf="mov.comprobante" class="block text-[10px] text-slate-500 font-normal">
+                            Asiento: {{ mov.comprobante }}
+                          </span>
+                        </td>
+                        <td class="py-3 px-4 font-sans text-slate-300 max-w-xs truncate">{{ mov.concepto }}</td>
+                        <td class="py-3 px-4 text-right text-emerald-400">
+                          {{ mov.debito > 0 ? (mov.debito | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-white">
+                          {{ mov.credito > 0 ? (mov.credito | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold text-amber-400">
+                          {{ mov.saldo_acumulado | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-500 font-sans">
+                          No hay movimientos registrados para este proveedor.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ========================================================================= -->
+      <!-- PESTAÑA 4: ANÁLISIS DE CARTERA POR EDADES DE VENCIMIENTO                   -->
+      <!-- ========================================================================= -->
+      @if (pestanaCxp() === 'edades') {
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-slate-400">
+              Antigüedad y vencimiento de saldos adeudados a proveedores distribuidos por franjas de tiempo.
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="cargarEdadesCartera()"
+                class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+              >
+                <span>🔄 Recalcular</span>
+              </button>
+              <button
+                (click)="imprimirReporte()"
+                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+              >
+                <span>🖨️ Imprimir Matriz</span>
+              </button>
+            </div>
+          </div>
+
+          @if (datosEdades()) {
+            <!-- Tarjetas de Franjas -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span class="text-[11px] text-emerald-400 font-semibold">Corriente (Al Día)</span>
+                <p class="text-lg font-bold text-white mt-1">
+                  {{ datosEdades().totales_globales.total_corriente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span class="text-[11px] text-amber-400 font-semibold">1 a 30 Días</span>
+                <p class="text-lg font-bold text-amber-300 mt-1">
+                  {{ datosEdades().totales_globales.total_1_a_30 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span class="text-[11px] text-orange-400 font-semibold">31 a 60 Días</span>
+                <p class="text-lg font-bold text-orange-300 mt-1">
+                  {{ datosEdades().totales_globales.total_31_a_60 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span class="text-[11px] text-rose-400 font-semibold">61 a 90 Días</span>
+                <p class="text-lg font-bold text-rose-300 mt-1">
+                  {{ datosEdades().totales_globales.total_61_a_90 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span class="text-[11px] text-red-500 font-semibold">+90 Días (Crítico)</span>
+                <p class="text-lg font-bold text-red-400 mt-1">
+                  {{ datosEdades().totales_globales.total_mas_90 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+
+              <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-xl p-3">
+                <span class="text-[11px] text-indigo-300 font-bold uppercase tracking-wider">Total Cartera</span>
+                <p class="text-lg font-bold text-white mt-1">
+                  {{ datosEdades().totales_globales.total_cartera | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Matriz Tabulada por Proveedor -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300 font-mono">
+                  <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                    <tr>
+                      <th class="py-3 px-4 font-sans text-left">Proveedor</th>
+                      <th class="py-3 px-4 text-center font-sans">Facturas</th>
+                      <th class="py-3 px-4 text-right text-emerald-400 font-sans">Corriente</th>
+                      <th class="py-3 px-4 text-right text-amber-400 font-sans">1 - 30 d</th>
+                      <th class="py-3 px-4 text-right text-orange-400 font-sans">31 - 60 d</th>
+                      <th class="py-3 px-4 text-right text-rose-400 font-sans">61 - 90 d</th>
+                      <th class="py-3 px-4 text-right text-red-400 font-sans">+90 d</th>
+                      <th class="py-3 px-4 text-right text-white font-bold font-sans">Total Deuda</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/60">
+                    @for (prov of datosEdades().proveedores; track prov.proveedor_id) {
+                      <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 font-sans">
+                          <span class="font-bold text-white block">{{ prov.nombre_completo }}</span>
+                          <span class="text-[10px] text-slate-500 font-mono">NIT: {{ prov.numero_identificacion }}{{ prov.dv !== null ? '-' + prov.dv : '' }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-center text-slate-400">{{ prov.facturas_abiertas }}</td>
+                        <td class="py-3 px-4 text-right text-emerald-300">
+                          {{ prov.corriente > 0 ? (prov.corriente | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-amber-300">
+                          {{ prov.dias_1_30 > 0 ? (prov.dias_1_30 | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-orange-300">
+                          {{ prov.dias_31_60 > 0 ? (prov.dias_31_60 | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-rose-300">
+                          {{ prov.dias_61_90 > 0 ? (prov.dias_61_90 | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right text-red-400 font-bold">
+                          {{ prov.dias_mas_90 > 0 ? (prov.dias_mas_90 | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold text-white text-sm">
+                          {{ prov.total_proveedor | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="8" class="py-8 text-center text-slate-500 font-sans">
+                          No existen saldos pendientes de pago a proveedores.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <!-- Fila de Totales -->
+                  <tfoot class="bg-slate-950 font-bold border-t-2 border-slate-700 text-white">
+                    <tr>
+                      <td class="py-3 px-4 font-sans">TOTALES CONSOLIDADOS</td>
+                      <td class="py-3 px-4 text-center">{{ datosEdades().proveedores.length }} prov.</td>
+                      <td class="py-3 px-4 text-right text-emerald-400">
+                        {{ datosEdades().totales_globales.total_corriente | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right text-amber-400">
+                        {{ datosEdades().totales_globales.total_1_a_30 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right text-orange-400">
+                        {{ datosEdades().totales_globales.total_31_a_60 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right text-rose-400">
+                        {{ datosEdades().totales_globales.total_61_a_90 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right text-red-400">
+                        {{ datosEdades().totales_globales.total_mas_90 | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                      <td class="py-3 px-4 text-right text-indigo-400 text-sm">
+                        {{ datosEdades().totales_globales.total_cartera | currency:'COP':'symbol-narrow':'1.0-0' }}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       <!-- Modal Causar Factura CxP -->
       <div *ngIf="mostrarModalCausar()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
@@ -501,12 +955,24 @@ interface PagoHistorial {
   `,
 })
 export class CxpAdminComponent implements OnInit {
+  pestanaCxp = signal<'facturas' | 'estado_cuenta' | 'extracto' | 'edades'>('facturas');
   facturas = signal<CuentaPorPagarItem[]>([]);
   cartera = signal<ResumenCartera | null>(null);
   proveedores = signal<ProveedorItem[]>([]);
   conceptos = signal<ConceptoMapeo[]>([]);
   cuentasBanco = signal<CuentaBancoItem[]>([]);
   metodosPago = signal<ParametroItem[]>([]);
+
+  // Señales de Reportes Analíticos
+  proveedorSeleccionadoEstado = '';
+  datosEstadoCuenta = signal<any | null>(null);
+
+  proveedorSeleccionadoExtracto = '';
+  extractoDesde = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  extractoHasta = new Date().toISOString().slice(0, 10);
+  datosExtracto = signal<any | null>(null);
+
+  datosEdades = signal<any | null>(null);
 
   mostrarModalCausar = signal<boolean>(false);
   facturaAPagar = signal<CuentaPorPagarItem | null>(null);
@@ -740,5 +1206,61 @@ export class CxpAdminComponent implements OnInit {
       next: (data) => this.historialPagos.set(data),
       error: (err) => console.error('Error cargando historial de pagos:', err),
     });
+  }
+
+  autoSeleccionarProveedorEstado(): void {
+    if (!this.proveedorSeleccionadoEstado && this.proveedores().length > 0) {
+      this.proveedorSeleccionadoEstado = this.proveedores()[0].id;
+      this.cargarEstadoCuenta();
+    }
+  }
+
+  cargarEstadoCuenta(): void {
+    const emp = this.authService.empresaActiva();
+    if (!emp || !this.proveedorSeleccionadoEstado) return;
+
+    this.http
+      .get<any>(`http://localhost:3000/api/v1/cxp/reportes/estado-cuenta/${this.proveedorSeleccionadoEstado}?empresa_id=${emp.empresa_id}`)
+      .subscribe({
+        next: (data) => this.datosEstadoCuenta.set(data),
+        error: (err) => console.error('Error cargando estado de cuenta:', err),
+      });
+  }
+
+  autoSeleccionarProveedorExtracto(): void {
+    if (!this.proveedorSeleccionadoExtracto && this.proveedores().length > 0) {
+      this.proveedorSeleccionadoExtracto = this.proveedores()[0].id;
+      this.cargarExtracto();
+    }
+  }
+
+  cargarExtracto(): void {
+    const emp = this.authService.empresaActiva();
+    if (!emp || !this.proveedorSeleccionadoExtracto) return;
+
+    let url = `http://localhost:3000/api/v1/cxp/reportes/extracto/${this.proveedorSeleccionadoExtracto}?empresa_id=${emp.empresa_id}`;
+    if (this.extractoDesde) url += `&desde=${this.extractoDesde}`;
+    if (this.extractoHasta) url += `&hasta=${this.extractoHasta}`;
+
+    this.http.get<any>(url).subscribe({
+      next: (data) => this.datosExtracto.set(data),
+      error: (err) => console.error('Error cargando extracto:', err),
+    });
+  }
+
+  cargarEdadesCartera(): void {
+    const emp = this.authService.empresaActiva();
+    if (!emp) return;
+
+    this.http
+      .get<any>(`http://localhost:3000/api/v1/cxp/reportes/edades-cartera?empresa_id=${emp.empresa_id}`)
+      .subscribe({
+        next: (data) => this.datosEdades.set(data),
+        error: (err) => console.error('Error cargando edades cartera:', err),
+      });
+  }
+
+  imprimirReporte(): void {
+    window.print();
   }
 }

@@ -8,6 +8,10 @@ import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity
 import { MetodoPago } from './entities/metodo-pago.entity.js';
 import { Departamento } from './entities/departamento.entity.js';
 import { Municipio } from './entities/municipio.entity.js';
+import { UnidadMedida } from './entities/unidad-medida.entity.js';
+import { CategoriaArticulo } from './entities/categoria-articulo.entity.js';
+import { Bodega } from './entities/bodega.entity.js';
+import { TipoMovimiento } from './entities/tipo-movimiento.entity.js';
 import { ParametrosService } from './parametros.service.js';
 import { ParametrosController } from './parametros.controller.js';
 
@@ -22,6 +26,10 @@ import { ParametrosController } from './parametros.controller.js';
       MetodoPago,
       Departamento,
       Municipio,
+      UnidadMedida,
+      CategoriaArticulo,
+      Bodega,
+      TipoMovimiento,
     ]),
   ],
   controllers: [ParametrosController],

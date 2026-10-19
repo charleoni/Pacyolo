@@ -53,6 +53,36 @@ export class CxpController {
     return this.cxpService.obtenerResumenCartera(empresa_id);
   }
 
+  // ==========================================
+  // REPORTES ANALÍTICOS DE CXP & PROVEEDORES
+  // ==========================================
+
+  @Get('reportes/edades-cartera')
+  @ApiOperation({ summary: 'Matriz de análisis de cartera de proveedores por edades de vencimiento' })
+  obtenerEdadesCartera(@Query('empresa_id') empresa_id: string) {
+    return this.cxpService.obtenerAnalisisEdadesCartera(empresa_id);
+  }
+
+  @Get('reportes/estado-cuenta/:proveedor_id')
+  @ApiOperation({ summary: 'Estado de cuenta consolidado y facturas abiertas por proveedor' })
+  obtenerEstadoCuenta(
+    @Param('proveedor_id', ParseUUIDPipe) proveedor_id: string,
+    @Query('empresa_id') empresa_id: string,
+  ) {
+    return this.cxpService.obtenerEstadoCuentaProveedor(empresa_id, proveedor_id);
+  }
+
+  @Get('reportes/extracto/:proveedor_id')
+  @ApiOperation({ summary: 'Extracto cronológico de compras vs pagos por proveedor' })
+  obtenerExtracto(
+    @Param('proveedor_id', ParseUUIDPipe) proveedor_id: string,
+    @Query('empresa_id') empresa_id: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+  ) {
+    return this.cxpService.obtenerExtractoProveedor(empresa_id, proveedor_id, desde, hasta);
+  }
+
   @Post('pagar')
   @ApiOperation({
     summary: 'Registrar pago o abono a una factura (Comprobante de Egreso EGR)',

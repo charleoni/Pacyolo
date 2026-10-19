@@ -143,13 +143,67 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
 
-        <a
-          routerLink="/dashboard/cxp"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📦 Compras & CxP
-        </a>
+        <!-- Contenedor / Menú Abastecimiento & Stock -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenu('abastecimiento', $event)"
+            [class]="esRutaAbastecimientoActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>📦 Abastecimiento & Stock</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuAbierto() === 'abastecimiento'"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuAbierto() === 'abastecimiento') {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gestión de Stock & Compras</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/inventarios/articulos"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📦</span>
+                <span>Catálogo de Artículos (NIC 2)</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/compras/ordenes"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📑</span>
+                <span>Órdenes de Compra (OC)</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/cxp"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>💰</span>
+                <span>Cuentas por Pagar & Reportes</span>
+              </a>
+            </div>
+          }
+        </div>
 
         <a
           routerLink="/dashboard/parametros"
@@ -224,9 +278,9 @@ export class DashboardLayoutComponent {
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
 
-  menuAbierto = signal<'contabilidad' | 'seguridad' | null>(null);
+  menuAbierto = signal<'contabilidad' | 'abastecimiento' | 'seguridad' | null>(null);
 
-  toggleMenu(menu: 'contabilidad' | 'seguridad', event: MouseEvent): void {
+  toggleMenu(menu: 'contabilidad' | 'abastecimiento' | 'seguridad', event: MouseEvent): void {
     event.stopPropagation();
     this.menuAbierto.update((actual) => (actual === menu ? null : menu));
   }
@@ -242,6 +296,15 @@ export class DashboardLayoutComponent {
       url.includes('/dashboard/puc') ||
       url.includes('/dashboard/asientos') ||
       url.includes('/dashboard/borradores')
+    );
+  }
+
+  esRutaAbastecimientoActiva(): boolean {
+    const url = this.router.url;
+    return (
+      url.includes('/dashboard/inventarios') ||
+      url.includes('/dashboard/compras') ||
+      url.includes('/dashboard/cxp')
     );
   }
 

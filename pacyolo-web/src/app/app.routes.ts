@@ -11,6 +11,8 @@ import { AuditoriaComponent } from './features/dashboard/auditoria/auditoria.com
 import { TablasMaestrasComponent } from './features/dashboard/configuracion/tablas-maestras.component';
 import { TercerosAdminComponent } from './features/dashboard/terceros/terceros-admin.component';
 import { CxpAdminComponent } from './features/dashboard/cxp/cxp-admin.component';
+import { ArticulosAdminComponent } from './features/dashboard/inventarios/articulos-admin.component';
+import { ComprasAdminComponent } from './features/dashboard/compras/compras-admin.component';
 
 export const routes: Routes = [
   {
@@ -37,6 +39,29 @@ export const routes: Routes = [
       {
         path: 'cxp',
         component: CxpAdminComponent,
+      },
+      {
+        path: 'inventarios/articulos',
+        component: ArticulosAdminComponent,
+      },
+      {
+        path: 'inventarios',
+        redirectTo: 'inventarios/articulos',
+        pathMatch: 'full',
+      },
+      {
+        path: 'articulos',
+        redirectTo: 'inventarios/articulos',
+        pathMatch: 'full',
+      },
+      {
+        path: 'compras/ordenes',
+        component: ComprasAdminComponent,
+      },
+      {
+        path: 'compras',
+        redirectTo: 'compras/ordenes',
+        pathMatch: 'full',
       },
       {
         path: 'asientos',

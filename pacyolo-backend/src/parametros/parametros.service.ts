@@ -9,6 +9,10 @@ import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity
 import { MetodoPago } from './entities/metodo-pago.entity.js';
 import { Departamento } from './entities/departamento.entity.js';
 import { Municipio } from './entities/municipio.entity.js';
+import { UnidadMedida } from './entities/unidad-medida.entity.js';
+import { CategoriaArticulo } from './entities/categoria-articulo.entity.js';
+import { Bodega } from './entities/bodega.entity.js';
+import { TipoMovimiento } from './entities/tipo-movimiento.entity.js';
 import {
   CreateTipoIdentificacionDto,
   CreateTipoPersonaDto,
@@ -16,6 +20,10 @@ import {
   CreateClasificacionTerceroDto,
   CreateTipoComprobanteConfigDto,
   CreateMetodoPagoDto,
+  CreateUnidadMedidaDto,
+  CreateCategoriaArticuloDto,
+  CreateBodegaDto,
+  CreateTipoMovimientoDto,
   UpdateParametroDto,
 } from './dto/parametro.dto.js';
 
@@ -40,6 +48,14 @@ export class ParametrosService {
     private readonly deptoRepo: Repository<Departamento>,
     @InjectRepository(Municipio)
     private readonly municipioRepo: Repository<Municipio>,
+    @InjectRepository(UnidadMedida)
+    private readonly unidadMedidaRepo: Repository<UnidadMedida>,
+    @InjectRepository(CategoriaArticulo)
+    private readonly categoriaArticuloRepo: Repository<CategoriaArticulo>,
+    @InjectRepository(Bodega)
+    private readonly bodegaRepo: Repository<Bodega>,
+    @InjectRepository(TipoMovimiento)
+    private readonly tipoMovimientoRepo: Repository<TipoMovimiento>,
     @Optional()
     private readonly dataSource?: DataSource,
   ) {}
@@ -263,7 +279,104 @@ export class ParametrosService {
       }
     }
 
-    this.logger.log('🌱 Catálogos de tablas maestras oficiales DIAN y geografía DANE sembrados con éxito.');
+    // 9. Unidades de Medida (Estándar DIAN / ISO)
+    const unidadesMedidaSemilla = [
+      { codigo: 'UND', nombre: 'Unidad', codigo_dian: '94' },
+      { codigo: 'KGM', nombre: 'Kilogramo', codigo_dian: 'KGM' },
+      { codigo: 'GRM', nombre: 'Gramo', codigo_dian: 'GRM' },
+      { codigo: 'MTR', nombre: 'Metro', codigo_dian: 'MTR' },
+      { codigo: 'LTR', nombre: 'Litro', codigo_dian: 'LTR' },
+      { codigo: 'GLI', nombre: 'Galón', codigo_dian: 'GLI' },
+      { codigo: 'CJ', nombre: 'Caja', codigo_dian: 'BX' },
+      { codigo: 'PAQ', nombre: 'Paquete', codigo_dian: 'PK' },
+      { codigo: 'SER', nombre: 'Servicio', codigo_dian: 'ZZ' },
+    ];
+
+    for (const u of unidadesMedidaSemilla) {
+      const existe = await this.unidadMedidaRepo.findOne({ where: { codigo: u.codigo, empresa_id: IsNull() } });
+      if (!existe) {
+        await this.unidadMedidaRepo.save(this.unidadMedidaRepo.create({ ...u, empresa_id: null, es_sistema: true, activo: true }));
+      }
+    }
+
+    // 10. Categorías de Artículos & Cuentas Contables NIIF
+    const categoriasSemilla = [
+      {
+        codigo: 'MERCANCIA',
+        nombre: 'Mercancía para la Venta (Comercial)',
+        cuenta_inventario: '143505',
+        cuenta_costo_venta: '613505',
+        cuenta_gasto: null,
+      },
+      {
+        codigo: 'MATERIA_PRIMA',
+        nombre: 'Materias Primas / Ingredientes',
+        cuenta_inventario: '140505',
+        cuenta_costo_venta: '710505',
+        cuenta_gasto: null,
+      },
+      {
+        codigo: 'INSUMO',
+        nombre: 'Insumos y Repuestos Operativos',
+        cuenta_inventario: '145505',
+        cuenta_costo_venta: '613505',
+        cuenta_gasto: '513505',
+      },
+      {
+        codigo: 'SERVICIO',
+        nombre: 'Servicios Profesionales / Mano de Obra',
+        cuenta_inventario: null,
+        cuenta_costo_venta: '613505',
+        cuenta_gasto: '513505',
+      },
+      {
+        codigo: 'CONSUMIBLE',
+        nombre: 'Consumibles y Papelería de Oficina',
+        cuenta_inventario: null,
+        cuenta_costo_venta: null,
+        cuenta_gasto: '519530',
+      },
+    ];
+
+    for (const c of categoriasSemilla) {
+      const existe = await this.categoriaArticuloRepo.findOne({ where: { codigo: c.codigo, empresa_id: IsNull() } });
+      if (!existe) {
+        await this.categoriaArticuloRepo.save(this.categoriaArticuloRepo.create({ ...c, empresa_id: null, es_sistema: true, activo: true }));
+      }
+    }
+
+    // 11. Bodegas de Almacenamiento
+    const bodegasSemilla = [
+      { codigo: 'BOD-01', nombre: 'Bodega Principal Central', responsable: 'Jefe de Almacén', direccion: 'Sede Principal' },
+      { codigo: 'BOD-POS', nombre: 'Almacén Mostrador / Tienda POS', responsable: 'Cajero Principal', direccion: 'Punto de Venta' },
+      { codigo: 'BOD-AV', nombre: 'Bodega de Averías y Garantías', responsable: 'Control de Calidad', direccion: 'Área Técnica' },
+    ];
+
+    for (const b of bodegasSemilla) {
+      const existe = await this.bodegaRepo.findOne({ where: { codigo: b.codigo, empresa_id: IsNull() } });
+      if (!existe) {
+        await this.bodegaRepo.save(this.bodegaRepo.create({ ...b, empresa_id: null, es_sistema: true, activo: true }));
+      }
+    }
+
+    // 12. Tipos de Movimientos de Inventario
+    const movimientosSemilla = [
+      { codigo: 'ENT_COMPRA', nombre: 'Entrada por Compra / Factura Proveedor', naturaleza: 'ENTRADA', afecta_costo_promedio: true },
+      { codigo: 'ENT_AJUSTE', nombre: 'Entrada por Ajuste / Sobrante Físico', naturaleza: 'ENTRADA', afecta_costo_promedio: true },
+      { codigo: 'SAL_VENTA', nombre: 'Salida por Venta / Despacho a Cliente', naturaleza: 'SALIDA', afecta_costo_promedio: false },
+      { codigo: 'SAL_CONSUMO', nombre: 'Salida por Consumo Interno / Muestras', naturaleza: 'SALIDA', afecta_costo_promedio: false },
+      { codigo: 'SAL_MERMA', nombre: 'Salida por Avería / Merma / Vencimiento', naturaleza: 'SALIDA', afecta_costo_promedio: false },
+      { codigo: 'TRASLADO', nombre: 'Traslado entre Bodegas', naturaleza: 'TRASLADO', afecta_costo_promedio: false },
+    ];
+
+    for (const m of movimientosSemilla) {
+      const existe = await this.tipoMovimientoRepo.findOne({ where: { codigo: m.codigo, empresa_id: IsNull() } });
+      if (!existe) {
+        await this.tipoMovimientoRepo.save(this.tipoMovimientoRepo.create({ ...m, empresa_id: null, es_sistema: true, activo: true }));
+      }
+    }
+
+    this.logger.log('🌱 Catálogos de tablas maestras oficiales DIAN, geografía DANE e inventarios sembrados con éxito.');
   }
 
   // ==========================================
@@ -473,7 +586,7 @@ export class ParametrosService {
 
   async crearTipoIdentificacion(dto: CreateTipoIdentificacionDto): Promise<TipoIdentificacion> {
     const existe = await this.tipoIdRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`El tipo de identificación con código '${dto.codigo}' ya existe.`);
@@ -483,7 +596,7 @@ export class ParametrosService {
 
   async crearTipoPersona(dto: CreateTipoPersonaDto): Promise<TipoPersona> {
     const existe = await this.tipoPersonaRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`El tipo de persona con código '${dto.codigo}' ya existe.`);
@@ -493,7 +606,7 @@ export class ParametrosService {
 
   async crearRegimenFiscal(dto: CreateRegimenFiscalDto): Promise<RegimenFiscal> {
     const existe = await this.regimenRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`El régimen fiscal con código '${dto.codigo}' ya existe.`);
@@ -503,7 +616,7 @@ export class ParametrosService {
 
   async crearClasificacion(dto: CreateClasificacionTerceroDto): Promise<ClasificacionTercero> {
     const existe = await this.clasificacionRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`La clasificación con código '${dto.codigo}' ya existe.`);
@@ -513,7 +626,7 @@ export class ParametrosService {
 
   async crearTipoComprobante(dto: CreateTipoComprobanteConfigDto): Promise<TipoComprobanteConfig> {
     const existe = await this.comprobanteRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`El tipo de comprobante con código '${dto.codigo}' ya existe.`);
@@ -523,7 +636,7 @@ export class ParametrosService {
 
   async crearMetodoPago(dto: CreateMetodoPagoDto): Promise<MetodoPago> {
     const existe = await this.metodoPagoRepo.findOne({
-      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id || undefined },
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
     });
     if (existe) {
       throw new ConflictException(`El método de pago con código '${dto.codigo}' ya existe.`);
@@ -552,6 +665,142 @@ export class ParametrosService {
     }
 
     return await qb.orderBy('m.nombre', 'ASC').take(100).getMany();
+  }
+
+  // ==========================================
+  // 9. UNIDADES DE MEDIDA
+  // ==========================================
+  async listarUnidadesMedida(empresaId?: string): Promise<any[]> {
+    const qb = this.unidadMedidaRepo.createQueryBuilder('u');
+    if (empresaId) {
+      qb.where('u.empresa_id = :empresaId OR u.empresa_id IS NULL', { empresaId });
+    } else {
+      qb.where('u.empresa_id IS NULL');
+    }
+    const items = await qb.orderBy('u.es_sistema', 'DESC').addOrderBy('u.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('unidades-medida', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
+  }
+
+  async crearUnidadMedida(dto: CreateUnidadMedidaDto): Promise<UnidadMedida> {
+    const existe = await this.unidadMedidaRepo.findOne({
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
+    });
+    if (existe) {
+      throw new ConflictException(`La unidad de medida con código '${dto.codigo}' ya existe.`);
+    }
+    return await this.unidadMedidaRepo.save(
+      this.unidadMedidaRepo.create({ ...dto, codigo: dto.codigo.toUpperCase() }),
+    );
+  }
+
+  // ==========================================
+  // 10. CATEGORÍAS DE ARTÍCULOS
+  // ==========================================
+  async listarCategoriasArticulos(empresaId?: string): Promise<any[]> {
+    const qb = this.categoriaArticuloRepo.createQueryBuilder('c');
+    if (empresaId) {
+      qb.where('c.empresa_id = :empresaId OR c.empresa_id IS NULL', { empresaId });
+    } else {
+      qb.where('c.empresa_id IS NULL');
+    }
+    const items = await qb.orderBy('c.es_sistema', 'DESC').addOrderBy('c.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('categorias-articulos', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
+  }
+
+  async crearCategoriaArticulo(dto: CreateCategoriaArticuloDto): Promise<CategoriaArticulo> {
+    const existe = await this.categoriaArticuloRepo.findOne({
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
+    });
+    if (existe) {
+      throw new ConflictException(`La categoría de artículo con código '${dto.codigo}' ya existe.`);
+    }
+    return await this.categoriaArticuloRepo.save(
+      this.categoriaArticuloRepo.create({ ...dto, codigo: dto.codigo.toUpperCase() }),
+    );
+  }
+
+  // ==========================================
+  // 11. BODEGAS DE ALMACENAMIENTO
+  // ==========================================
+  async listarBodegas(empresaId?: string): Promise<any[]> {
+    const qb = this.bodegaRepo.createQueryBuilder('b');
+    if (empresaId) {
+      qb.where('b.empresa_id = :empresaId OR b.empresa_id IS NULL', { empresaId });
+    } else {
+      qb.where('b.empresa_id IS NULL');
+    }
+    const items = await qb.orderBy('b.es_sistema', 'DESC').addOrderBy('b.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('bodegas', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
+  }
+
+  async crearBodega(dto: CreateBodegaDto): Promise<Bodega> {
+    const existe = await this.bodegaRepo.findOne({
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
+    });
+    if (existe) {
+      throw new ConflictException(`La bodega con código '${dto.codigo}' ya existe.`);
+    }
+    return await this.bodegaRepo.save(
+      this.bodegaRepo.create({ ...dto, codigo: dto.codigo.toUpperCase() }),
+    );
+  }
+
+  // ==========================================
+  // 12. TIPOS DE MOVIMIENTO DE INVENTARIO
+  // ==========================================
+  async listarTiposMovimiento(empresaId?: string): Promise<any[]> {
+    const qb = this.tipoMovimientoRepo.createQueryBuilder('m');
+    if (empresaId) {
+      qb.where('m.empresa_id = :empresaId OR m.empresa_id IS NULL', { empresaId });
+    } else {
+      qb.where('m.empresa_id IS NULL');
+    }
+    const items = await qb.orderBy('m.es_sistema', 'DESC').addOrderBy('m.codigo', 'ASC').getMany();
+    const conteos = await this.consultarConteosUso('tipos-movimiento', empresaId);
+    return items.map((item) => {
+      const conteo = conteos.get(item.codigo.toUpperCase()) || 0;
+      return {
+        ...item,
+        conteo_usos: conteo,
+        en_uso: conteo > 0,
+      };
+    });
+  }
+
+  async crearTipoMovimiento(dto: CreateTipoMovimientoDto): Promise<TipoMovimiento> {
+    const existe = await this.tipoMovimientoRepo.findOne({
+      where: { codigo: dto.codigo.toUpperCase(), empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
+    });
+    if (existe) {
+      throw new ConflictException(`El tipo de movimiento con código '${dto.codigo}' ya existe.`);
+    }
+    return await this.tipoMovimientoRepo.save(
+      this.tipoMovimientoRepo.create({ ...dto, codigo: dto.codigo.toUpperCase() }),
+    );
   }
 
   // ==========================================
@@ -585,6 +834,18 @@ export class ParametrosService {
         break;
       case 'municipios':
         repo = this.municipioRepo;
+        break;
+      case 'unidades-medida':
+        repo = this.unidadMedidaRepo;
+        break;
+      case 'categorias-articulos':
+        repo = this.categoriaArticuloRepo;
+        break;
+      case 'bodegas':
+        repo = this.bodegaRepo;
+        break;
+      case 'tipos-movimiento':
+        repo = this.tipoMovimientoRepo;
         break;
       default:
         throw new BadRequestException(`Catálogo desconocido: '${catalogo}'`);
@@ -638,6 +899,18 @@ export class ParametrosService {
       case 'metodos-pago':
         repo = this.metodoPagoRepo;
         break;
+      case 'unidades-medida':
+        repo = this.unidadMedidaRepo;
+        break;
+      case 'categorias-articulos':
+        repo = this.categoriaArticuloRepo;
+        break;
+      case 'bodegas':
+        repo = this.bodegaRepo;
+        break;
+      case 'tipos-movimiento':
+        repo = this.tipoMovimientoRepo;
+        break;
       default:
         throw new BadRequestException(`Catálogo desconocido o no editable: '${catalogo}'`);
     }
@@ -653,7 +926,7 @@ export class ParametrosService {
       const conteo = conteos.get(entidad.codigo.toUpperCase()) || 0;
       if (conteo > 0) {
         throw new BadRequestException(
-          `No es posible cambiar el código '${entidad.codigo}' a '${dto.codigo}' porque está asociado a ${conteo} registro(s) en el sistema. Puede modificar su denominación o atributos DIAN.`
+          `No es posible cambiar el código '${entidad.codigo}' a '${dto.codigo}' porque está asociado a ${conteo} registro(s) en el sistema. Puede modificar su denominación o atributos.`
         );
       }
       entidad.codigo = dto.codigo.trim().toUpperCase();
@@ -685,6 +958,27 @@ export class ParametrosService {
     }
     if (dto.exige_referencia !== undefined) {
       entidad.exige_referencia = dto.exige_referencia;
+    }
+    if (dto.cuenta_inventario !== undefined) {
+      entidad.cuenta_inventario = dto.cuenta_inventario;
+    }
+    if (dto.cuenta_costo_venta !== undefined) {
+      entidad.cuenta_costo_venta = dto.cuenta_costo_venta;
+    }
+    if (dto.cuenta_gasto !== undefined) {
+      entidad.cuenta_gasto = dto.cuenta_gasto;
+    }
+    if (dto.responsable !== undefined) {
+      entidad.responsable = dto.responsable;
+    }
+    if (dto.direccion !== undefined) {
+      entidad.direccion = dto.direccion;
+    }
+    if (dto.naturaleza !== undefined) {
+      entidad.naturaleza = dto.naturaleza;
+    }
+    if (dto.afecta_costo_promedio !== undefined) {
+      entidad.afecta_costo_promedio = dto.afecta_costo_promedio;
     }
 
     return await repo.save(entidad);
