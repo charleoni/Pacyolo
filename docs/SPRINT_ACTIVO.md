@@ -4,48 +4,53 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/07-tablas-maestras-dinamicas`  
-*Última Versión Publicada:* `v0.7.0-sprint7` (En desarrollo: Fase B - Ficha Integral de Terceros)
+*Rama Activa:* `sprint/08-articulos-inventarios-cxp`  
+*Última Versión Publicada:* `v0.7.0-sprint7` (Cerrada y Fusionada en `main` y `develop`)
 
 ---
 
-## 🎯 SPRINT 7: Tablas Maestras Dinámicas & Ficha Integral de Terceros (Cero Enums)
-- **Objetivo del Sprint:** Erradicar datos quemados y enums estáticos en todo el sistema ERP, implementando el catálogo maestro universal y extendiendo el modelo de Terceros (`core_terceros`) para soportar geografía oficial DANE (País, Departamento, Municipio), responsabilidades fiscales DIAN, actividad económica CIIU (ReteICA), desglose de nombres (Natural vs Jurídica) y datos bancarios, con flujo dual de captura (creación rápida en mostrador vs ficha completa tributaria).
+## 🎯 SPRINT 8: Artículos, Compras, Entradas de Almacén, Kardex NIIF & CxP Analítico
+- **Objetivo del Sprint:** Implementar la base de la cadena de suministro previo a las ventas: catálogo maestro de artículos/servicios (NIC 2), nuevas tablas paramétricas en el gestor dinámico (unidades de medida, categorías, bodegas, tipos de movimiento), circuito documental de abastecimiento (Órdenes de Compra y Entradas de Almacén con recepción parcial/total), motor de Kardex físico y valorado en tiempo real con costeo promedio ponderado móvil y notas de ajuste, contabilización automática del ciclo de compra e inventario, y módulo avanzado de Cuentas por Pagar (CxP) con estados de cuenta, extractos y matriz de análisis de vencimiento por edades.
 - **Entregables Evaluativos para el Usuario:**
-  - **Fase A (Completada & Certificada):**
-    - 6 Catálogos relacionales dinámicos (`tipos_identificacion`, `tipos_persona`, `regimenes_fiscales`, `clasificaciones_tercero`, `tipos_comprobante`, `metodos_pago`).
-    - Panel de gestión web `/dashboard/configuracion/maestras` con tabs, interruptores activo/inactivo, modal e impresión oficial.
-    - Integración dinámica en formularios de Terceros, Asientos y CxP.
-  - **Fase B (Activa en Desarrollo):**
-    - **Catálogos Geográficos DANE (Cero Enums):** Entidades relacionales para Departamentos y Municipios (Divipola DANE) con semillas oficiales y autocompletado en backend.
-    - **Modelo de Tercero Robusto:** Campos para país (`CO`), departamento, municipio, código postal, CIIU, desglose de nombres para personas naturales (Primer Nombre, Otros Nombres, Primer Apellido, Segundo Apellido) vs Razón Social, y datos bancarios para tesorería.
-    - **Flujo Dual en Frontend (`/dashboard/terceros`):**
-      - Modal de Creación Rápida para mostrador/POS con defaults inteligentes.
-      - Modal/Pestañas de Ficha Completa para enriquecimiento contable y facturación electrónica.
+  1. **Tablas Paramétricas Dinámicas:** Unidades de medida (DIAN/ISO), categorías con cuentas contables por defecto, catálogo de bodegas y tipos de movimientos de inventario administrables desde `/dashboard/parametros`.
+  2. **Catálogo Maestro de Artículos:** Soporte de inventariables, servicios y consumibles, reglas tributarias (IVA/INC) y código de barras.
+  3. **Circuito de Compras & Recepción:** Órdenes de Compra (OC) y Entradas de Almacén (EA) con control de cantidades pendientes y cruce de factura de proveedor.
+  4. **Kardex Multibodega & Notas de Ajuste:** Historial inmutable de movimientos, existencias por bodega, costeo promedio ponderado y notas de ajuste justificadas (sobrante, faltante, merma, cierre de periodo).
+  5. **CxP Analítico & Reportes Operativos:**
+     - Estado de cuenta por proveedor (saldo consolidado y facturas abiertas).
+     - Extracto cronológico de cuenta por proveedor.
+     - Reporte de análisis de cartera de proveedores por edades (Corriente, 1-30, 31-60, 61-90, 90+ días).
+  6. **Frontend Web & Pruebas:** Vistas reactivas en Angular 22 integradas en los menús desplegables y suite de pruebas unitarias al 100%.
 
 ---
 
-### 📋 Desglose de Micro-Tareas Sprint 7 — Fase B (Estimación: Bloques de ~2 Horas)
+### 📋 Desglose de Micro-Tareas Sprint 8 (Estimación: Bloques de ~2 Horas)
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **7.6** | Catálogos Geográficos DANE | Entidades relacionales `core_departamentos` y `core_municipios` (Divipola DANE) en `ParametrosModule`, semillas de departamentos/ciudades principales y endpoint `GET /api/v1/parametros/municipios`. | 2h | `[x]` Completado | 17/10/2026 |
-| **7.7** | Extensión del Modelo `core_terceros` | Ampliación de la entidad `Tercero` con país, depto, municipio, dirección, código postal, código CIIU, desglose de nombres (primer/segundo nombre, apellidos), datos bancarios y DTOs con validaciones. | 2h | `[x]` Completado | 17/10/2026 |
-| **7.8** | Backend API & Pruebas Unitarias Vitest | Métodos en `TercerosService` para creación rápida con defaults y actualización de ficha completa. Suite de pruebas unitarias cubriendo ambos flujos (72 tests pasando). | 2h | `[x]` Completado | 17/10/2026 |
-| **7.9** | Frontend Web: Flujo Dual de Terceros | Actualización de `/dashboard/terceros`: botón/modal de creación rápida para mostrador + vista/modal de Ficha Completa con 4 pestañas (General, Geográfica/DANE, Fiscal/CIIU, Bancaria). | 2h | `[x]` Completado | 17/10/2026 |
-| **7.10** | Integridad Referencial & Auditoría de Parámetros | Conteo de usos en tiempo real (`conteo_usos`), bloqueo defensivo de inactivación en Frontend (`🔒 Bloqueado`) y Backend (HTTP 400), e inmutabilidad de código para registros en uso. | 2h | `[x]` Completado | 18/10/2026 |
-| **7.11** | Edición de Parámetros & Sanitización de Payloads | Modal de edición interactiva de parámetros, soporte de actualización descriptiva, y sanitización estricta para compatibilidad con NestJS `ValidationPipe (forbidNonWhitelisted)`. | 2h | `[x]` Completado | 18/10/2026 |
-| **7.12** | Rediseño UX Maestro-Detalle de Parámetros | Reemplazo de pestañas horizontales saturables por un panel lateral vertical (*Sidebar*) con buscador en tiempo real, categorización visual, badges de uso y escalabilidad para decenas de catálogos. | 2h | `[x]` Completado | 18/10/2026 |
-| **7.13** | Reestructuración de Navegación & Menús Modulares | Agrupación de la barra superior en contenedores desplegables verticales con detección de ruta activa y click-outside: `📖 Contabilidad` (Terceros, PUC, Diario, Borradores) y `🛡️ Seguridad del Sistema` (Usuarios, Auditoría). | 2h | `[x]` Completado | 18/10/2026 |
-| **7.14** | Ficha Única Centralizada de Terceros & Certificación Total | Centralización de Terceros en `📖 Contabilidad` como maestro multi-rol (Cliente, Proveedor, Empleado, DIAN). Suite de pruebas al 100% (75/75 tests en 16 suites) y build de producción exitoso. | 1h | `[x]` Completado | 18/10/2026 |
+| **8.1** | Tablas Paramétricas de Inventario | Nuevas tablas maestras relacionales en PostgreSQL (`core_unidades_medida`, `inv_categorias_articulos`, `inv_bodegas`, `inv_tipos_movimiento`) integradas al módulo universal de parámetros y semillas por defecto. | 2h | `[ ]` Pendiente | - |
+| **8.2** | Catálogo Maestro de Artículos (NIC 2) | Entidad `inv_articulos`, DTOs con validación, clasificación (Inventariable / Servicio / Consumible), impuestos (IVA / INC), SKU, código de barras y cuentas contables predeterminadas. | 2h | `[ ]` Pendiente | - |
+| **8.3** | Órdenes de Compra (OC) | Modelo `compras_ordenes` y líneas, generación de pedidos a proveedores con estados (`BORRADOR`, `APROBADA`, `RECIBIDA_PARCIAL`, `RECIBIDA_TOTAL`, `CANCELADA`) sin impacto contable directo. | 2h | `[ ]` Pendiente | - |
+| **8.4** | Entradas de Almacén (EA) & Recepción | Recepción física de mercancía cruzada contra Orden de Compra, control de saldo pendiente por recibir y registro de remisión del proveedor. | 2h | `[ ]` Pendiente | - |
+| **8.5** | Kardex Multibodega & Notas de Ajuste | Motor de movimientos inmutables de inventario, recálculo de costo promedio ponderado en cada entrada, control de existencias por bodega y notas de ajuste por sobrante, merma o cierre de periodo. | 2h | `[ ]` Pendiente | - |
+| **8.6** | Cruce de Factura Proveedor & Asiento Contable | Causación formal de la factura de compra afectando Inventario (Activo 14) / Gasto (51/52), IVA descontable, retenciones y Pasivo de Proveedores (2205) con generación del asiento automático de partida doble. | 2h | `[ ]` Pendiente | - |
+| **8.7** | Módulo de CxP Analítico & Reportes | Endpoints y lógica de negocio para: Estado de Cuenta por Proveedor, Extracto Cronológico de Facturas vs Pagos, y Matriz de Vencimiento por Edades (0-30, 31-60, 61-90, 90+ días). | 2h | `[ ]` Pendiente | - |
+| **8.8** | Frontend Web: Catálogo, Compras & Inventarios | Interfaz de gestión en Angular 22: Ficha de Artículos, flujo de Orden de Compra y Entrada de Almacén, consulta de Kardex por producto/bodega y visor de notas de ajuste. | 2h | `[ ]` Pendiente | - |
+| **8.9** | Frontend Web: Reportes de CxP & Proveedores | Vistas analíticas en Angular: visor de Estado de Cuenta, Extracto de Proveedor interactivo y tabla dinámica de cartera por edades de vencimiento con exportación/impresión. | 2h | `[ ]` Pendiente | - |
+| **8.10** | Certificación, Pruebas Unitarias & Cierre | Suite de pruebas unitarias en backend Vitest cubriendo todo el circuito, validación en navegador junto con el usuario, commit y cierre del Sprint 8. | 2h | `[ ]` Pendiente | - |
 
 ---
 
 ## 🔮 Backlog Estratégico de Sprints Futuros (Arquitectura ERP PACYOLO)
 
-### 📌 SPRINT 8: Facturación Comercial Propia, Mostrador / POS & Cartera (CxC)
+### 📌 SPRINT 9: Facturación Comercial Propia, Mostrador / POS, Costeo Automático de Ventas & Cartera (CxC)
+- **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).
+- **Facturación de Venta Estándar:** Emisión de facturas a crédito o al contado con IVA (0%, 5%, 19%) y retenciones practicadas por clientes.
+- **Costeo Automático de Ventas (Kardex):** Salida automática de inventario valorada al costo promedio ponderado (`Débito 61 <-> Crédito 14`).
+- **Recaudos (`ING`):** Recibos de caja manuales para abonos y cancelaciones de cartera de clientes.
+- **Reporte de Cartera CxC:** Antigüedad de saldos de clientes (corriente, 30, 60, 90+ días).
 
-### 📌 SPRINT 9: Catálogo de Ítems, Inventarios & Kardex Paramétrico (NIC 2)
+### 📌 SPRINT 10: Tesorería, Cajas Menores & Conciliación Bancaria
 - **Facturación POS / Mostrador:** Tiras de caja rápidas para mostrador, restaurante, peluquería, carnicería o ferretería con propinas voluntarias e impuesto al consumo (INC 8%).
 - **Facturación de Venta Estándar:** Emisión de facturas a crédito o al contado con IVA (0%, 5%, 19%) y retenciones practicadas por clientes.
 - **Recaudos (`ING`):** Recibos de caja manuales para abonos y cancelaciones de cartera de clientes.
