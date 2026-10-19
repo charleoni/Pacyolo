@@ -101,6 +101,16 @@ import { EmpresaSesion } from '../../core/models/auth.model';
               </div>
 
               <a
+                routerLink="/dashboard/terceros"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📇</span>
+                <span>Maestro de Terceros</span>
+              </a>
+
+              <a
                 routerLink="/dashboard/puc"
                 routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
                 (click)="cerrarMenus()"
@@ -132,14 +142,6 @@ import { EmpresaSesion } from '../../core/models/auth.model';
             </div>
           }
         </div>
-
-        <a
-          routerLink="/dashboard/terceros"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📇 Terceros (DIAN)
-        </a>
 
         <a
           routerLink="/dashboard/cxp"
@@ -236,6 +238,7 @@ export class DashboardLayoutComponent {
   esRutaContabilidadActiva(): boolean {
     const url = this.router.url;
     return (
+      url.includes('/dashboard/terceros') ||
       url.includes('/dashboard/puc') ||
       url.includes('/dashboard/asientos') ||
       url.includes('/dashboard/borradores')
