@@ -208,6 +208,18 @@ export class UpdateEstadoParametroDto {
 }
 
 export class UpdateParametroDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  empresa_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  en_uso?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  conteo_usos?: number;
+
   @ApiPropertyOptional({ example: 'NIT' })
   @IsOptional()
   @IsString()

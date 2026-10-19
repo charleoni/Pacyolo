@@ -828,17 +828,34 @@ export class TablasMaestrasComponent implements OnInit {
     this.guardando.set(true);
     this.errorMsg.set(null);
 
-    const payload = {
-      ...this.nuevoRegistro,
-      empresa_id: emp?.empresa_id || undefined,
-      codigo: this.nuevoRegistro.codigo.trim().toUpperCase(),
-      nombre: this.nuevoRegistro.nombre.trim(),
-    };
-
-    // Si estamos en modo edición, llamar a actualizarParametro
+    // Si estamos en modo edición, llamar a actualizarParametro con payload limpio
     if (this.esEdicion() && this.idEditando()) {
+      const payloadUpdate: any = {
+        codigo: this.nuevoRegistro.codigo?.trim().toUpperCase(),
+        nombre: this.nuevoRegistro.nombre?.trim(),
+      };
+
+      if (this.nuevoRegistro.codigo_dian !== undefined) {
+        payloadUpdate.codigo_dian = this.nuevoRegistro.codigo_dian ? this.nuevoRegistro.codigo_dian.trim() : null;
+      }
+      if (this.nuevoRegistro.aplica_digito_verificacion !== undefined) {
+        payloadUpdate.aplica_digito_verificacion = !!this.nuevoRegistro.aplica_digito_verificacion;
+      }
+      if (this.nuevoRegistro.exige_razon_social !== undefined) {
+        payloadUpdate.exige_razon_social = !!this.nuevoRegistro.exige_razon_social;
+      }
+      if (this.nuevoRegistro.codigo_responsabilidad_dian !== undefined) {
+        payloadUpdate.codigo_responsabilidad_dian = this.nuevoRegistro.codigo_responsabilidad_dian ? this.nuevoRegistro.codigo_responsabilidad_dian.trim() : null;
+      }
+      if (this.nuevoRegistro.prefijo !== undefined) {
+        payloadUpdate.prefijo = this.nuevoRegistro.prefijo ? this.nuevoRegistro.prefijo.trim() : null;
+      }
+      if (this.nuevoRegistro.exige_referencia !== undefined) {
+        payloadUpdate.exige_referencia = !!this.nuevoRegistro.exige_referencia;
+      }
+
       this.parametrosService
-        .actualizarParametro(this.catalogoActivo, this.idEditando()!, payload)
+        .actualizarParametro(this.catalogoActivo, this.idEditando()!, payloadUpdate)
         .subscribe({
           next: () => {
             this.guardando.set(false);
@@ -852,6 +869,14 @@ export class TablasMaestrasComponent implements OnInit {
         });
       return;
     }
+
+    const { en_uso, conteo_usos, ...datosLimpios } = this.nuevoRegistro;
+    const payload = {
+      ...datosLimpios,
+      empresa_id: emp?.empresa_id || undefined,
+      codigo: this.nuevoRegistro.codigo.trim().toUpperCase(),
+      nombre: this.nuevoRegistro.nombre.trim(),
+    };
 
     let obs;
     switch (this.catalogoActivo) {
