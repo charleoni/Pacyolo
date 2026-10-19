@@ -4,8 +4,8 @@ Todas las versiones notables de este proyecto están documentadas en este archiv
 
 ---
 
-## [v0.7.0-sprint7] - 2026-10-17
-### ⚙️ Tablas Maestras Paramétricas Dinámicas & Erradicación de Enums Hardcodeados
+## [v0.7.0-sprint7] - 2026-10-18
+### ⚙️ Tablas Maestras Dinámicas, Integridad Referencial & Reorganización Modular de Navegación
 - **Arquitectura Paramétrica Universal (Cero Enums):**
   - Implementación de 6 tablas relacionales en esquemas `core` y `contabilidad` con soporte multi-tenant (semillas globales por defecto o personalizables por empresa):
     1. `core_tipos_identificacion`: Códigos DIAN (13, 31, 22, 11, etc.), nombres oficiales y bandera para obligatoriedad de Dígito de Verificación (DV).
@@ -14,16 +14,28 @@ Todas las versiones notables de este proyecto están documentadas en este archiv
     4. `core_clasificaciones_tercero`: Clasificaciones comerciales (`CLIENTE`, `PROVEEDOR`, `EMPLEADO`, `CONTRATISTA`, `ACCIONISTA`, `ACREEDOR`).
     5. `cont_tipos_comprobante`: Configuración de comprobantes contables (`CAU`, `EGR`, `ING`, `CC`, `AJU`, etc.) con prefijo oficial y consecutivo dinámico.
     6. `core_metodos_pago`: Medios de pago DIAN (`10`, `47`, `42`, `20`, `48`, `49`, `1`), exigencia de referencia bancaria y trazabilidad.
-- **Backend (`ParametrosModule`):**
-  - Servicio `ParametrosService` con sembrado automático de semillas oficiales en arranque mediante `OnModuleInit` (con compatibilidad de `IsNull()` en TypeORM).
-  - Controlador REST (`ParametrosController`) con endpoints completos: listado (`GET /api/v1/parametros/:catalogo`), creación (`POST /api/v1/parametros/:catalogo`), toggle de estado activo/inactivo (`PATCH /api/v1/parametros/:catalogo/:id/estado`) y restauración de semillas (`POST /api/v1/parametros/sembrar`).
-  - Desacoplamiento de `Tercero` y `CreateTerceroDto` de enums TypeScript hacia columnas dinámicas en PostgreSQL.
-- **Frontend Web (`pacyolo-web`):**
-  - Panel integral de Configuración y Maestras en `/dashboard/configuracion/maestras` con navegación por pestañas, buscador reactivo, interruptores de estado, modal de creación rápida e impresión oficial (`window.print()`).
-  - Formularios de Terceros, Asiento Contable y CxP refactorizados para cargar sus opciones dinámicamente desde el backend, con validación reactiva del Dígito de Verificación condicionada a la parametrización del tipo de documento.
+  - Catálogos Geográficos oficiales DANE: `core_departamentos` y `core_municipios` (Divipola DANE).
+- **Integridad Referencial & Conteo de Uso:**
+  - Cálculo dinámico de registros dependientes en vivo (`conteo_usos`, `en_uso`) para prevenir inconsistencias en la base de datos.
+  - Bloqueo en Frontend del botón Inactivar (`🔒 Bloqueado`, `disabled`, con tooltip descriptivo del número de registros enlazados).
+  - Bloqueo en Backend: `BadRequestException (400)` al intentar inactivar un parámetro que tiene referencias vivas o al intentar modificar su código cuando ya posee movimientos asociados.
+- **Edición Completa de Parámetros:**
+  - Endpoint `PATCH /api/v1/parametros/:catalogo/:id` con `UpdateParametroDto` seguro.
+  - Modal interactivo de edición con carga del registro actual.
+  - Sanitización estricta de payloads para cumplimiento con `ValidationPipe (forbidNonWhitelisted: true)`.
+- **Rediseño UX Maestro-Detalle de Parámetros:**
+  - Sustitución de pestañas horizontales por un panel lateral vertical (*Sidebar*) con buscador en tiempo real, categorización visual y badges con conteo de registros en uso, diseñado para albergar decenas de tablas maestras sin colapsar la vista.
+- **Reorganización Modular de la Navegación Global:**
+  - Transformación de la barra superior horizontal en contenedores desplegables verticales organizados por dominios:
+    - **`📖 Contabilidad ▼`**: Menú vertical que integra *📇 Maestro de Terceros*, *📑 Catálogo PUC NIIF*, *📖 Libro Diario* y *📥 Borradores Integración*.
+    - **`🛡️ Seguridad del Sistema ▼`**: Menú vertical que integra *👥 Equipo & Roles RBAC* y *🛡️ Pistas de Auditoría*.
+    - Accesos directos limpios: *📊 Resumen*, *📦 Compras & CxP*, *⚙️ Parámetros*.
+    - Directiva de cierre al hacer clic afuera (`@HostListener('document:click')`), animación de rotación de flecha y resaltado reactivo del menú activo (`esRutaContabilidadActiva()`, `esRutaSeguridadActiva()`).
+- **Ficha Única Centralizada de Terceros:**
+  - Reubicación de Terceros como **Maestro de Terceros** transversal dentro de Contabilidad, estructurado para operar bajo un único NIT con múltiples roles simultáneos (Cliente, Proveedor, Empleado, DIAN) sin duplicar datos ni romper medios magnéticos.
 - **Garantía de Calidad:**
-  - 58 pruebas unitarias (13 suites) y 33 pruebas E2E pasando al 100%.
-  - Compilación frontend y backend sin advertencias ni errores.
+  - **75 pruebas unitarias de backend pasando al 100% (16 suites de prueba de backend Vitest)**.
+  - Compilación de producción en Angular (`ng build`) exitosa con 0 errores.
 
 ---
 
