@@ -55,8 +55,18 @@ export const routes: Routes = [
         component: AuditoriaComponent,
       },
       {
-        path: 'configuracion/maestras',
+        path: 'parametros',
         component: TablasMaestrasComponent,
+      },
+      {
+        path: 'parametros/maestras',
+        redirectTo: 'parametros',
+        pathMatch: 'full',
+      },
+      {
+        path: 'configuracion/maestras',
+        redirectTo: 'parametros',
+        pathMatch: 'full',
       },
     ],
   },

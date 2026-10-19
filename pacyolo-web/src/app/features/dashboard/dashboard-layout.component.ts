@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, signal, HostListener, inject, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { EmpresaSesion } from '../../core/models/auth.model';
 
@@ -70,20 +70,79 @@ import { EmpresaSesion } from '../../core/models/auth.model';
         >
           📊 Resumen
         </a>
-        <a
-          routerLink="/dashboard/puc"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📑 Catálogo PUC NIIF
-        </a>
-        <a
-          routerLink="/dashboard/terceros"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📇 Terceros (DIAN)
-        </a>
+
+        <!-- Contenedor / Menú Contabilidad -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenu('contabilidad', $event)"
+            [class]="esRutaContabilidadActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>📖 Contabilidad</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuAbierto() === 'contabilidad'"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuAbierto() === 'contabilidad') {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Módulo Contable</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/terceros"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📇</span>
+                <span>Maestro de Terceros</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/puc"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📑</span>
+                <span>Catálogo PUC NIIF</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/asientos"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📖</span>
+                <span>Libro Diario</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/borradores"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📥</span>
+                <span>Borradores Integración</span>
+              </a>
+            </div>
+          }
+        </div>
+
         <a
           routerLink="/dashboard/cxp"
           routerLinkActive="border-indigo-500 text-white font-medium"
@@ -91,41 +150,66 @@ import { EmpresaSesion } from '../../core/models/auth.model';
         >
           📦 Compras & CxP
         </a>
+
         <a
-          routerLink="/dashboard/asientos"
+          routerLink="/dashboard/parametros"
           routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition inline-flex items-center gap-1.5"
         >
-          📖 Libro Diario
+          <span>⚙️ Parámetros</span>
         </a>
-        <a
-          routerLink="/dashboard/borradores"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📥 Borradores Integración
-        </a>
-        <a
-          routerLink="/dashboard/usuarios"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          👥 Equipo & Roles RBAC
-        </a>
-        <a
-          routerLink="/dashboard/auditoria"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          🛡️ Pistas de Auditoría
-        </a>
-        <a
-          routerLink="/dashboard/configuracion/maestras"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          ⚙️ Tablas Maestras
-        </a>
+
+        <!-- Contenedor / Menú Seguridad del Sistema -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenu('seguridad', $event)"
+            [class]="esRutaSeguridadActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>🛡️ Seguridad del Sistema</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuAbierto() === 'seguridad'"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuAbierto() === 'seguridad') {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Control & Auditoría</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/usuarios"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>👥</span>
+                <span>Equipo & Roles RBAC</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/auditoria"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>🛡️</span>
+                <span>Pistas de Auditoría</span>
+              </a>
+            </div>
+          }
+        </div>
       </nav>
 
       <!-- Contenedor Principal -->
@@ -136,7 +220,45 @@ import { EmpresaSesion } from '../../core/models/auth.model';
   `,
 })
 export class DashboardLayoutComponent {
-  constructor(public readonly authService: AuthService) {}
+  public readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly elementRef = inject(ElementRef);
+
+  menuAbierto = signal<'contabilidad' | 'seguridad' | null>(null);
+
+  toggleMenu(menu: 'contabilidad' | 'seguridad', event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbierto.update((actual) => (actual === menu ? null : menu));
+  }
+
+  cerrarMenus(): void {
+    this.menuAbierto.set(null);
+  }
+
+  esRutaContabilidadActiva(): boolean {
+    const url = this.router.url;
+    return (
+      url.includes('/dashboard/terceros') ||
+      url.includes('/dashboard/puc') ||
+      url.includes('/dashboard/asientos') ||
+      url.includes('/dashboard/borradores')
+    );
+  }
+
+  esRutaSeguridadActiva(): boolean {
+    const url = this.router.url;
+    return (
+      url.includes('/dashboard/usuarios') ||
+      url.includes('/dashboard/auditoria')
+    );
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.cerrarMenus();
+    }
+  }
 
   onCambiarEmpresa(event: Event): void {
     const empresaId = (event.target as HTMLSelectElement).value;

@@ -2,6 +2,23 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export interface DepartamentoItem {
+  id: string;
+  codigo: string;
+  nombre: string;
+  pais_codigo: string;
+  activo: boolean;
+}
+
+export interface MunicipioItem {
+  id: string;
+  codigo: string;
+  nombre: string;
+  departamento_codigo: string;
+  departamento_nombre: string;
+  activo: boolean;
+}
+
 export interface ParametroItem {
   id: string;
   empresa_id: string | null;
@@ -18,6 +35,8 @@ export interface ParametroItem {
   exige_referencia?: boolean;
   activo: boolean;
   es_sistema: boolean;
+  en_uso?: boolean;
+  conteo_usos?: number;
   created_at: string;
 }
 
@@ -86,8 +105,26 @@ export class ParametrosService {
     return this.http.post<ParametroItem>(`${this.apiUrl}/metodos-pago`, data);
   }
 
+  // 7. Departamentos DANE
+  obtenerDepartamentos(): Observable<DepartamentoItem[]> {
+    return this.http.get<DepartamentoItem[]>(`${this.apiUrl}/departamentos`);
+  }
+
+  // 8. Municipios DANE
+  buscarMunicipios(termino?: string, departamentoCodigo?: string): Observable<MunicipioItem[]> {
+    let params: any = {};
+    if (termino) params.q = termino;
+    if (departamentoCodigo) params.departamento_codigo = departamentoCodigo;
+    return this.http.get<MunicipioItem[]>(`${this.apiUrl}/municipios`, { params });
+  }
+
   // Activar / Inactivar
   cambiarEstado(catalogo: string, id: string, activo: boolean): Observable<ParametroItem> {
     return this.http.patch<ParametroItem>(`${this.apiUrl}/${catalogo}/${id}/estado`, { activo });
+  }
+
+  // Actualizar atributos de parámetro
+  actualizarParametro(catalogo: string, id: string, data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.patch<ParametroItem>(`${this.apiUrl}/${catalogo}/${id}`, data);
   }
 }

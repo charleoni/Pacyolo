@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -10,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { TercerosService } from './terceros.service.js';
 import { CreateTerceroDto } from './dto/create-tercero.dto.js';
+import { UpdateTerceroDto } from './dto/update-tercero.dto.js';
 import { Tercero } from './entities/tercero.entity.js';
 
 @ApiTags('Terceros (Directorio NIIF)')
@@ -52,5 +54,16 @@ export class TercerosController {
   @ApiResponse({ status: 404, description: 'Tercero no encontrado' })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Tercero> {
     return await this.tercerosService.findOne(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar ficha integral de un tercero' })
+  @ApiResponse({ status: 200, type: Tercero })
+  @ApiResponse({ status: 404, description: 'Tercero no encontrado' })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateTerceroDto: UpdateTerceroDto,
+  ): Promise<Tercero> {
+    return await this.tercerosService.update(id, updateTerceroDto);
   }
 }

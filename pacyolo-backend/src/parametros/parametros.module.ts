@@ -6,6 +6,8 @@ import { RegimenFiscal } from './entities/regimen-fiscal.entity.js';
 import { ClasificacionTercero } from './entities/clasificacion-tercero.entity.js';
 import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity.js';
 import { MetodoPago } from './entities/metodo-pago.entity.js';
+import { Departamento } from './entities/departamento.entity.js';
+import { Municipio } from './entities/municipio.entity.js';
 import { ParametrosService } from './parametros.service.js';
 import { ParametrosController } from './parametros.controller.js';
 
@@ -18,6 +20,8 @@ import { ParametrosController } from './parametros.controller.js';
       ClasificacionTercero,
       TipoComprobanteConfig,
       MetodoPago,
+      Departamento,
+      Municipio,
     ]),
   ],
   controllers: [ParametrosController],
