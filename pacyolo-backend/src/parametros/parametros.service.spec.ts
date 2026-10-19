@@ -8,6 +8,8 @@ import { RegimenFiscal } from './entities/regimen-fiscal.entity.js';
 import { ClasificacionTercero } from './entities/clasificacion-tercero.entity.js';
 import { TipoComprobanteConfig } from './entities/tipo-comprobante-config.entity.js';
 import { MetodoPago } from './entities/metodo-pago.entity.js';
+import { Departamento } from './entities/departamento.entity.js';
+import { Municipio } from './entities/municipio.entity.js';
 
 describe('ParametrosService', () => {
   let service: ParametrosService;
@@ -21,8 +23,10 @@ describe('ParametrosService', () => {
       save: vi.fn().mockImplementation(async (entity) => ({ id: 'mock-uuid', ...entity })),
       createQueryBuilder: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         addOrderBy: vi.fn().mockReturnThis(),
+        take: vi.fn().mockReturnThis(),
         getMany: vi.fn().mockResolvedValue([]),
       }),
     };
@@ -36,6 +40,8 @@ describe('ParametrosService', () => {
         { provide: getRepositoryToken(ClasificacionTercero), useValue: mockRepo },
         { provide: getRepositoryToken(TipoComprobanteConfig), useValue: mockRepo },
         { provide: getRepositoryToken(MetodoPago), useValue: mockRepo },
+        { provide: getRepositoryToken(Departamento), useValue: mockRepo },
+        { provide: getRepositoryToken(Municipio), useValue: mockRepo },
       ],
     }).compile();
 
@@ -67,9 +73,51 @@ describe('ParametrosService', () => {
     expect(mockRepo.createQueryBuilder).toHaveBeenCalled();
   });
 
-  it('debe activar o inactivar un parámetro existente', async () => {
-    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', activo: true });
+  it('debe activar o inactivar un parámetro existente si no está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'CC', nombre: 'Cédula', activo: true });
     const res = await service.cambiarEstado('tipos-identificacion', 'mock-id', false);
     expect(res.activo).toBe(false);
+  });
+
+  it('debe rechazar la inactivación con BadRequestException si el parámetro está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'NIT', nombre: 'NIT', activo: true });
+    vi.spyOn(service, 'consultarConteosUso').mockResolvedValueOnce(new Map([['NIT', 5]]));
+
+    await expect(service.cambiarEstado('tipos-identificacion', 'mock-id', false)).rejects.toThrow(
+      'No es posible inactivar el parámetro'
+    );
+  });
+
+  it('debe actualizar los atributos de un parámetro', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'CC', nombre: 'Cédula', activo: true });
+    const res = await service.actualizarParametro('tipos-identificacion', 'mock-id', {
+      nombre: 'Cédula de Ciudadanía Colombiana',
+      codigo_dian: '13',
+    });
+    expect(res).toBeDefined();
+    expect(res.nombre).toBe('Cédula de Ciudadanía Colombiana');
+  });
+
+  it('debe rechazar modificar el código si el parámetro está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'NIT', nombre: 'NIT', activo: true });
+    vi.spyOn(service, 'consultarConteosUso').mockResolvedValueOnce(new Map([['NIT', 10]]));
+
+    await expect(
+      service.actualizarParametro('tipos-identificacion', 'mock-id', {
+        codigo: 'NIT_NUEVO',
+      })
+    ).rejects.toThrow('No es posible cambiar el código');
+  });
+
+  it('debe listar departamentos oficiales DANE', async () => {
+    const res = await service.listarDepartamentos();
+    expect(res).toEqual([]);
+    expect(mockRepo.find).toHaveBeenCalled();
+  });
+
+  it('debe buscar municipios oficiales DANE por término o departamento', async () => {
+    const res = await service.buscarMunicipios('Bogotá', '11');
+    expect(res).toEqual([]);
+    expect(mockRepo.createQueryBuilder).toHaveBeenCalled();
   });
 });

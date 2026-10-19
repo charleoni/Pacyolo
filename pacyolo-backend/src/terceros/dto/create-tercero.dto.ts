@@ -61,10 +61,85 @@ export class CreateTerceroDto {
   @IsOptional()
   codigo_municipio?: string;
 
+  @ApiPropertyOptional({ example: 'Bogotá, D.C.' })
+  @IsString()
+  @IsOptional()
+  ciudad_nombre?: string;
+
+  @ApiPropertyOptional({ example: 'CO', default: 'CO' })
+  @IsString()
+  @IsOptional()
+  pais_codigo?: string;
+
+  @ApiPropertyOptional({ example: '11' })
+  @IsString()
+  @IsOptional()
+  departamento_codigo?: string;
+
+  @ApiPropertyOptional({ example: 'Bogotá, D.C.' })
+  @IsString()
+  @IsOptional()
+  departamento_nombre?: string;
+
+  @ApiPropertyOptional({ example: '110111' })
+  @IsString()
+  @IsOptional()
+  codigo_postal?: string;
+
+  @ApiPropertyOptional({ example: 'Carlos' })
+  @IsString()
+  @IsOptional()
+  primer_nombre?: string;
+
+  @ApiPropertyOptional({ example: 'Andrés' })
+  @IsString()
+  @IsOptional()
+  otros_nombres?: string;
+
+  @ApiPropertyOptional({ example: 'Mendoza' })
+  @IsString()
+  @IsOptional()
+  primer_apellido?: string;
+
+  @ApiPropertyOptional({ example: 'Silva' })
+  @IsString()
+  @IsOptional()
+  segundo_apellido?: string;
+
+  @ApiPropertyOptional({ example: 'DISTRIBUIDORA NACIONAL SAS' })
+  @IsString()
+  @IsOptional()
+  razon_social?: string;
+
   @ApiPropertyOptional({ example: 'NO_RESPONSABLE_IVA', default: 'NO_RESPONSABLE_IVA' })
   @IsString()
   @IsOptional()
   regimen_iva?: string;
+
+  @ApiPropertyOptional({ example: '4711' })
+  @IsString()
+  @IsOptional()
+  actividad_economica_ciiu?: string;
+
+  @ApiPropertyOptional({ example: 'O-13;O-15' })
+  @IsString()
+  @IsOptional()
+  responsabilidades_fiscales?: string;
+
+  @ApiPropertyOptional({ example: 'Bancolombia' })
+  @IsString()
+  @IsOptional()
+  banco_nombre?: string;
+
+  @ApiPropertyOptional({ example: 'AHORROS' })
+  @IsString()
+  @IsOptional()
+  tipo_cuenta_bancaria?: string;
+
+  @ApiPropertyOptional({ example: '12345678901' })
+  @IsString()
+  @IsOptional()
+  numero_cuenta_bancaria?: string;
 
   @ApiPropertyOptional({ default: false })
   @IsBoolean()

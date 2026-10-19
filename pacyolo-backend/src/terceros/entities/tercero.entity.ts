@@ -58,6 +58,21 @@ export class Tercero {
   @Column({ type: 'varchar', length: 255 })
   nombre_completo: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  primer_nombre: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  otros_nombres: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  primer_apellido: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  segundo_apellido: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  razon_social: string | null;
+
   @Column({ type: 'varchar', length: 150, nullable: true })
   email: string;
 
@@ -67,8 +82,23 @@ export class Tercero {
   @Column({ type: 'varchar', length: 255, nullable: true })
   direccion: string;
 
+  @Column({ type: 'varchar', length: 5, default: 'CO' })
+  pais_codigo: string;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  departamento_codigo: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  departamento_nombre: string | null;
+
   @Column({ type: 'varchar', length: 10, nullable: true })
   codigo_municipio: string;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  ciudad_nombre: string | null;
+
+  @Column({ type: 'varchar', length: 15, nullable: true })
+  codigo_postal: string | null;
 
   @Column({
     type: 'varchar',
@@ -78,6 +108,9 @@ export class Tercero {
   })
   regimen_iva: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  responsabilidades_fiscales: string | null;
+
   @Column({ type: 'boolean', default: false })
   es_gran_contribuyente: boolean;
 
@@ -86,6 +119,15 @@ export class Tercero {
 
   @Column({ type: 'varchar', length: 10, nullable: true })
   actividad_economica_ciiu: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  banco_nombre: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  tipo_cuenta_bancaria: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  numero_cuenta_bancaria: string | null;
 
   @Column({ type: 'boolean', default: true })
   es_cliente: boolean;
