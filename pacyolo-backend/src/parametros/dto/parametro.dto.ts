@@ -206,3 +206,61 @@ export class UpdateEstadoParametroDto {
   @IsBoolean()
   activo: boolean;
 }
+
+export class UpdateParametroDto {
+  @ApiPropertyOptional({ example: 'NIT' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  codigo?: string;
+
+  @ApiPropertyOptional({ example: 'Número de Identificación Tributaria' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  nombre?: string;
+
+  @ApiPropertyOptional({ example: '31' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  codigo_dian?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  aplica_digito_verificacion?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  exige_razon_social?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  codigo_responsabilidad_dian?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  aplica_iva?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  color_badge?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  prefijo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  exige_referencia?: boolean;
+}

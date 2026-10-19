@@ -88,6 +88,27 @@ describe('ParametrosService', () => {
     );
   });
 
+  it('debe actualizar los atributos de un parámetro', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'CC', nombre: 'Cédula', activo: true });
+    const res = await service.actualizarParametro('tipos-identificacion', 'mock-id', {
+      nombre: 'Cédula de Ciudadanía Colombiana',
+      codigo_dian: '13',
+    });
+    expect(res).toBeDefined();
+    expect(res.nombre).toBe('Cédula de Ciudadanía Colombiana');
+  });
+
+  it('debe rechazar modificar el código si el parámetro está en uso', async () => {
+    mockRepo.findOne.mockResolvedValueOnce({ id: 'mock-id', codigo: 'NIT', nombre: 'NIT', activo: true });
+    vi.spyOn(service, 'consultarConteosUso').mockResolvedValueOnce(new Map([['NIT', 10]]));
+
+    await expect(
+      service.actualizarParametro('tipos-identificacion', 'mock-id', {
+        codigo: 'NIT_NUEVO',
+      })
+    ).rejects.toThrow('No es posible cambiar el código');
+  });
+
   it('debe listar departamentos oficiales DANE', async () => {
     const res = await service.listarDepartamentos();
     expect(res).toEqual([]);

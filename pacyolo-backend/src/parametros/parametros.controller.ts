@@ -20,6 +20,7 @@ import {
   CreateTipoComprobanteConfigDto,
   CreateMetodoPagoDto,
   UpdateEstadoParametroDto,
+  UpdateParametroDto,
 } from './dto/parametro.dto.js';
 
 @ApiTags('Tablas Maestras & Parametrización Dinámica')
@@ -134,6 +135,17 @@ export class ParametrosController {
     @Query('departamento_codigo') departamentoCodigo?: string,
   ) {
     return await this.parametrosService.buscarMunicipios(query, departamentoCodigo);
+  }
+
+  // ACTUALIZACIÓN DE PARÁMETROS MAESTROS
+  @Patch(':catalogo/:id')
+  @ApiOperation({ summary: 'Actualizar atributos de un registro de tabla maestra' })
+  async actualizarParametro(
+    @Param('catalogo') catalogo: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateParametroDto,
+  ) {
+    return await this.parametrosService.actualizarParametro(catalogo, id, dto);
   }
 
   // CAMBIO DE ESTADO (ACTIVAR / DESACTIVAR)

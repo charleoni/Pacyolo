@@ -122,4 +122,9 @@ export class ParametrosService {
   cambiarEstado(catalogo: string, id: string, activo: boolean): Observable<ParametroItem> {
     return this.http.patch<ParametroItem>(`${this.apiUrl}/${catalogo}/${id}/estado`, { activo });
   }
+
+  // Actualizar atributos de parámetro
+  actualizarParametro(catalogo: string, id: string, data: Partial<ParametroItem>): Observable<ParametroItem> {
+    return this.http.patch<ParametroItem>(`${this.apiUrl}/${catalogo}/${id}`, data);
+  }
 }

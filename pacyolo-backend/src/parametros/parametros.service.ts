@@ -16,6 +16,7 @@ import {
   CreateClasificacionTerceroDto,
   CreateTipoComprobanteConfigDto,
   CreateMetodoPagoDto,
+  UpdateParametroDto,
 } from './dto/parametro.dto.js';
 
 @Injectable()
@@ -608,6 +609,84 @@ export class ParametrosService {
     }
 
     entidad.activo = activo;
+    return await repo.save(entidad);
+  }
+
+  // ==========================================
+  // EDICIÓN DE PARÁMETROS MAESTROS
+  // ==========================================
+
+  async actualizarParametro(catalogo: string, id: string, dto: UpdateParametroDto): Promise<any> {
+    let repo: Repository<any>;
+
+    switch (catalogo.toLowerCase()) {
+      case 'tipos-identificacion':
+        repo = this.tipoIdRepo;
+        break;
+      case 'tipos-persona':
+        repo = this.tipoPersonaRepo;
+        break;
+      case 'regimenes-fiscales':
+        repo = this.regimenRepo;
+        break;
+      case 'clasificaciones-tercero':
+        repo = this.clasificacionRepo;
+        break;
+      case 'tipos-comprobante':
+        repo = this.comprobanteRepo;
+        break;
+      case 'metodos-pago':
+        repo = this.metodoPagoRepo;
+        break;
+      default:
+        throw new BadRequestException(`Catálogo desconocido o no editable: '${catalogo}'`);
+    }
+
+    const entidad = await repo.findOne({ where: { id } });
+    if (!entidad) {
+      throw new NotFoundException(`Registro no encontrado en ${catalogo}`);
+    }
+
+    // Si se intenta modificar el código y ya está en uso, bloquear la mutación del código
+    if (dto.codigo && dto.codigo.trim().toUpperCase() !== entidad.codigo.toUpperCase()) {
+      const conteos = await this.consultarConteosUso(catalogo);
+      const conteo = conteos.get(entidad.codigo.toUpperCase()) || 0;
+      if (conteo > 0) {
+        throw new BadRequestException(
+          `No es posible cambiar el código '${entidad.codigo}' a '${dto.codigo}' porque está asociado a ${conteo} registro(s) en el sistema. Puede modificar su denominación o atributos DIAN.`
+        );
+      }
+      entidad.codigo = dto.codigo.trim().toUpperCase();
+    }
+
+    if (dto.nombre && dto.nombre.trim().length > 0) {
+      entidad.nombre = dto.nombre.trim();
+    }
+    if (dto.codigo_dian !== undefined) {
+      entidad.codigo_dian = dto.codigo_dian;
+    }
+    if (dto.aplica_digito_verificacion !== undefined) {
+      entidad.aplica_digito_verificacion = dto.aplica_digito_verificacion;
+    }
+    if (dto.exige_razon_social !== undefined) {
+      entidad.exige_razon_social = dto.exige_razon_social;
+    }
+    if (dto.codigo_responsabilidad_dian !== undefined) {
+      entidad.codigo_responsabilidad_dian = dto.codigo_responsabilidad_dian;
+    }
+    if (dto.aplica_iva !== undefined) {
+      entidad.aplica_iva = dto.aplica_iva;
+    }
+    if (dto.color_badge !== undefined) {
+      entidad.color_badge = dto.color_badge;
+    }
+    if (dto.prefijo !== undefined) {
+      entidad.prefijo = dto.prefijo;
+    }
+    if (dto.exige_referencia !== undefined) {
+      entidad.exige_referencia = dto.exige_referencia;
+    }
+
     return await repo.save(entidad);
   }
 }

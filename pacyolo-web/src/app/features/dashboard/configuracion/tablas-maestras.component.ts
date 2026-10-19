@@ -265,34 +265,46 @@ export interface GrupoConfig {
                           </div>
                         </td>
                         <td class="py-3 px-4 text-right">
-                          @if (item.activo) {
+                          <div class="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              (click)="alternarEstado(item)"
-                              [disabled]="item.en_uso"
-                              [title]="item.en_uso ? 'Asociado a ' + item.conteo_usos + ' registro(s) en el sistema. No se puede inactivar.' : 'Inactivar parámetro'"
-                              class="px-2.5 py-1 text-xs rounded-lg border transition inline-flex items-center gap-1 ml-auto"
-                              [class]="item.en_uso 
-                                ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border-slate-700 select-none' 
-                                : 'text-amber-400 hover:bg-amber-950/40 border-amber-800/40 cursor-pointer'"
+                              (click)="abrirModalEditar(item)"
+                              class="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white transition cursor-pointer inline-flex items-center gap-1"
+                              title="Editar atributos del parámetro"
                             >
-                              @if (item.en_uso) {
-                                <span class="text-[10px]">🔒</span>
-                                <span>Bloqueado (En Uso)</span>
-                              } @else {
-                                <span>Inactivar</span>
-                              }
+                              <span>✏️</span>
+                              <span>Editar</span>
                             </button>
-                          } @else {
-                            <button
-                              type="button"
-                              (click)="alternarEstado(item)"
-                              class="px-2.5 py-1 text-xs rounded-lg border transition text-emerald-400 hover:bg-emerald-950/40 border-emerald-800/40 cursor-pointer inline-flex items-center gap-1 ml-auto"
-                              title="Reactivar parámetro para nuevas operaciones"
-                            >
-                              <span>Reactivar</span>
-                            </button>
-                          }
+
+                            @if (item.activo) {
+                              <button
+                                type="button"
+                                (click)="alternarEstado(item)"
+                                [disabled]="item.en_uso"
+                                [title]="item.en_uso ? 'Asociado a ' + item.conteo_usos + ' registro(s) en el sistema. No se puede inactivar.' : 'Inactivar parámetro'"
+                                class="px-2.5 py-1 text-xs rounded-lg border transition inline-flex items-center gap-1"
+                                [class]="item.en_uso 
+                                  ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border-slate-700 select-none' 
+                                  : 'text-amber-400 hover:bg-amber-950/40 border-amber-800/40 cursor-pointer'"
+                              >
+                                @if (item.en_uso) {
+                                  <span class="text-[10px]">🔒</span>
+                                  <span>Bloqueado</span>
+                                } @else {
+                                  <span>Inactivar</span>
+                                }
+                              </button>
+                            } @else {
+                              <button
+                                type="button"
+                                (click)="alternarEstado(item)"
+                                class="px-2.5 py-1 text-xs rounded-lg border transition text-emerald-400 hover:bg-emerald-950/40 border-emerald-800/40 cursor-pointer inline-flex items-center gap-1"
+                                title="Reactivar parámetro para nuevas operaciones"
+                              >
+                                <span>Reactivar</span>
+                              </button>
+                            }
+                          </div>
                         </td>
                       </tr>
                     } @empty {
@@ -391,8 +403,8 @@ export interface GrupoConfig {
         <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 class="text-base font-bold text-white flex items-center gap-2">
-              <span class="text-emerald-400">✨</span>
-              Crear Nuevo Registro en {{ configActiva()?.nombre }}
+              <span class="text-emerald-400">{{ esEdicion() ? '✏️' : '✨' }}</span>
+              {{ esEdicion() ? 'Editar Registro en ' + configActiva()?.nombre : 'Crear Nuevo Registro en ' + configActiva()?.nombre }}
             </h3>
             <button (click)="mostrarModal.set(false)" class="text-slate-400 hover:text-slate-200 text-2xl font-bold cursor-pointer">&times;</button>
           </div>
@@ -403,12 +415,19 @@ export interface GrupoConfig {
 
           <div class="space-y-3 text-xs">
             <div>
-              <label class="block font-semibold text-slate-300 mb-1">Código Único (Mnemónico) *</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-semibold text-slate-300">Código Único (Mnemónico) *</label>
+                @if (esEdicion() && nuevoRegistro.en_uso) {
+                  <span class="text-[10px] text-amber-400 font-mono">🔒 Bloqueado por {{ nuevoRegistro.conteo_usos }} usos</span>
+                }
+              </div>
               <input
                 type="text"
                 [(ngModel)]="nuevoRegistro.codigo"
+                [disabled]="esEdicion() && nuevoRegistro.en_uso"
+                [class]="esEdicion() && nuevoRegistro.en_uso ? 'opacity-50 cursor-not-allowed bg-slate-900' : 'bg-slate-950 focus:border-indigo-500'"
                 placeholder="Ej: PPT o CHEQUE_GERENCIA"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-indigo-500"
+                class="w-full border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase focus:outline-none"
               />
             </div>
 
@@ -494,7 +513,7 @@ export interface GrupoConfig {
               [disabled]="guardando() || !puedeGuardar()"
               class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl shadow transition cursor-pointer"
             >
-              {{ guardando() ? 'Guardando...' : 'Guardar Parámetro' }}
+              {{ guardando() ? 'Guardando...' : (esEdicion() ? 'Actualizar Parámetro' : 'Guardar Parámetro') }}
             </button>
           </div>
         </div>
@@ -512,6 +531,8 @@ export class TablasMaestrasComponent implements OnInit {
   municipios = signal<MunicipioItem[]>([]);
 
   mostrarModal = signal<boolean>(false);
+  esEdicion = signal<boolean>(false);
+  idEditando = signal<string | null>(null);
   guardando = signal<boolean>(false);
   errorMsg = signal<string | null>(null);
 
@@ -755,7 +776,28 @@ export class TablasMaestrasComponent implements OnInit {
     });
   }
 
+  abrirModalEditar(item: ParametroItem): void {
+    this.esEdicion.set(true);
+    this.idEditando.set(item.id);
+    this.nuevoRegistro = {
+      codigo: item.codigo,
+      nombre: item.nombre,
+      codigo_dian: item.codigo_dian || '',
+      aplica_digito_verificacion: !!item.aplica_digito_verificacion,
+      exige_razon_social: !!item.exige_razon_social,
+      codigo_responsabilidad_dian: item.codigo_responsabilidad_dian || '',
+      prefijo: item.prefijo || '',
+      exige_referencia: !!item.exige_referencia,
+      en_uso: !!item.en_uso,
+      conteo_usos: item.conteo_usos || 0,
+    };
+    this.errorMsg.set(null);
+    this.mostrarModal.set(true);
+  }
+
   abrirModalNuevo(): void {
+    this.esEdicion.set(false);
+    this.idEditando.set(null);
     this.nuevoRegistro = {
       codigo: '',
       nombre: '',
@@ -765,6 +807,8 @@ export class TablasMaestrasComponent implements OnInit {
       codigo_responsabilidad_dian: '',
       prefijo: '',
       exige_referencia: false,
+      en_uso: false,
+      conteo_usos: 0,
     };
     this.errorMsg.set(null);
     this.mostrarModal.set(true);
@@ -790,6 +834,24 @@ export class TablasMaestrasComponent implements OnInit {
       codigo: this.nuevoRegistro.codigo.trim().toUpperCase(),
       nombre: this.nuevoRegistro.nombre.trim(),
     };
+
+    // Si estamos en modo edición, llamar a actualizarParametro
+    if (this.esEdicion() && this.idEditando()) {
+      this.parametrosService
+        .actualizarParametro(this.catalogoActivo, this.idEditando()!, payload)
+        .subscribe({
+          next: () => {
+            this.guardando.set(false);
+            this.mostrarModal.set(false);
+            this.cargarDatos();
+          },
+          error: (err) => {
+            this.guardando.set(false);
+            this.errorMsg.set(err.error?.message || 'Error actualizando registro.');
+          },
+        });
+      return;
+    }
 
     let obs;
     switch (this.catalogoActivo) {
