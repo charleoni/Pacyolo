@@ -9,7 +9,8 @@ import { OrdenCompra, EstadoOrdenCompra } from './entities/orden-compra.entity.j
 import { OrdenCompraLinea } from './entities/orden-compra-linea.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { Articulo } from '../inventarios/entities/articulo.entity.js';
-import { CreateOrdenCompraDto } from './dto/compras.dto.js';
+import { CreateOrdenCompraDto, CausarOrdenCompraDto } from './dto/compras.dto.js';
+import { CxpService } from '../cxp/cxp.service.js';
 
 @Injectable()
 export class ComprasService {
@@ -22,6 +23,7 @@ export class ComprasService {
     private readonly terceroRepo: Repository<Tercero>,
     @InjectRepository(Articulo)
     private readonly articuloRepo: Repository<Articulo>,
+    private readonly cxpService: CxpService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -123,6 +125,11 @@ export class ComprasService {
       bodega_destino_id: dto.bodega_destino_id || null,
       fecha_emision: dto.fecha_emision,
       fecha_entrega_esperada: dto.fecha_entrega_esperada || null,
+      condicion_pago: dto.condicion_pago || 'CREDITO',
+      dias_credito: dto.dias_credito !== undefined ? Number(dto.dias_credito) : 30,
+      fecha_vencimiento: dto.fecha_vencimiento || null,
+      metodo_pago: dto.metodo_pago || null,
+      numero_factura_proveedor: dto.numero_factura_proveedor || null,
       estado: 'BORRADOR',
       subtotal: subtotalGeneral,
       total_impuestos: impuestosGeneral,
@@ -171,5 +178,48 @@ export class ComprasService {
     }
 
     return await this.ordenRepo.save(orden);
+  }
+
+  async causarOrden(
+    id: string,
+    dto: CausarOrdenCompraDto,
+  ): Promise<{ orden: OrdenCompra; cxp: any }> {
+    const orden = await this.obtenerOrden(id);
+    if (orden.cxp_id) {
+      throw new BadRequestException(`La orden de compra '${orden.numero_orden}' ya fue causada en Cuentas por Pagar.`);
+    }
+
+    const numeroFactura = dto.numero_factura_proveedor || orden.numero_factura_proveedor || orden.numero_orden;
+    const fechaEmision = dto.fecha_factura || orden.fecha_emision;
+
+    // Calcular vencimiento según condición de pago
+    let fechaVencimiento = orden.fecha_vencimiento;
+    if (!fechaVencimiento) {
+      const dias = orden.condicion_pago === 'CONTADO' ? 0 : (orden.dias_credito || 30);
+      const emisionDate = new Date(fechaEmision);
+      emisionDate.setDate(emisionDate.getDate() + dias);
+      fechaVencimiento = emisionDate.toISOString().slice(0, 10);
+    }
+
+    const cxp = await this.cxpService.causarFactura({
+      empresa_id: orden.empresa_id,
+      tercero_id: orden.proveedor_id,
+      codigo_concepto: dto.codigo_concepto || 'COMPRA_INVENTARIO',
+      numero_factura_proveedor: numeroFactura,
+      fecha_emision: fechaEmision,
+      fecha_vencimiento: fechaVencimiento,
+      subtotal: Number(orden.subtotal),
+      glosa: dto.glosa || `Causación OC ${orden.numero_orden} - Proveedor ${orden.proveedor?.nombre_completo || ''}`,
+    });
+
+    orden.cxp_id = cxp.id;
+    orden.asiento_id = cxp.asiento_id;
+    orden.numero_factura_proveedor = numeroFactura;
+    if (orden.estado === 'BORRADOR') {
+      orden.estado = 'APROBADA';
+    }
+    const ordenActualizada = await this.ordenRepo.save(orden);
+
+    return { orden: ordenActualizada, cxp };
   }
 }

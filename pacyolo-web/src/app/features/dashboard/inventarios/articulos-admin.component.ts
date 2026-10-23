@@ -12,11 +12,15 @@ import {
 } from '../../../core/services/inventarios.service';
 import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ComprasService, OrdenCompraItem } from '../../../core/services/compras.service';
+import { TerceroLookupModalComponent } from '../../../shared/components/tercero-lookup-modal.component';
+import { ArticuloLookupModalComponent } from '../../../shared/components/articulo-lookup-modal.component';
 
 @Component({
   selector: 'app-articulos-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado Principal -->
@@ -56,6 +60,13 @@ import { AuthService } from '../../../core/services/auth.service';
             >
               <span>+ Nueva Nota de Ajuste</span>
             </button>
+          } @else if (pestanaActiva() === 'traslados') {
+            <button
+              (click)="abrirModalTraslado()"
+              class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/20 transition flex items-center gap-2 cursor-pointer"
+            >
+              <span>+ Nuevo Traslado entre Bodegas</span>
+            </button>
           }
         </div>
       </div>
@@ -81,6 +92,17 @@ import { AuthService } from '../../../core/services/auth.service';
           <span>📥 Entradas de Almacén</span>
           <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
             {{ entradas().length }}
+          </span>
+        </button>
+
+        <button
+          (click)="pestanaActiva.set('traslados'); cargarTraslados()"
+          [class]="pestanaActiva() === 'traslados' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
+          class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
+        >
+          <span>🔄 Traslados entre Bodegas</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
+            {{ traslados().length }}
           </span>
         </button>
 
@@ -246,6 +268,26 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- ========================================================================= -->
       @if (pestanaActiva() === 'entradas') {
         <div class="space-y-4">
+          <!-- Barra de Búsqueda y Filtros de Entradas -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="relative w-full sm:w-96">
+              <input
+                type="text"
+                [(ngModel)]="busquedaEntrada"
+                placeholder="Buscar por N° Entrada (EA-...), Proveedor, Remisión o Bodega..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-sans"
+              />
+              <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+              @if (busquedaEntrada) {
+                <button (click)="busquedaEntrada = ''" class="absolute right-3 top-2 text-slate-500 hover:text-white cursor-pointer">✕</button>
+              }
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span>Registros: <span class="text-emerald-400 font-bold font-mono">{{ entradasFiltradas().length }}</span></span>
+            </div>
+          </div>
+
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
@@ -259,10 +301,11 @@ import { AuthService } from '../../../core/services/auth.service';
                     <th class="p-3.5 text-center">Ítems</th>
                     <th class="p-3.5 text-right">Total Valorado</th>
                     <th class="p-3.5 text-center">Estado</th>
+                    <th class="p-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (ent of entradas(); track ent.id) {
+                  @for (ent of entradasFiltradas(); track ent.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-bold text-white">{{ ent.numero_entrada }}</td>
                       <td class="p-3.5 text-slate-400 font-mono">{{ ent.fecha_entrada }}</td>
@@ -278,11 +321,22 @@ import { AuthService } from '../../../core/services/auth.service';
                           {{ ent.estado }}
                         </span>
                       </td>
+                      <td class="p-3.5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          (click)="abrirModalImprimirEntrada(ent)"
+                          class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                          title="Imprimir / Consultar comprobante de recepción formal"
+                        >
+                          <span>🖨️</span>
+                          <span>Imprimir / Ver</span>
+                        </button>
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="8" class="p-8 text-center text-slate-500">
-                        No hay entradas de almacén registradas.
+                      <td colspan="9" class="p-8 text-center text-slate-500">
+                        No se encontraron entradas de almacén coincidentes.
                       </td>
                     </tr>
                   }
@@ -299,41 +353,94 @@ import { AuthService } from '../../../core/services/auth.service';
       @if (pestanaActiva() === 'kardex') {
         <div class="space-y-4">
           <!-- Filtro de Kardex -->
-          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center gap-3 text-xs">
-            <div class="flex-1 min-w-[200px]">
-              <label class="block text-slate-400 mb-1">Filtrar por Artículo</label>
-              <select
-                [(ngModel)]="kardexFiltroArticulo"
-                (change)="cargarKardex()"
-                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-indigo-500"
-              >
-                <option value="">Todos los artículos</option>
-                @for (a of articulos(); track a.id) {
-                  <option [value]="a.id">[{{ a.codigo }}] {{ a.nombre }}</option>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex flex-wrap items-center gap-3 flex-1">
+              <!-- Selector de Artículo con Lookup Modal -->
+              <div class="min-w-[280px]">
+                <label class="block text-slate-400 mb-1 font-semibold">Artículo en Inspección</label>
+                @if (articuloKardexSeleccionado(); as art) {
+                  <div class="flex items-center justify-between p-2 bg-slate-950 border border-indigo-500/50 rounded-xl">
+                    <div class="truncate text-xs">
+                      <span class="font-mono font-bold text-indigo-400 mr-1">[{{ art.codigo }}]</span>
+                      <span class="text-white">{{ art.nombre }}</span>
+                    </div>
+                    <div class="flex items-center gap-1 ml-2">
+                      <button
+                        type="button"
+                        (click)="abrirLookupArticuloKardex()"
+                        class="px-2 py-0.5 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded text-[11px] font-semibold transition cursor-pointer"
+                      >
+                        Cambiar 🔍
+                      </button>
+                      <button
+                        type="button"
+                        (click)="limpiarArticuloKardex()"
+                        class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded text-[11px] transition cursor-pointer"
+                        title="Ver todos los artículos"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="abrirLookupArticuloKardex()"
+                    class="w-full flex items-center justify-between px-3 py-2 bg-slate-950 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs transition cursor-pointer group"
+                  >
+                    <span>🔍 Todos los artículos (Clic para filtrar)...</span>
+                    <span class="bg-indigo-600/20 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition">
+                      Catálogo
+                    </span>
+                  </button>
                 }
-              </select>
+              </div>
+
+              <div class="w-48">
+                <label class="block text-slate-400 mb-1 font-semibold">Bodega</label>
+                <select
+                  [(ngModel)]="kardexFiltroBodega"
+                  (change)="cargarKardex()"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 text-xs"
+                >
+                  <option value="">Todas las bodegas</option>
+                  @for (b of bodegas(); track b.id) {
+                    <option [value]="b.id">{{ b.nombre }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="w-48">
+                <label class="block text-slate-400 mb-1 font-semibold">Doc. Referencia</label>
+                <input
+                  type="text"
+                  [(ngModel)]="kardexFiltroDoc"
+                  placeholder="Ej: EA-0001, TR-0002..."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs"
+                />
+              </div>
             </div>
 
-            <div class="w-48">
-              <label class="block text-slate-400 mb-1">Bodega</label>
-              <select
-                [(ngModel)]="kardexFiltroBodega"
-                (change)="cargarKardex()"
-                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-indigo-500"
+            <div class="flex items-center gap-2 self-end">
+              <button
+                type="button"
+                (click)="cargarKardex()"
+                class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
               >
-                <option value="">Todas las bodegas</option>
-                @for (b of bodegas(); track b.id) {
-                  <option [value]="b.id">{{ b.nombre }}</option>
-                }
-              </select>
-            </div>
+                <span>🔄</span>
+                <span>Actualizar</span>
+              </button>
 
-            <button
-              (click)="cargarKardex()"
-              class="self-end px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition cursor-pointer"
-            >
-              🔄 Actualizar
-            </button>
+              <button
+                type="button"
+                (click)="abrirModalImprimirKardex()"
+                [disabled]="kardexFiltrado().length === 0"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 disabled:opacity-40"
+              >
+                <span>🖨️</span>
+                <span>Imprimir Reporte Kardex NIIF</span>
+              </button>
+            </div>
           </div>
 
           <!-- Tabla de Kardex -->
@@ -367,7 +474,7 @@ import { AuthService } from '../../../core/services/auth.service';
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 font-mono text-[11px] text-slate-300">
-                  @for (k of kardexMovimientos(); track k.id) {
+                  @for (k of kardexFiltrado(); track k.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-2.5 text-slate-400">{{ k.fecha_movimiento }}</td>
                       <td class="p-2.5 font-bold text-white">{{ k.documento_referencia }}</td>
@@ -426,6 +533,38 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- ========================================================================= -->
       @if (pestanaActiva() === 'ajustes') {
         <div class="space-y-4">
+          <!-- Barra de Búsqueda y Filtros de Ajustes -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-3 w-full sm:w-auto flex-1">
+              <div class="relative w-full sm:w-80">
+                <input
+                  type="text"
+                  [(ngModel)]="busquedaAjuste"
+                  placeholder="Buscar por N° Nota (AJ-...), Justificación o Bodega..."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-sans"
+                />
+                <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+                @if (busquedaAjuste) {
+                  <button (click)="busquedaAjuste = ''" class="absolute right-3 top-2 text-slate-500 hover:text-white cursor-pointer">✕</button>
+                }
+              </div>
+
+              <select
+                [(ngModel)]="filtroTipoAjuste"
+                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+              >
+                <option value="">Todos los tipos de ajuste</option>
+                <option value="SOBRANTE">📥 Sobrante de Inventario</option>
+                <option value="FALTANTE_MERMA">📤 Faltante / Merma</option>
+                <option value="CIERRE_INVENTARIO_FISICO">⚖️ Cierre Conteo Físico</option>
+              </select>
+            </div>
+
+            <div class="text-xs text-slate-400">
+              Registros: <span class="text-amber-400 font-bold font-mono">{{ ajustesFiltrados().length }}</span>
+            </div>
+          </div>
+
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
@@ -438,10 +577,11 @@ import { AuthService } from '../../../core/services/auth.service';
                     <th class="p-3.5">Justificación de Auditoría</th>
                     <th class="p-3.5 text-center">Ítems</th>
                     <th class="p-3.5 text-right">Total Valorado</th>
+                    <th class="p-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (aj of ajustes(); track aj.id) {
+                  @for (aj of ajustesFiltrados(); track aj.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-bold text-white">{{ aj.numero_nota }}</td>
                       <td class="p-3.5 text-slate-400 font-mono">{{ aj.fecha_ajuste }}</td>
@@ -465,11 +605,22 @@ import { AuthService } from '../../../core/services/auth.service';
                       <td class="p-3.5 text-right font-mono font-bold text-amber-400">
                         \${{ Number(aj.total_ajuste).toLocaleString('es-CO') }}
                       </td>
+                      <td class="p-3.5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          (click)="abrirModalImprimirAjuste(aj)"
+                          class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                          title="Imprimir / Consultar acta de ajuste formal"
+                        >
+                          <span>🖨️</span>
+                          <span>Imprimir / Ver</span>
+                        </button>
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7" class="p-8 text-center text-slate-500">
-                        No hay notas de ajuste registradas.
+                      <td colspan="8" class="p-8 text-center text-slate-500">
+                        No se encontraron notas de ajuste coincidentes.
                       </td>
                     </tr>
                   }
@@ -485,6 +636,56 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- ========================================================================= -->
       @if (pestanaActiva() === 'existencias') {
         <div class="space-y-4">
+          <!-- Barra de Búsqueda, Filtro Bodega, Indicadores y Botón Imprimir Reporte -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1">
+              <div class="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  [(ngModel)]="busquedaExistencia"
+                  placeholder="Buscar por SKU o Nombre..."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans"
+                />
+                <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+                @if (busquedaExistencia) {
+                  <button (click)="busquedaExistencia = ''" class="absolute right-3 top-2 text-slate-500 hover:text-white cursor-pointer">✕</button>
+                }
+              </div>
+
+              <select
+                [(ngModel)]="filtroBodegaExistencias"
+                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+              >
+                <option value="">Todas las bodegas</option>
+                @for (b of bodegas(); track b.id) {
+                  <option [value]="b.id">{{ b.nombre }} ({{ b.codigo }})</option>
+                }
+              </select>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Indicadores consolidados -->
+              <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-[11px]">
+                <span class="text-slate-400">Total Físico:</span>
+                <span class="text-emerald-400 font-bold">{{ totalStockExistencias().toLocaleString('es-CO') }}</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-slate-400">Valor Total:</span>
+                <span class="text-cyan-400 font-bold">\${{ totalValoradoExistencias().toLocaleString('es-CO') }}</span>
+              </div>
+
+              <button
+                type="button"
+                (click)="abrirModalImprimirExistencias()"
+                [disabled]="existenciasFiltradas().length === 0"
+                class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-lg shadow-cyan-600/20 flex items-center gap-1.5"
+                title="Imprimir reporte formal de existencias valoradas"
+              >
+                <span>🖨️</span>
+                <span>Imprimir Reporte Valorado</span>
+              </button>
+            </div>
+          </div>
+
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
@@ -499,7 +700,7 @@ import { AuthService } from '../../../core/services/auth.service';
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (ex of existencias(); track ex.id) {
+                  @for (ex of existenciasFiltradas(); track ex.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-semibold text-white">{{ ex.bodega?.nombre }} ({{ ex.bodega?.codigo }})</td>
                       <td class="p-3.5 font-mono text-indigo-300">{{ ex.articulo?.codigo }}</td>
@@ -517,7 +718,85 @@ import { AuthService } from '../../../core/services/auth.service';
                   } @empty {
                     <tr>
                       <td colspan="6" class="p-8 text-center text-slate-500">
-                        No hay existencias registradas en bodegas.
+                        No hay existencias registradas con los filtros seleccionados.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ========================================================================= -->
+      <!-- PESTAÑA: TRASLADOS ENTRE BODEGAS                                          -->
+      <!-- ========================================================================= -->
+      @if (pestanaActiva() === 'traslados') {
+        <div class="space-y-4">
+          <!-- Barra de Búsqueda de Traslados -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="relative w-full sm:w-96">
+              <input
+                type="text"
+                [(ngModel)]="busquedaTraslado"
+                placeholder="Buscar por N° Traslado (TR-...), Bodega, Artículo u Observaciones..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-sans"
+              />
+              <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+              @if (busquedaTraslado) {
+                <button (click)="busquedaTraslado = ''" class="absolute right-3 top-2 text-slate-500 hover:text-white cursor-pointer">✕</button>
+              }
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span>Registros: <span class="text-purple-400 font-bold font-mono">{{ trasladosFiltrados().length }}</span></span>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
+                    <th class="p-3.5">N° Traslado</th>
+                    <th class="p-3.5">Fecha</th>
+                    <th class="p-3.5">Bodega Origen</th>
+                    <th class="p-3.5">Artículo</th>
+                    <th class="p-3.5 text-right">Cantidad</th>
+                    <th class="p-3.5 text-right">Costo Unitario</th>
+                    <th class="p-3.5 text-right">Costo Total</th>
+                    <th class="p-3.5">Observaciones</th>
+                    <th class="p-3.5 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y border-slate-800/60 text-slate-300">
+                  @for (tr of trasladosFiltrados(); track tr.id) {
+                    <tr class="hover:bg-slate-800/30 transition">
+                      <td class="p-3.5 font-mono font-bold text-purple-400">{{ tr.documento_referencia }}</td>
+                      <td class="p-3.5 font-mono text-slate-400">{{ tr.fecha_movimiento }}</td>
+                      <td class="p-3.5 font-medium text-white">{{ tr.bodega?.nombre || 'Bodega' }}</td>
+                      <td class="p-3.5 text-slate-200">[{{ tr.articulo?.codigo }}] {{ tr.articulo?.nombre }}</td>
+                      <td class="p-3.5 text-right font-mono font-bold text-amber-300">{{ tr.cantidad_salida || tr.cantidad_entrada }}</td>
+                      <td class="p-3.5 text-right font-mono text-slate-300">\${{ Number(tr.costo_unitario_salida || tr.costo_unitario_entrada).toLocaleString('es-CO') }}</td>
+                      <td class="p-3.5 text-right font-mono font-bold text-white">\${{ Number(tr.costo_total_salida || tr.costo_total_entrada).toLocaleString('es-CO') }}</td>
+                      <td class="p-3.5 text-slate-400 text-[11px] max-w-[150px] truncate">{{ tr.observaciones || 'Traslado entre bodegas' }}</td>
+                      <td class="p-3.5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          (click)="abrirModalImprimirTraslado(tr)"
+                          class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                          title="Imprimir comprobante de traslado formal"
+                        >
+                          <span>🖨️</span>
+                          <span>Imprimir / Ver</span>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="9" class="p-8 text-center text-slate-500">
+                        No hay registros de traslados coincidentes.
                       </td>
                     </tr>
                   }
@@ -687,18 +966,49 @@ import { AuthService } from '../../../core/services/auth.service';
               <button (click)="mostrarModalEntrada.set(false)" class="text-slate-500 hover:text-white cursor-pointer text-sm">✕</button>
             </div>
 
+            <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-2 text-xs mb-3">
+              <label class="block font-bold text-indigo-400 uppercase tracking-wider">Vincular a Orden de Compra (Opcional)</label>
+              <select
+                [(ngModel)]="entradaForm.orden_compra_id"
+                (change)="alSeleccionarOrdenCompra(entradaForm.orden_compra_id)"
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 font-mono"
+              >
+                <option value="">Recepción física directa (Sin Orden de Compra)</option>
+                @for (oc of ordenesCompra(); track oc.id) {
+                  <option [value]="oc.id">
+                    [{{ oc.numero_orden }}] {{ oc.proveedor?.nombre_completo }} - Total: \${{ Number(oc.total).toLocaleString('es-CO') }} ({{ oc.estado }})
+                  </option>
+                }
+              </select>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
                 <label class="block font-semibold text-slate-300 mb-1">Proveedor *</label>
-                <select
-                  [(ngModel)]="entradaForm.proveedor_id"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">Seleccione proveedor...</option>
-                  @for (p of proveedores(); track p.id) {
-                    <option [value]="p.id">{{ p.nombre_completo }}</option>
-                  }
-                </select>
+                @if (proveedorSeleccionado(); as prov) {
+                  <div class="flex items-center justify-between p-2 bg-slate-950 border border-emerald-500/50 rounded-xl">
+                    <div class="truncate text-xs">
+                      <span class="font-mono font-bold text-emerald-400 mr-1">[{{ prov.numero_identificacion }}]</span>
+                      <span class="text-white">{{ prov.razon_social || prov.nombre_completo }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="abrirLookupProveedor()"
+                      class="px-2 py-0.5 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded text-[11px] font-semibold transition cursor-pointer ml-1"
+                    >
+                      Cambiar 🔍
+                    </button>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="abrirLookupProveedor()"
+                    class="w-full flex items-center justify-between px-3 py-2 bg-slate-950 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-400 hover:text-emerald-300 rounded-xl text-xs transition cursor-pointer group"
+                  >
+                    <span>🔍 Buscar Proveedor...</span>
+                    <span class="text-[10px] text-emerald-400 font-bold">Catálogo</span>
+                  </button>
+                }
               </div>
 
               <div>
@@ -725,32 +1035,98 @@ import { AuthService } from '../../../core/services/auth.service';
               </div>
             </div>
 
+            <!-- Control de Facturación / Causación Inmediata de la Entrada -->
+            <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer font-bold text-slate-200">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="entradaForm.causar_cxp"
+                    class="rounded border-slate-700 text-emerald-600 focus:ring-0 cursor-pointer"
+                  />
+                  <span>💳 ¿Esta entrega viene con factura para causar ya en Cuentas por Pagar (CxP)?</span>
+                </label>
+                <span class="text-[11px] font-mono text-emerald-400">
+                  {{ entradaForm.causar_cxp ? '✓ Causará pasivo financiero' : 'Solo remisión física (Kardex)' }}
+                </span>
+              </div>
+
+              @if (entradaForm.causar_cxp) {
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+                  <div>
+                    <label class="block font-semibold text-slate-300 mb-1">N° Factura del Proveedor *</label>
+                    <input
+                      type="text"
+                      [(ngModel)]="entradaForm.numero_factura_proveedor"
+                      placeholder="Ej: FE-98412"
+                      class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Fecha de la Factura *</label>
+                    <input
+                      type="date"
+                      [(ngModel)]="entradaForm.fecha_factura"
+                      class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              }
+            </div>
+
             <!-- Líneas de Artículos a Recibir -->
             <div class="space-y-2 pt-2">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Artículos a Recibir</span>
-                <button
-                  type="button"
-                  (click)="agregarLineaEntrada()"
-                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-semibold rounded-lg text-xs cursor-pointer"
-                >
-                  + Agregar Fila
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="abrirCatalogoMultipleEntrada()"
+                    class="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1"
+                    title="Buscar y agregar varios artículos a la vez"
+                  >
+                    <span>📦</span>
+                    <span>Buscar Catálogo (Múltiples)</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="agregarLineaEntrada()"
+                    class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-semibold rounded-lg text-xs cursor-pointer"
+                  >
+                    + Agregar Fila
+                  </button>
+                </div>
               </div>
 
               <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-3 space-y-3">
                 @for (lin of entradaForm.lineas; track $index) {
                   <div class="grid grid-cols-12 gap-2 items-center text-xs">
                     <div class="col-span-6">
-                      <select
-                        [(ngModel)]="lin.articulo_id"
-                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white"
-                      >
-                        <option value="">Seleccione artículo...</option>
-                        @for (a of articulos(); track a.id) {
-                          <option [value]="a.id">[{{ a.codigo }}] {{ a.nombre }}</option>
-                        }
-                      </select>
+                      @if (obtenerArticulo(lin.articulo_id); as art) {
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-lg px-2 py-1 transition group">
+                          <div class="truncate text-xs">
+                            <span class="font-mono text-emerald-400 font-bold mr-1">[{{ art.codigo }}]</span>
+                            <span class="text-slate-200">{{ art.nombre }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="abrirLookupArticuloParaEntrada($index)"
+                            class="text-[11px] text-slate-400 hover:text-emerald-300 font-semibold ml-1 cursor-pointer shrink-0"
+                            title="Cambiar artículo"
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="abrirLookupArticuloParaEntrada($index)"
+                          class="w-full text-left bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 rounded-lg px-2 py-1 text-slate-400 hover:text-emerald-300 text-xs transition cursor-pointer flex items-center justify-between"
+                        >
+                          <span>🔍 Seleccionar artículo...</span>
+                          <span class="text-[10px] text-emerald-500 font-bold">Catálogo</span>
+                        </button>
+                      }
                     </div>
 
                     <div class="col-span-2">
@@ -858,28 +1234,55 @@ import { AuthService } from '../../../core/services/auth.service';
             <div class="space-y-2 pt-2">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Artículos a Ajustar</span>
-                <button
-                  type="button"
-                  (click)="agregarLineaAjuste()"
-                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold rounded-lg text-xs cursor-pointer"
-                >
-                  + Agregar Fila
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="abrirCatalogoMultipleAjuste()"
+                    class="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1"
+                    title="Buscar y agregar varios artículos para ajuste"
+                  >
+                    <span>📦</span>
+                    <span>Buscar Catálogo (Múltiples)</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="agregarLineaAjuste()"
+                    class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold rounded-lg text-xs cursor-pointer"
+                  >
+                    + Agregar Fila
+                  </button>
+                </div>
               </div>
 
               <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-3 space-y-3">
                 @for (lin of ajusteForm.lineas; track $index) {
                   <div class="grid grid-cols-12 gap-2 items-center text-xs">
                     <div class="col-span-5">
-                      <select
-                        [(ngModel)]="lin.articulo_id"
-                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white"
-                      >
-                        <option value="">Seleccione artículo...</option>
-                        @for (a of articulos(); track a.id) {
-                          <option [value]="a.id">[{{ a.codigo }}] {{ a.nombre }}</option>
-                        }
-                      </select>
+                      @if (obtenerArticulo(lin.articulo_id); as art) {
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-lg px-2 py-1 transition group">
+                          <div class="truncate text-xs">
+                            <span class="font-mono text-amber-400 font-bold mr-1">[{{ art.codigo }}]</span>
+                            <span class="text-slate-200">{{ art.nombre }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="abrirLookupArticuloParaAjuste($index)"
+                            class="text-[11px] text-slate-400 hover:text-amber-300 font-semibold ml-1 cursor-pointer shrink-0"
+                            title="Cambiar artículo"
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="abrirLookupArticuloParaAjuste($index)"
+                          class="w-full text-left bg-slate-900 border border-dashed border-slate-700 hover:border-amber-500 rounded-lg px-2 py-1 text-slate-400 hover:text-amber-300 text-xs transition cursor-pointer flex items-center justify-between"
+                        >
+                          <span>🔍 Seleccionar artículo...</span>
+                          <span class="text-[10px] text-amber-500 font-bold">Catálogo</span>
+                        </button>
+                      }
                     </div>
 
                     <div class="col-span-3">
@@ -927,44 +1330,891 @@ import { AuthService } from '../../../core/services/auth.service';
           </div>
         </div>
       }
+
+      <!-- ========================================================================= -->
+      <!-- MODAL: REGISTRAR TRASLADO ENTRE BODEGAS                                   -->
+      <!-- ========================================================================= -->
+      @if (mostrarModalTraslado()) {
+        <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>🔄</span>
+                <span>Registrar Traslado de Mercancía entre Bodegas</span>
+              </h3>
+              <button (click)="mostrarModalTraslado.set(false)" class="text-slate-500 hover:text-white cursor-pointer text-sm">✕</button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Bodega de Origen *</label>
+                <select
+                  [(ngModel)]="trasladoForm.bodega_origen_id"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Seleccione origen...</option>
+                  @for (b of bodegas(); track b.id) {
+                    <option [value]="b.id">{{ b.nombre }} ({{ b.codigo }})</option>
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Bodega de Destino *</label>
+                <select
+                  [(ngModel)]="trasladoForm.bodega_destino_id"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Seleccione destino...</option>
+                  @for (b of bodegas(); track b.id) {
+                    <option [value]="b.id">{{ b.nombre }} ({{ b.codigo }})</option>
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Fecha de Traslado *</label>
+                <input
+                  type="date"
+                  [(ngModel)]="trasladoForm.fecha_traslado"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div class="sm:col-span-3">
+                <label class="block font-semibold text-slate-300 mb-1">Observaciones / Motivo de Traslado</label>
+                <input
+                  type="text"
+                  [(ngModel)]="trasladoForm.observaciones"
+                  placeholder="Ej: Reabastecimiento de stock, traslado preventivo..."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Líneas de Artículos a Trasladar -->
+            <div class="space-y-2 pt-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Artículos a Trasladar</span>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="abrirCatalogoMultipleTraslado()"
+                    class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1"
+                    title="Buscar y agregar varios artículos a trasladar"
+                  >
+                    <span>📦</span>
+                    <span>Buscar Catálogo (Múltiples)</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="agregarLineaTraslado()"
+                    class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-semibold rounded-lg text-xs cursor-pointer"
+                  >
+                    + Agregar Artículo
+                  </button>
+                </div>
+              </div>
+
+              <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-3 space-y-3">
+                @for (lin of trasladoForm.lineas; track $index) {
+                  <div class="grid grid-cols-12 gap-2 items-center text-xs">
+                    <div class="col-span-7">
+                      @if (obtenerArticulo(lin.articulo_id); as art) {
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-purple-500/50 rounded-lg px-2 py-1 transition group">
+                          <div class="truncate text-xs">
+                            <span class="font-mono text-purple-400 font-bold mr-1">[{{ art.codigo }}]</span>
+                            <span class="text-slate-200">{{ art.nombre }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="abrirLookupArticuloParaTraslado($index)"
+                            class="text-[11px] text-slate-400 hover:text-purple-300 font-semibold ml-1 cursor-pointer shrink-0"
+                            title="Cambiar artículo"
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="abrirLookupArticuloParaTraslado($index)"
+                          class="w-full text-left bg-slate-900 border border-dashed border-slate-700 hover:border-purple-500 rounded-lg px-2 py-1 text-slate-400 hover:text-purple-300 text-xs transition cursor-pointer flex items-center justify-between"
+                        >
+                          <span>🔍 Seleccionar artículo...</span>
+                          <span class="text-[10px] text-purple-400 font-bold">Catálogo</span>
+                        </button>
+                      }
+                    </div>
+
+                    <div class="col-span-4">
+                      <input
+                        type="number"
+                        [(ngModel)]="lin.cantidad"
+                        placeholder="Cantidad a trasladar"
+                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white font-mono text-right"
+                      />
+                    </div>
+
+                    <div class="col-span-1 text-center">
+                      <button (click)="removerLineaTraslado($index)" [disabled]="trasladoForm.lineas.length === 1" class="text-slate-500 hover:text-rose-400 cursor-pointer disabled:opacity-30">✕</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 text-xs">
+              <button
+                (click)="mostrarModalTraslado.set(false)"
+                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                (click)="guardarTraslado()"
+                [disabled]="!trasladoForm.bodega_origen_id || !trasladoForm.bodega_destino_id || trasladoForm.bodega_origen_id === trasladoForm.bodega_destino_id || trasladoForm.lineas.length === 0 || guardando()"
+                class="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-purple-600/20 transition cursor-pointer"
+              >
+                {{ guardando() ? 'Trasladando...' : 'Procesar Traslado en Kardex' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ========================================================================= -->
+      <!-- MODAL FORMAL: VISOR E IMPRESIÓN DOCUMENTAL (AUDITORÍA & DIAN)            -->
+      <!-- ========================================================================= -->
+      @if (documentoParaImprimir(); as doc) {
+        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-200 my-8">
+            <!-- Barra superior de acciones (no se imprime) -->
+            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <span class="text-xl">🖨️</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white tracking-wide uppercase">{{ doc.titulo }}</h3>
+                  <p class="text-[11px] text-slate-400 font-mono">{{ doc.consecutivo }} - Pista Auditoría Oficial</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="imprimirDocumento()"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-indigo-600/30"
+                >
+                  <span>🖨️</span>
+                  <span>Imprimir / PDF</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="cerrarModalImprimir()"
+                  class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  ✕ Cerrar
+                </button>
+              </div>
+            </div>
+
+            <!-- CONTENEDOR DOCUMENTAL IMPRESO -->
+            <div id="hoja-impresion" class="p-8 sm:p-10 space-y-6 text-xs bg-white text-slate-900">
+              <!-- Encabezado Membretado Oficial -->
+              <div class="flex justify-between items-start border-b-2 border-slate-900 pb-5">
+                <div class="space-y-1">
+                  <h1 class="text-xl font-black text-slate-900 tracking-tight">
+                    {{ authService.empresaActiva()?.razon_social || 'PACYOLO S.A.S.' }}
+                  </h1>
+                  <p class="font-mono text-xs text-slate-700 font-bold">
+                    NIT: {{ authService.empresaActiva()?.nit || '900.123.456-7' }}
+                  </p>
+                  <p class="text-[11px] text-slate-500">
+                    Sistema Integrado de Gestión Contable, Inventarios y Cadena de Suministro
+                  </p>
+                </div>
+
+                <div class="text-right">
+                  <div class="inline-block border-2 border-slate-900 rounded-xl p-3 bg-slate-50">
+                    <span class="block text-[10px] font-bold uppercase text-slate-500 tracking-wider">Documento Oficial</span>
+                    <span class="text-base font-black font-mono text-slate-900">{{ doc.consecutivo }}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1 font-mono">Fecha Emisión: {{ doc.fecha }}</p>
+                </div>
+              </div>
+
+              <!-- CONTENIDO SEGÚN TIPO DE DOCUMENTO -->
+
+              <!-- 1. ENTRADA DE ALMACÉN -->
+              @if (doc.tipo === 'ENTRADA') {
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Proveedor</span>
+                    <p class="font-bold text-slate-900 text-sm">{{ doc.datos.proveedor?.nombre_completo || doc.datos.proveedor?.razon_social || 'Proveedor' }}</p>
+                    <p class="font-mono text-[11px] text-slate-600">NIT/CC: {{ doc.datos.proveedor?.numero_documento || 'N/A' }}</p>
+                  </div>
+                  <div class="text-right space-y-0.5">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-slate-500">Bodega de Recepción:</span>
+                      <span class="font-bold text-slate-900 ml-1">{{ doc.datos.bodega?.nombre }} ({{ doc.datos.bodega?.codigo }})</span>
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-slate-500">N° Remisión Prov:</span>
+                      <span class="font-mono font-bold text-slate-800 ml-1">{{ doc.datos.numero_remision_proveedor || 'N/A' }}</span>
+                    </div>
+                    @if (doc.datos.orden_compra) {
+                      <div>
+                        <span class="text-[10px] font-bold uppercase text-slate-500">Orden de Compra:</span>
+                        <span class="font-mono font-bold text-slate-800 ml-1">{{ doc.datos.orden_compra?.numero_orden }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Tabla de Líneas Recibidas -->
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2.5">Código SKU</th>
+                        <th class="p-2.5">Descripción del Artículo</th>
+                        <th class="p-2.5 text-right">Cant. Recibida</th>
+                        <th class="p-2.5 text-right">Costo Unitario</th>
+                        <th class="p-2.5 text-right">Total Valorado</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      @for (l of doc.datos.lineas; track l.id || $index) {
+                        <tr>
+                          <td class="p-2.5 font-bold text-slate-800">{{ l.articulo?.codigo || 'SKU' }}</td>
+                          <td class="p-2.5 font-sans font-medium text-slate-900">{{ l.articulo?.nombre || 'Artículo' }}</td>
+                          <td class="p-2.5 text-right font-bold">{{ Number(l.cantidad).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right">\${{ Number(l.costo_unitario).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right font-bold text-slate-900">\${{ (Number(l.cantidad) * Number(l.costo_unitario)).toLocaleString('es-CO') }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="4" class="p-2.5 text-right uppercase">Total Valorado Entrada:</td>
+                        <td class="p-2.5 text-right text-sm text-slate-900">\${{ Number(doc.datos.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              }
+
+              <!-- 2. NOTA DE AJUSTE -->
+              @if (doc.tipo === 'AJUSTE') {
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Bodega Afectada</span>
+                    <p class="font-bold text-slate-900 text-sm">{{ doc.datos.bodega?.nombre }} ({{ doc.datos.bodega?.codigo }})</p>
+                    <p class="text-[11px] text-slate-700 mt-1">
+                      <span class="font-bold uppercase">Tipo:</span> {{ doc.datos.tipo_ajuste }}
+                    </p>
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Justificación Técnica / Auditoría</span>
+                    <p class="text-[11px] text-slate-800 italic bg-white p-2 rounded border border-slate-200 mt-0.5">
+                      "{{ doc.datos.justificacion }}"
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Tabla de Líneas de Ajuste -->
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2.5">Código SKU</th>
+                        <th class="p-2.5">Artículo</th>
+                        <th class="p-2.5 text-center">Efecto</th>
+                        <th class="p-2.5 text-right">Cantidad</th>
+                        <th class="p-2.5 text-right">Costo Unit.</th>
+                        <th class="p-2.5 text-right">Impacto Total</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      @for (l of doc.datos.lineas; track l.id || $index) {
+                        <tr>
+                          <td class="p-2.5 font-bold">{{ l.articulo?.codigo }}</td>
+                          <td class="p-2.5 font-sans">{{ l.articulo?.nombre }}</td>
+                          <td class="p-2.5 text-center">
+                            <span class="font-bold" [class]="l.tipo_movimiento === 'ENTRADA' ? 'text-blue-700' : 'text-rose-700'">
+                              {{ l.tipo_movimiento === 'ENTRADA' ? '+ ENTRADA' : '- SALIDA' }}
+                            </span>
+                          </td>
+                          <td class="p-2.5 text-right font-bold">{{ Number(l.cantidad).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right">\${{ Number(l.costo_unitario).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right font-bold">\${{ (Number(l.cantidad) * Number(l.costo_unitario)).toLocaleString('es-CO') }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="5" class="p-2.5 text-right uppercase">Total Valorado Ajuste:</td>
+                        <td class="p-2.5 text-right text-sm text-slate-900">\${{ Number(doc.datos.total_ajuste || 0).toLocaleString('es-CO') }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              }
+
+              <!-- 3. TRASLADO ENTRE BODEGAS -->
+              @if (doc.tipo === 'TRASLADO') {
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Bodega Origen</span>
+                    <p class="font-bold text-slate-900 text-sm">{{ doc.datos.bodega?.nombre || 'Bodega Origen' }}</p>
+                  </div>
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Bodega Destino / Referencia</span>
+                    <p class="font-bold text-slate-900 text-sm">{{ doc.datos.bodega_destino?.nombre || 'Bodega Destino' }}</p>
+                  </div>
+                  <div class="col-span-2">
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Observaciones:</span>
+                    <p class="text-[11px] text-slate-700 mt-0.5">{{ doc.datos.observaciones || 'Sin observaciones registradas.' }}</p>
+                  </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2.5">Código SKU</th>
+                        <th class="p-2.5">Artículo Trasladado</th>
+                        <th class="p-2.5 text-right">Cantidad</th>
+                        <th class="p-2.5 text-right">Costo Unitario</th>
+                        <th class="p-2.5 text-right">Total Valorado</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      <tr>
+                        <td class="p-2.5 font-bold">{{ doc.datos.articulo?.codigo || 'SKU' }}</td>
+                        <td class="p-2.5 font-sans">{{ doc.datos.articulo?.nombre || 'Artículo' }}</td>
+                        <td class="p-2.5 text-right font-bold">{{ Number(doc.datos.cantidad_salida || doc.datos.cantidad_entrada || 1).toLocaleString('es-CO') }}</td>
+                        <td class="p-2.5 text-right">\${{ Number(doc.datos.costo_unitario_salida || doc.datos.costo_unitario_entrada || 0).toLocaleString('es-CO') }}</td>
+                        <td class="p-2.5 text-right font-bold">\${{ Number(doc.datos.costo_total_salida || doc.datos.costo_total_entrada || 0).toLocaleString('es-CO') }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              }
+
+              <!-- 4. REPORTE KARDEX NIIF -->
+              @if (doc.tipo === 'KARDEX') {
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs flex justify-between items-center">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Artículo:</span>
+                    <span class="font-bold text-slate-900 ml-1">{{ doc.articulo?.nombre || 'Consolidado General' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Bodega:</span>
+                    <span class="font-bold text-slate-900 ml-1">{{ doc.bodegaNombre || 'Todas las Bodegas' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Método de Valuación:</span>
+                    <span class="font-bold text-indigo-700 ml-1">Promedio Ponderado Móvil (NIC 2)</span>
+                  </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[9px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2" colspan="3">Movimiento</th>
+                        <th class="p-2 text-center bg-blue-50 border-x border-slate-200" colspan="3">Entradas</th>
+                        <th class="p-2 text-center bg-rose-50 border-r border-slate-200" colspan="3">Salidas</th>
+                        <th class="p-2 text-center bg-emerald-50" colspan="3">Saldo Resultante</th>
+                      </tr>
+                      <tr class="border-t border-slate-300">
+                        <th class="p-1.5">Fecha</th>
+                        <th class="p-1.5">Doc</th>
+                        <th class="p-1.5">Artículo</th>
+                        <th class="p-1.5 text-right bg-blue-50">Cant</th>
+                        <th class="p-1.5 text-right bg-blue-50">Unit</th>
+                        <th class="p-1.5 text-right bg-blue-50 border-r border-slate-200">Total</th>
+                        <th class="p-1.5 text-right bg-rose-50">Cant</th>
+                        <th class="p-1.5 text-right bg-rose-50">Unit</th>
+                        <th class="p-1.5 text-right bg-rose-50 border-r border-slate-200">Total</th>
+                        <th class="p-1.5 text-right bg-emerald-50 font-bold">Cant</th>
+                        <th class="p-1.5 text-right bg-emerald-50">Prom</th>
+                        <th class="p-1.5 text-right bg-emerald-50 font-bold">Saldo Total</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[10px]">
+                      @for (k of doc.movimientos; track k.id || $index) {
+                        <tr>
+                          <td class="p-1.5 text-slate-600">{{ k.fecha_movimiento }}</td>
+                          <td class="p-1.5 font-bold">{{ k.documento_referencia }}</td>
+                          <td class="p-1.5 truncate max-w-[120px] font-sans">{{ k.articulo?.nombre }}</td>
+                          <td class="p-1.5 text-right bg-blue-50/50">{{ Number(k.cantidad_entrada) > 0 ? Number(k.cantidad_entrada).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-blue-50/50">{{ Number(k.cantidad_entrada) > 0 ? '$' + Number(k.costo_unitario_entrada).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-blue-50/50 font-bold border-r border-slate-200">{{ Number(k.cantidad_entrada) > 0 ? '$' + Number(k.costo_total_entrada).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-rose-50/50">{{ Number(k.cantidad_salida) > 0 ? Number(k.cantidad_salida).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-rose-50/50">{{ Number(k.cantidad_salida) > 0 ? '$' + Number(k.costo_unitario_salida).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-rose-50/50 font-bold border-r border-slate-200">{{ Number(k.cantidad_salida) > 0 ? '$' + Number(k.costo_total_salida).toLocaleString('es-CO') : '-' }}</td>
+                          <td class="p-1.5 text-right bg-emerald-50/50 font-bold text-emerald-900">{{ Number(k.saldo_cantidad_resultante).toLocaleString('es-CO') }}</td>
+                          <td class="p-1.5 text-right bg-emerald-50/50">\${{ Number(k.costo_unitario_promedio_resultante).toLocaleString('es-CO') }}</td>
+                          <td class="p-1.5 text-right bg-emerald-50/50 font-bold text-slate-900">\${{ Number(k.saldo_costo_total_resultante).toLocaleString('es-CO') }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+
+              <!-- 5. REPORTE DE EXISTENCIAS VALORADO -->
+              @if (doc.tipo === 'EXISTENCIAS') {
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs flex justify-between items-center">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Bodega:</span>
+                    <span class="font-bold text-slate-900 ml-1">{{ doc.bodegaNombre || 'Todas las Bodegas' }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Total Físico:</span>
+                    <span class="font-bold text-emerald-700 font-mono ml-1">{{ doc.totalStock.toLocaleString('es-CO') }}</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Valorización NIIF:</span>
+                    <span class="font-bold text-slate-900 font-mono ml-1">\${{ doc.totalValorado.toLocaleString('es-CO') }}</span>
+                  </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2.5">Bodega</th>
+                        <th class="p-2.5">Código SKU</th>
+                        <th class="p-2.5">Descripción de Artículo</th>
+                        <th class="p-2.5 text-right">Existencia Física</th>
+                        <th class="p-2.5 text-right">Costo Promedio</th>
+                        <th class="p-2.5 text-right">Valor Total en Bodega</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      @for (ex of doc.items; track ex.id || $index) {
+                        <tr>
+                          <td class="p-2.5 font-bold">{{ ex.bodega?.nombre }} ({{ ex.bodega?.codigo }})</td>
+                          <td class="p-2.5 text-indigo-700 font-bold">{{ ex.articulo?.codigo }}</td>
+                          <td class="p-2.5 font-sans font-medium">{{ ex.articulo?.nombre }}</td>
+                          <td class="p-2.5 text-right font-bold text-emerald-700">{{ Number(ex.stock_actual).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right">\${{ Number(ex.costo_promedio).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right font-bold text-slate-900">\${{ (Number(ex.stock_actual) * Number(ex.costo_promedio)).toLocaleString('es-CO') }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="3" class="p-2.5 text-right uppercase">Totales Consolidados:</td>
+                        <td class="p-2.5 text-right text-emerald-700">{{ doc.totalStock.toLocaleString('es-CO') }}</td>
+                        <td></td>
+                        <td class="p-2.5 text-right text-sm text-slate-900">\${{ doc.totalValorado.toLocaleString('es-CO') }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              }
+
+              <!-- Firmas y Pistas de Auditoría -->
+              <div class="pt-8 grid grid-cols-3 gap-6 text-center text-xs font-mono">
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Elaboró / Responsable</p>
+                  <p class="text-[10px] text-slate-500">{{ authService.usuario()?.nombres || 'Usuario Autorizado' }}</p>
+                </div>
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Revisó / Jefe Almacén</p>
+                  <p class="text-[10px] text-slate-500">Control de Inventarios</p>
+                </div>
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Aprobó / Contador General</p>
+                  <p class="text-[10px] text-slate-500">Certificación NIIF / Revisoría</p>
+                </div>
+              </div>
+
+              <!-- Pie Legal -->
+              <div class="text-[9px] text-slate-400 border-t border-slate-200 pt-3 flex justify-between font-mono">
+                <span>Generado por PACYOLO Cloud ERP | Cumplimiento NIC 2 Inventarios</span>
+                <span>Pista de Auditoría: {{ doc.fecha }} | ID: {{ doc.consecutivo }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modales de Búsqueda Avanzada (Enterprise Lookup) -->
+      <app-tercero-lookup-modal
+        [(visible)]="mostrarLookupProveedor"
+        titulo="Búsqueda Avanzada de Proveedor"
+        [terceros]="proveedores()"
+        (seleccionado)="alSeleccionarProveedorLookup($event)"
+      />
+
+      <app-articulo-lookup-modal
+        [(visible)]="mostrarLookupArticulo"
+        titulo="Catálogo Central de Artículos"
+        [articulos]="articulos()"
+        [modoSeleccion]="modoLookupArticulo()"
+        (articuloSeleccionado)="alSeleccionarArticuloIndividual($event)"
+        (articulosSeleccionados)="alSeleccionarArticulosMultiples($event)"
+      />
     </div>
   `,
 })
 export class ArticulosAdminComponent implements OnInit {
   private readonly inventariosService = inject(InventariosService);
   private readonly parametrosService = inject(ParametrosService);
+  private readonly comprasService = inject(ComprasService);
   private readonly authService = inject(AuthService);
+  private readonly notificationService = inject(NotificationService);
   private readonly http = inject(HttpClient);
 
   // Helper template
   readonly Number = Number;
 
   // Estado reactivo
-  readonly pestanaActiva = signal<'articulos' | 'entradas' | 'kardex' | 'ajustes' | 'existencias'>('articulos');
+  readonly pestanaActiva = signal<'articulos' | 'entradas' | 'traslados' | 'kardex' | 'ajustes' | 'existencias'>('articulos');
   readonly articulos = signal<ArticuloItem[]>([]);
   readonly articulosFiltrados = signal<ArticuloItem[]>([]);
   readonly entradas = signal<EntradaAlmacenItem[]>([]);
+  readonly traslados = signal<any[]>([]);
   readonly kardexMovimientos = signal<KardexMovimientoItem[]>([]);
   readonly ajustes = signal<NotaAjusteItem[]>([]);
   readonly existencias = signal<SaldoBodegaItem[]>([]);
+  readonly ordenesCompra = signal<OrdenCompraItem[]>([]);
 
   readonly categorias = signal<ParametroItem[]>([]);
   readonly unidades = signal<ParametroItem[]>([]);
   readonly bodegas = signal<ParametroItem[]>([]);
   readonly proveedores = signal<any[]>([]);
 
-  // Filtros
+  // Filtros de búsqueda
   busquedaArticulo = '';
   filtroTipoArticulo = '';
+  busquedaEntrada = '';
+  busquedaAjuste = '';
+  filtroTipoAjuste = '';
+  busquedaTraslado = '';
+  busquedaExistencia = '';
+  filtroBodegaExistencias = '';
   kardexFiltroArticulo = '';
   kardexFiltroBodega = '';
+  kardexFiltroDoc = '';
+
+  // Selecciones y visor documental
+  readonly articuloKardexSeleccionado = signal<ArticuloItem | null>(null);
+  readonly documentoParaImprimir = signal<any | null>(null);
 
   // Modales
   readonly mostrarModalArticulo = signal(false);
   readonly mostrarModalEntrada = signal(false);
+  readonly mostrarModalTraslado = signal(false);
   readonly mostrarModalAjuste = signal(false);
   readonly guardando = signal(false);
   readonly articuloEnEdicion = signal<ArticuloItem | null>(null);
+
+  // Estados de Modales Lookup Enterprise
+  readonly mostrarLookupProveedor = signal(false);
+  readonly mostrarLookupArticulo = signal(false);
+  readonly destinoLookupArticulo = signal<'ENTRADA' | 'AJUSTE' | 'TRASLADO' | 'KARDEX'>('ENTRADA');
+  readonly lineaSeleccionandoArticulo = signal<number | null>(null);
+  readonly modoLookupArticulo = signal<'INDIVIDUAL' | 'MULTIPLE'>('INDIVIDUAL');
+
+  // Cálculos y Filtrados Reactivos
+  entradasFiltradas(): EntradaAlmacenItem[] {
+    const q = this.busquedaEntrada.toLowerCase().trim();
+    if (!q) return this.entradas();
+    return this.entradas().filter((e) => {
+      return (
+        (e.numero_entrada && e.numero_entrada.toLowerCase().includes(q)) ||
+        (e.numero_remision_proveedor && e.numero_remision_proveedor.toLowerCase().includes(q)) ||
+        (e.proveedor?.nombre_completo && e.proveedor.nombre_completo.toLowerCase().includes(q)) ||
+        (e.bodega?.nombre && e.bodega.nombre.toLowerCase().includes(q))
+      );
+    });
+  }
+
+  ajustesFiltrados(): NotaAjusteItem[] {
+    const q = this.busquedaAjuste.toLowerCase().trim();
+    const tipo = this.filtroTipoAjuste;
+    return this.ajustes().filter((a) => {
+      const matchQ =
+        !q ||
+        (a.numero_nota && a.numero_nota.toLowerCase().includes(q)) ||
+        (a.justificacion && a.justificacion.toLowerCase().includes(q)) ||
+        (a.bodega?.nombre && a.bodega.nombre.toLowerCase().includes(q));
+      const matchTipo = !tipo || a.tipo_ajuste === tipo;
+      return matchQ && matchTipo;
+    });
+  }
+
+  trasladosFiltrados(): any[] {
+    const q = this.busquedaTraslado.toLowerCase().trim();
+    if (!q) return this.traslados();
+    return this.traslados().filter((t) => {
+      return (
+        (t.documento_referencia && t.documento_referencia.toLowerCase().includes(q)) ||
+        (t.bodega?.nombre && t.bodega.nombre.toLowerCase().includes(q)) ||
+        (t.articulo?.nombre && t.articulo.nombre.toLowerCase().includes(q)) ||
+        (t.articulo?.codigo && t.articulo.codigo.toLowerCase().includes(q)) ||
+        (t.observaciones && t.observaciones.toLowerCase().includes(q))
+      );
+    });
+  }
+
+  kardexFiltrado(): KardexMovimientoItem[] {
+    const qDoc = this.kardexFiltroDoc.toLowerCase().trim();
+    if (!qDoc) return this.kardexMovimientos();
+    return this.kardexMovimientos().filter((k) => {
+      return (
+        (k.documento_referencia && k.documento_referencia.toLowerCase().includes(qDoc)) ||
+        (k.articulo?.nombre && k.articulo.nombre.toLowerCase().includes(qDoc)) ||
+        (k.articulo?.codigo && k.articulo.codigo.toLowerCase().includes(qDoc))
+      );
+    });
+  }
+
+  existenciasFiltradas(): SaldoBodegaItem[] {
+    const q = this.busquedaExistencia.toLowerCase().trim();
+    const bodegaId = this.filtroBodegaExistencias;
+    return this.existencias().filter((e) => {
+      const matchQ =
+        !q ||
+        (e.articulo?.codigo && e.articulo.codigo.toLowerCase().includes(q)) ||
+        (e.articulo?.nombre && e.articulo.nombre.toLowerCase().includes(q));
+      const matchBodega = !bodegaId || e.bodega?.id === bodegaId;
+      return matchQ && matchBodega;
+    });
+  }
+
+  totalStockExistencias(): number {
+    return this.existenciasFiltradas().reduce((acc, curr) => acc + Number(curr.stock_actual || 0), 0);
+  }
+
+  totalValoradoExistencias(): number {
+    return this.existenciasFiltradas().reduce(
+      (acc, curr) => acc + Number(curr.stock_actual || 0) * Number(curr.costo_promedio || 0),
+      0,
+    );
+  }
+
+  proveedorSeleccionado(): any {
+    return this.proveedores().find((p) => p.id === this.entradaForm.proveedor_id);
+  }
+
+  obtenerArticulo(id: string): any {
+    return this.articulos().find((a) => a.id === id);
+  }
+
+  abrirLookupProveedor(): void {
+    this.mostrarLookupProveedor.set(true);
+  }
+
+  alSeleccionarProveedorLookup(tercero: any): void {
+    this.entradaForm.proveedor_id = tercero.id;
+  }
+
+  abrirLookupArticuloParaEntrada(index: number): void {
+    this.destinoLookupArticulo.set('ENTRADA');
+    this.lineaSeleccionandoArticulo.set(index);
+    this.modoLookupArticulo.set('INDIVIDUAL');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirCatalogoMultipleEntrada(): void {
+    this.destinoLookupArticulo.set('ENTRADA');
+    this.modoLookupArticulo.set('MULTIPLE');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirLookupArticuloParaAjuste(index: number): void {
+    this.destinoLookupArticulo.set('AJUSTE');
+    this.lineaSeleccionandoArticulo.set(index);
+    this.modoLookupArticulo.set('INDIVIDUAL');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirCatalogoMultipleAjuste(): void {
+    this.destinoLookupArticulo.set('AJUSTE');
+    this.modoLookupArticulo.set('MULTIPLE');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirLookupArticuloParaTraslado(index: number): void {
+    this.destinoLookupArticulo.set('TRASLADO');
+    this.lineaSeleccionandoArticulo.set(index);
+    this.modoLookupArticulo.set('INDIVIDUAL');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirCatalogoMultipleTraslado(): void {
+    this.destinoLookupArticulo.set('TRASLADO');
+    this.modoLookupArticulo.set('MULTIPLE');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  abrirLookupArticuloKardex(): void {
+    this.destinoLookupArticulo.set('KARDEX');
+    this.lineaSeleccionandoArticulo.set(null);
+    this.modoLookupArticulo.set('INDIVIDUAL');
+    this.mostrarLookupArticulo.set(true);
+  }
+
+  limpiarArticuloKardex(): void {
+    this.articuloKardexSeleccionado.set(null);
+    this.kardexFiltroArticulo = '';
+    this.cargarKardex();
+  }
+
+  // Modales de Impresión Formal
+  abrirModalImprimirEntrada(ent: any): void {
+    this.documentoParaImprimir.set({
+      tipo: 'ENTRADA',
+      titulo: 'COMPROBANTE OFICIAL DE ENTRADA DE ALMACÉN',
+      consecutivo: ent.numero_entrada || 'EA-BORRADOR',
+      fecha: ent.fecha_entrada || new Date().toISOString().slice(0, 10),
+      datos: ent,
+    });
+  }
+
+  abrirModalImprimirAjuste(aj: any): void {
+    this.documentoParaImprimir.set({
+      tipo: 'AJUSTE',
+      titulo: 'ACTA FORMAL DE NOTA DE AJUSTE DE INVENTARIO',
+      consecutivo: aj.numero_nota || 'AJ-BORRADOR',
+      fecha: aj.fecha_ajuste || new Date().toISOString().slice(0, 10),
+      datos: aj,
+    });
+  }
+
+  abrirModalImprimirTraslado(tr: any): void {
+    this.documentoParaImprimir.set({
+      tipo: 'TRASLADO',
+      titulo: 'COMPROBANTE FORMAL DE TRASLADO ENTRE BODEGAS',
+      consecutivo: tr.documento_referencia || 'TR-BORRADOR',
+      fecha: tr.fecha_movimiento || new Date().toISOString().slice(0, 10),
+      datos: tr,
+    });
+  }
+
+  abrirModalImprimirKardex(): void {
+    const art = this.articuloKardexSeleccionado();
+    const bod = this.bodegas().find((b) => b.id === this.kardexFiltroBodega);
+    this.documentoParaImprimir.set({
+      tipo: 'KARDEX',
+      titulo: 'LIBRO AUXILIAR DE KARDEX CONTINUO NIIF (NIC 2)',
+      consecutivo: `KDX-${art ? art.codigo : 'GENERAL'}`,
+      fecha: new Date().toISOString().slice(0, 10),
+      articulo: art,
+      bodegaNombre: bod ? `${bod.nombre} (${bod.codigo})` : 'Todas las Bodegas',
+      movimientos: this.kardexFiltrado(),
+    });
+  }
+
+  abrirModalImprimirExistencias(): void {
+    const bod = this.bodegas().find((b) => b.id === this.filtroBodegaExistencias);
+    this.documentoParaImprimir.set({
+      tipo: 'EXISTENCIAS',
+      titulo: 'REPORTE OFICIAL DE EXISTENCIAS DE INVENTARIO VALORADO',
+      consecutivo: `INV-${new Date().toISOString().slice(0, 10)}`,
+      fecha: new Date().toISOString().slice(0, 10),
+      bodegaNombre: bod ? `${bod.nombre} (${bod.codigo})` : 'Todas las Bodegas',
+      totalStock: this.totalStockExistencias(),
+      totalValorado: this.totalValoradoExistencias(),
+      items: this.existenciasFiltradas(),
+    });
+  }
+
+  cerrarModalImprimir(): void {
+    this.documentoParaImprimir.set(null);
+  }
+
+  imprimirDocumento(): void {
+    window.print();
+  }
+
+  alSeleccionarArticuloIndividual(art: any): void {
+    const destino = this.destinoLookupArticulo();
+    if (destino === 'KARDEX') {
+      this.articuloKardexSeleccionado.set(art);
+      this.kardexFiltroArticulo = art.id;
+      this.cargarKardex();
+      return;
+    }
+
+    const idx = this.lineaSeleccionandoArticulo();
+    if (idx === null) return;
+
+    if (destino === 'ENTRADA' && this.entradaForm.lineas[idx]) {
+      this.entradaForm.lineas[idx].articulo_id = art.id;
+      this.entradaForm.lineas[idx].costo_unitario = Number(art.costo_promedio || 0);
+    } else if (destino === 'AJUSTE' && this.ajusteForm.lineas[idx]) {
+      this.ajusteForm.lineas[idx].articulo_id = art.id;
+    } else if (destino === 'TRASLADO' && this.trasladoForm.lineas[idx]) {
+      this.trasladoForm.lineas[idx].articulo_id = art.id;
+    }
+  }
+
+  alSeleccionarArticulosMultiples(articulosSeleccionados: any[]): void {
+    if (!articulosSeleccionados || articulosSeleccionados.length === 0) return;
+    const destino = this.destinoLookupArticulo();
+
+    if (destino === 'ENTRADA') {
+      if (
+        this.entradaForm.lineas.length === 1 &&
+        (!this.entradaForm.lineas[0].articulo_id || this.entradaForm.lineas[0].articulo_id === '')
+      ) {
+        this.entradaForm.lineas = [];
+      }
+      for (const art of articulosSeleccionados) {
+        const yaExiste = this.entradaForm.lineas.some((l: any) => l.articulo_id === art.id);
+        if (!yaExiste) {
+          this.entradaForm.lineas.push({
+            articulo_id: art.id,
+            cantidad: 1,
+            costo_unitario: Number(art.costo_promedio || 0),
+          });
+        }
+      }
+      if (this.entradaForm.lineas.length === 0) this.agregarLineaEntrada();
+    } else if (destino === 'AJUSTE') {
+      if (
+        this.ajusteForm.lineas.length === 1 &&
+        (!this.ajusteForm.lineas[0].articulo_id || this.ajusteForm.lineas[0].articulo_id === '')
+      ) {
+        this.ajusteForm.lineas = [];
+      }
+      for (const art of articulosSeleccionados) {
+        const yaExiste = this.ajusteForm.lineas.some((l: any) => l.articulo_id === art.id);
+        if (!yaExiste) {
+          this.ajusteForm.lineas.push({
+            articulo_id: art.id,
+            tipo_movimiento: 'ENTRADA',
+            cantidad: 1,
+          });
+        }
+      }
+      if (this.ajusteForm.lineas.length === 0) this.agregarLineaAjuste();
+    } else if (destino === 'TRASLADO') {
+      if (
+        this.trasladoForm.lineas.length === 1 &&
+        (!this.trasladoForm.lineas[0].articulo_id || this.trasladoForm.lineas[0].articulo_id === '')
+      ) {
+        this.trasladoForm.lineas = [];
+      }
+      for (const art of articulosSeleccionados) {
+        const yaExiste = this.trasladoForm.lineas.some((l: any) => l.articulo_id === art.id);
+        if (!yaExiste) {
+          this.trasladoForm.lineas.push({
+            articulo_id: art.id,
+            cantidad: 1,
+          });
+        }
+      }
+      if (this.trasladoForm.lineas.length === 0) this.agregarLineaTraslado();
+    }
+  }
 
   articuloForm: any = {
     codigo: '',
@@ -981,11 +2231,20 @@ export class ArticulosAdminComponent implements OnInit {
   };
 
   entradaForm: any = {
+    orden_compra_id: '',
     proveedor_id: '',
     bodega_id: '',
     numero_remision_proveedor: '',
     fecha_entrada: new Date().toISOString().slice(0, 10),
-    lineas: [{ articulo_id: '', cantidad: 1, costo_unitario: 0 }],
+    lineas: [{ articulo_id: '', cantidad: 10, costo_unitario: 0 }],
+  };
+
+  trasladoForm: any = {
+    bodega_origen_id: '',
+    bodega_destino_id: '',
+    fecha_traslado: new Date().toISOString().slice(0, 10),
+    observaciones: '',
+    lineas: [{ articulo_id: '', cantidad: 1 }],
   };
 
   ajusteForm: any = {
@@ -1004,15 +2263,25 @@ export class ArticulosAdminComponent implements OnInit {
     this.cargarArticulos();
     this.cargarEntradas();
     this.cargarAjustes();
+    this.cargarTraslados();
 
     // Cargar catálogos
     this.parametrosService.obtenerCategoriasArticulos().subscribe((cats: ParametroItem[]) => this.categorias.set(cats));
     this.parametrosService.obtenerUnidadesMedida().subscribe((uns: ParametroItem[]) => this.unidades.set(uns));
     this.parametrosService.obtenerBodegas().subscribe((bods: ParametroItem[]) => this.bodegas.set(bods));
 
-    // Cargar proveedores desde Terceros
-    this.http.get<any[]>('http://localhost:3000/api/v1/terceros').subscribe((terceros) => {
-      this.proveedores.set(terceros);
+    // Cargar órdenes de compra para vincular a entradas
+    this.comprasService.listarOrdenes().subscribe((ords) => this.ordenesCompra.set(ords));
+
+    // Cargar proveedores desde Terceros de la empresa activa
+    const emp = this.authService.empresaActiva();
+    const provUrl = emp
+      ? `http://localhost:3000/api/v1/terceros?empresa_id=${emp.empresa_id}`
+      : 'http://localhost:3000/api/v1/terceros';
+
+    this.http.get<any[]>(provUrl).subscribe({
+      next: (terceros) => this.proveedores.set(terceros),
+      error: (err) => console.error('Error cargando proveedores:', err),
     });
   }
 
@@ -1095,11 +2364,12 @@ export class ArticulosAdminComponent implements OnInit {
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);
+          this.notificationService.success('Artículo actualizado exitosamente en el catálogo.');
           this.cargarArticulos();
         },
         error: (err) => {
           this.guardando.set(false);
-          alert(err.error?.message || 'Error al actualizar artículo');
+          this.notificationService.error(err.error?.message || 'Error al actualizar artículo');
         },
       });
     } else {
@@ -1107,38 +2377,57 @@ export class ArticulosAdminComponent implements OnInit {
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);
+          this.notificationService.success('Artículo creado exitosamente en el catálogo.');
           this.cargarArticulos();
         },
         error: (err) => {
           this.guardando.set(false);
-          alert(err.error?.message || 'Error al crear artículo');
+          this.notificationService.error(err.error?.message || 'Error al crear artículo');
         },
       });
     }
   }
 
   cambiarEstadoArticulo(art: ArticuloItem): void {
-    this.inventariosService.cambiarEstadoArticulo(art.id, !art.activo).subscribe(() => {
-      this.cargarArticulos();
+    this.inventariosService.cambiarEstadoArticulo(art.id, !art.activo).subscribe({
+      next: () => {
+        this.notificationService.info(`El artículo ahora está ${!art.activo ? 'activo' : 'inactivo'}.`);
+        this.cargarArticulos();
+      },
+      error: (err) => {
+        this.notificationService.error(err.error?.message || 'Error al cambiar estado del artículo');
+      },
     });
   }
 
   abrirModalEntrada(): void {
+    const primerArticulo = this.articulos()[0];
     this.entradaForm = {
+      orden_compra_id: '',
       proveedor_id: this.proveedores()[0]?.id || '',
       bodega_id: this.bodegas()[0]?.id || '',
       numero_remision_proveedor: '',
       fecha_entrada: new Date().toISOString().slice(0, 10),
-      lineas: [{ articulo_id: this.articulos()[0]?.id || '', cantidad: 10, costo_unitario: 0 }],
+      causar_cxp: false,
+      numero_factura_proveedor: '',
+      fecha_factura: new Date().toISOString().slice(0, 10),
+      lineas: [
+        {
+          articulo_id: primerArticulo?.id || '',
+          cantidad: 10,
+          costo_unitario: Number(primerArticulo?.costo_promedio || 0),
+        },
+      ],
     };
     this.mostrarModalEntrada.set(true);
   }
 
   agregarLineaEntrada(): void {
+    const primerArticulo = this.articulos()[0];
     this.entradaForm.lineas.push({
-      articulo_id: this.articulos()[0]?.id || '',
+      articulo_id: primerArticulo?.id || '',
       cantidad: 1,
-      costo_unitario: 0,
+      costo_unitario: Number(primerArticulo?.costo_promedio || 0),
     });
   }
 
@@ -1147,18 +2436,68 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   guardarEntrada(): void {
+    if (!this.entradaForm.proveedor_id) {
+      this.notificationService.warning('Debe seleccionar un proveedor para la entrada.');
+      return;
+    }
+    if (!this.entradaForm.bodega_id) {
+      this.notificationService.warning('Debe seleccionar una bodega de destino.');
+      return;
+    }
+    if (this.entradaForm.causar_cxp && !this.entradaForm.numero_factura_proveedor?.trim()) {
+      this.notificationService.warning('Debe ingresar el número de factura del proveedor para causar en CxP.');
+      return;
+    }
+
+    const lineasSanitizadas = (this.entradaForm.lineas || [])
+      .filter((l: any) => l.articulo_id && String(l.articulo_id).trim() !== '')
+      .map((l: any) => ({
+        articulo_id: l.articulo_id,
+        cantidad: Number(l.cantidad) > 0 ? Number(l.cantidad) : 1,
+        costo_unitario: Number(l.costo_unitario) >= 0 ? Number(l.costo_unitario) : 0,
+      }));
+
+    if (lineasSanitizadas.length === 0) {
+      this.notificationService.warning('Debe agregar al menos un artículo válido en la entrada.');
+      return;
+    }
+
+    const payload: any = {
+      proveedor_id: this.entradaForm.proveedor_id,
+      bodega_id: this.entradaForm.bodega_id,
+      fecha_entrada: this.entradaForm.fecha_entrada || new Date().toISOString().slice(0, 10),
+      causar_cxp: !!this.entradaForm.causar_cxp,
+      lineas: lineasSanitizadas,
+    };
+
+    if (this.entradaForm.orden_compra_id) {
+      payload.orden_compra_id = this.entradaForm.orden_compra_id;
+    }
+    if (this.entradaForm.numero_remision_proveedor?.trim()) {
+      payload.numero_remision_proveedor = this.entradaForm.numero_remision_proveedor.trim();
+    }
+    if (this.entradaForm.causar_cxp) {
+      payload.numero_factura_proveedor = this.entradaForm.numero_factura_proveedor.trim();
+      payload.fecha_factura = this.entradaForm.fecha_factura || payload.fecha_entrada;
+    }
+
     this.guardando.set(true);
-    this.inventariosService.registrarEntrada(this.entradaForm).subscribe({
+    this.inventariosService.registrarEntrada(payload).subscribe({
       next: () => {
         this.guardando.set(false);
         this.mostrarModalEntrada.set(false);
+        const mensaje = payload.causar_cxp
+          ? 'Entrada de almacén registrada, Kardex actualizado y Factura causada en Cuentas por Pagar (CxP).'
+          : 'Entrada de almacén física registrada exitosamente y Kardex actualizado.';
+        this.notificationService.success(mensaje, 'Recepción Completada');
         this.cargarEntradas();
         this.cargarArticulos();
+        this.comprasService.listarOrdenes().subscribe((ords) => this.ordenesCompra.set(ords));
         if (this.pestanaActiva() === 'kardex') this.cargarKardex();
       },
       error: (err) => {
         this.guardando.set(false);
-        alert(err.error?.message || 'Error al registrar entrada de almacén');
+        this.notificationService.error(err.error?.message || 'Error al registrar entrada de almacén');
       },
     });
   }
@@ -1192,13 +2531,94 @@ export class ArticulosAdminComponent implements OnInit {
       next: () => {
         this.guardando.set(false);
         this.mostrarModalAjuste.set(false);
+        this.notificationService.success('Nota de ajuste de inventario registrada y aplicada al Kardex.');
         this.cargarAjustes();
         this.cargarArticulos();
         if (this.pestanaActiva() === 'kardex') this.cargarKardex();
       },
       error: (err) => {
         this.guardando.set(false);
-        alert(err.error?.message || 'Error al registrar nota de ajuste');
+        this.notificationService.error(err.error?.message || 'Error al registrar nota de ajuste');
+      },
+    });
+  }
+
+  alSeleccionarOrdenCompra(ocId: string): void {
+    if (!ocId) return;
+    const oc = this.ordenesCompra().find((o) => o.id === ocId);
+    if (!oc) return;
+
+    this.entradaForm.proveedor_id = oc.proveedor?.id || this.entradaForm.proveedor_id;
+    if (oc.bodega_destino?.id) {
+      this.entradaForm.bodega_id = oc.bodega_destino.id;
+    }
+    if (oc.numero_factura_proveedor) {
+      this.entradaForm.numero_remision_proveedor = oc.numero_factura_proveedor;
+    }
+
+    if (oc.lineas && oc.lineas.length > 0) {
+      this.entradaForm.lineas = oc.lineas.map((l) => ({
+        articulo_id: l.articulo?.id || '',
+        cantidad: Math.max(1, Number(l.cantidad_solicitada) - Number(l.cantidad_recibida || 0)),
+        costo_unitario: Number(l.costo_unitario) || 0,
+      }));
+    }
+  }
+
+  cargarTraslados(): void {
+    this.inventariosService.listarTraslados().subscribe((data) => this.traslados.set(data));
+  }
+
+  abrirModalTraslado(): void {
+    const b1 = this.bodegas()[0]?.id || '';
+    const b2 = this.bodegas()[1]?.id || this.bodegas()[0]?.id || '';
+
+    this.trasladoForm = {
+      bodega_origen_id: b1,
+      bodega_destino_id: b2,
+      fecha_traslado: new Date().toISOString().slice(0, 10),
+      observaciones: '',
+      lineas: [
+        {
+          articulo_id: this.articulos()[0]?.id || '',
+          cantidad: 1,
+        },
+      ],
+    };
+    this.mostrarModalTraslado.set(true);
+  }
+
+  agregarLineaTraslado(): void {
+    this.trasladoForm.lineas.push({
+      articulo_id: this.articulos()[0]?.id || '',
+      cantidad: 1,
+    });
+  }
+
+  removerLineaTraslado(index: number): void {
+    this.trasladoForm.lineas.splice(index, 1);
+  }
+
+  guardarTraslado(): void {
+    if (this.trasladoForm.bodega_origen_id === this.trasladoForm.bodega_destino_id) {
+      this.notificationService.error('La bodega de origen debe ser diferente a la bodega de destino.');
+      return;
+    }
+
+    this.guardando.set(true);
+    this.inventariosService.registrarTraslado(this.trasladoForm).subscribe({
+      next: (res) => {
+        this.guardando.set(false);
+        this.mostrarModalTraslado.set(false);
+        this.notificationService.success(res.mensaje || 'Traslado entre bodegas procesado exitosamente.');
+        this.cargarTraslados();
+        this.cargarArticulos();
+        this.cargarExistencias();
+        if (this.pestanaActiva() === 'kardex') this.cargarKardex();
+      },
+      error: (err) => {
+        this.guardando.set(false);
+        this.notificationService.error(err.error?.message || 'Error al procesar traslado de inventario.');
       },
     });
   }

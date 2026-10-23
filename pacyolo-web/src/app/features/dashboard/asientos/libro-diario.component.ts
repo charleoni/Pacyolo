@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { CrearAsientoModalComponent } from './crear-asiento-modal.component';
 
 interface AsientoLinea {
@@ -273,6 +274,7 @@ export class LibroDiarioComponent implements OnInit {
 
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
 
   ngOnInit(): void {
     this.cargarAsientos();
@@ -323,11 +325,12 @@ export class LibroDiarioComponent implements OnInit {
         next: () => {
           this.anulando.set(false);
           this.asientoAAnular.set(null);
+          this.notificationService.success('Comprobante contable anulado y generado el asiento de reversión NIIF.');
           this.cargarAsientos();
         },
         error: (err) => {
           this.anulando.set(false);
-          alert(err.error?.message || 'Error al anular comprobante.');
+          this.notificationService.error(err.error?.message || 'Error al anular comprobante.');
         },
       });
   }

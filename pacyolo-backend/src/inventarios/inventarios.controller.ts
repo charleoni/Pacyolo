@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
@@ -16,12 +15,11 @@ import {
   UpdateArticuloDto,
   CreateEntradaAlmacenDto,
   CreateNotaAjusteDto,
+  CreateTrasladoDto,
 } from './dto/inventarios.dto.js';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Inventarios')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
 @Controller('inventarios')
 export class InventariosController {
   constructor(private readonly inventariosService: InventariosService) {}
@@ -154,5 +152,29 @@ export class InventariosController {
     @Query('bodega_id') bodegaId?: string,
   ) {
     return await this.inventariosService.consultarExistenciasBodega(empresaId, bodegaId);
+  }
+
+  // ==========================================
+  // TRASLADOS ENTRE BODEGAS
+  // ==========================================
+
+  @Get('traslados')
+  @ApiOperation({ summary: 'Listar historial de traslados entre bodegas' })
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  async listarTraslados(@Headers('x-empresa-id') empresaId?: string) {
+    return await this.inventariosService.listarTraslados(empresaId);
+  }
+
+  @Post('traslados')
+  @ApiOperation({ summary: 'Registrar traslado de mercancía entre bodegas' })
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  async registrarTraslado(
+    @Body() dto: CreateTrasladoDto,
+    @Headers('x-empresa-id') empresaId?: string,
+  ) {
+    return await this.inventariosService.registrarTrasladoBodegas({
+      ...dto,
+      empresa_id: dto.empresa_id || empresaId,
+    });
   }
 }

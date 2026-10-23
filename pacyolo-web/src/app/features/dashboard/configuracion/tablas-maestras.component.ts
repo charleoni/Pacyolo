@@ -8,6 +8,7 @@ import {
   MunicipioItem,
 } from '../../../core/services/parametros.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 export type CatalogoTipo =
   | 'tipos-identificacion'
@@ -779,6 +780,7 @@ export class TablasMaestrasComponent implements OnInit {
 
   private parametrosService = inject(ParametrosService);
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
 
   ngOnInit(): void {
     this.cargarDatos();
@@ -921,18 +923,21 @@ export class TablasMaestrasComponent implements OnInit {
   sembrarDefaults(): void {
     this.parametrosService.sembrarCatalogos().subscribe({
       next: () => {
-        alert('¡Semillas maestras sincronizadas con la base de datos!');
+        this.notificationService.success('¡Semillas maestras sincronizadas con la base de datos!');
         this.cargarDatos();
       },
-      error: (err) => alert('Error sincronizando semillas: ' + err.message),
+      error: (err) => this.notificationService.error('Error sincronizando semillas: ' + err.message),
     });
   }
 
   alternarEstado(item: ParametroItem): void {
     const nuevoEstado = !item.activo;
     this.parametrosService.cambiarEstado(this.catalogoActivo, item.id, nuevoEstado).subscribe({
-      next: () => this.cargarDatos(),
-      error: (err) => alert(err.error?.message || 'Error cambiando estado.'),
+      next: () => {
+        this.notificationService.info(`Parámetro marcado como ${nuevoEstado ? 'activo' : 'inactivo'}.`);
+        this.cargarDatos();
+      },
+      error: (err) => this.notificationService.error(err.error?.message || 'Error cambiando estado.'),
     });
   }
 

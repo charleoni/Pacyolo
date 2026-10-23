@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
@@ -14,12 +13,11 @@ import { ComprasService } from './compras.service.js';
 import {
   CreateOrdenCompraDto,
   UpdateEstadoOrdenCompraDto,
+  CausarOrdenCompraDto,
 } from './dto/compras.dto.js';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Compras')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
 @Controller('compras')
 export class ComprasController {
   constructor(private readonly comprasService: ComprasService) {}
@@ -60,5 +58,14 @@ export class ComprasController {
     @Body() dto: UpdateEstadoOrdenCompraDto,
   ) {
     return await this.comprasService.cambiarEstado(id, dto.estado);
+  }
+
+  @Post('ordenes/:id/causar')
+  @ApiOperation({ summary: 'Causar formalmente la orden en CxP y generar asiento contable NIIF (CAU)' })
+  async causarOrden(
+    @Param('id') id: string,
+    @Body() dto: CausarOrdenCompraDto,
+  ) {
+    return await this.comprasService.causarOrden(id, dto);
   }
 }

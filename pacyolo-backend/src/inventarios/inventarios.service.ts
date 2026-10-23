@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, IsNull } from 'typeorm';
+import { Repository, DataSource, IsNull, Like } from 'typeorm';
 import { Articulo } from './entities/articulo.entity.js';
 import { SaldoBodega } from './entities/saldo-bodega.entity.js';
 import { KardexMovimiento } from './entities/kardex-movimiento.entity.js';
@@ -15,11 +15,14 @@ import { NotaAjuste } from './entities/nota-ajuste.entity.js';
 import { NotaAjusteLinea } from './entities/nota-ajuste-linea.entity.js';
 import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
+import { OrdenCompra, OrdenCompraLinea } from '../compras/entities/orden-compra.entity.js';
+import { CxpService } from '../cxp/cxp.service.js';
 import {
   CreateArticuloDto,
   UpdateArticuloDto,
   CreateEntradaAlmacenDto,
   CreateNotaAjusteDto,
+  CreateTrasladoDto,
 } from './dto/inventarios.dto.js';
 
 @Injectable()
@@ -43,6 +46,7 @@ export class InventariosService {
     private readonly bodegaRepo: Repository<Bodega>,
     @InjectRepository(TipoMovimiento)
     private readonly tipoMovimientoRepo: Repository<TipoMovimiento>,
+    private readonly cxpService: CxpService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -281,7 +285,61 @@ export class InventariosService {
       });
 
       const guardada = await queryRunner.manager.save(entrada);
+
+      // 6. Actualizar recepción en Orden de Compra si está vinculada
+      if (dto.orden_compra_id) {
+        const orden = await queryRunner.manager.findOne(OrdenCompra, {
+          where: { id: dto.orden_compra_id },
+          relations: { lineas: true },
+        });
+
+        if (orden && orden.lineas) {
+          let todasCompletas = true;
+          let algunaRecibida = false;
+
+          for (const oLinea of orden.lineas) {
+            const entLinea = dto.lineas.find((l) => l.articulo_id === oLinea.articulo_id);
+            if (entLinea) {
+              oLinea.cantidad_recibida = Number(
+                (Number(oLinea.cantidad_recibida || 0) + Number(entLinea.cantidad)).toFixed(2),
+              );
+              await queryRunner.manager.save(oLinea);
+            }
+            if (Number(oLinea.cantidad_recibida) > 0) algunaRecibida = true;
+            if (Number(oLinea.cantidad_recibida) < Number(oLinea.cantidad_solicitada)) {
+              todasCompletas = false;
+            }
+          }
+
+          if (todasCompletas) {
+            orden.estado = 'RECIBIDA_TOTAL';
+          } else if (algunaRecibida) {
+            orden.estado = 'RECIBIDA_PARCIAL';
+          }
+          await queryRunner.manager.save(orden);
+        }
+      }
+
       await queryRunner.commitTransaction();
+
+      // 7. Si se solicitó causación inmediata con factura de proveedor
+      if (dto.causar_cxp && dto.numero_factura_proveedor) {
+        try {
+          await this.cxpService.causarFactura({
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+            tercero_id: dto.proveedor_id,
+            codigo_concepto: 'COMPRA_INVENTARIO',
+            numero_factura_proveedor: dto.numero_factura_proveedor,
+            fecha_emision: dto.fecha_factura || dto.fecha_entrada,
+            fecha_vencimiento: dto.fecha_vencimiento || dto.fecha_entrada,
+            subtotal: totalValorado,
+            glosa: `Recepción entrada ${guardada.numero_entrada} - Factura ${dto.numero_factura_proveedor}`,
+          });
+        } catch (e: any) {
+          console.warn(`[InventariosService] No se pudo generar la causación CxP automática: ${e.message}`);
+        }
+      }
+
       return guardada;
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -486,5 +544,191 @@ export class InventariosService {
     }
 
     return await qb.orderBy('art.nombre', 'ASC').getMany();
+  }
+
+  // =========================================================================
+  // TRASLADOS ENTRE BODEGAS
+  // =========================================================================
+
+  async registrarTrasladoBodegas(dto: CreateTrasladoDto): Promise<{
+    numero_traslado: string;
+    fecha_traslado: string;
+    bodega_origen_id: string;
+    bodega_destino_id: string;
+    lineas_trasladadas: number;
+    mensaje: string;
+  }> {
+    if (!dto.lineas || dto.lineas.length === 0) {
+      throw new BadRequestException('El traslado debe contener al menos un artículo.');
+    }
+    if (dto.bodega_origen_id === dto.bodega_destino_id) {
+      throw new BadRequestException('La bodega de origen no puede ser igual a la bodega de destino.');
+    }
+
+    const bodegaOrigen = await this.bodegaRepo.findOne({ where: { id: dto.bodega_origen_id } });
+    if (!bodegaOrigen) {
+      throw new NotFoundException(`La bodega de origen con ID '${dto.bodega_origen_id}' no existe.`);
+    }
+
+    const bodegaDestino = await this.bodegaRepo.findOne({ where: { id: dto.bodega_destino_id } });
+    if (!bodegaDestino) {
+      throw new NotFoundException(`La bodega de destino con ID '${dto.bodega_destino_id}' no existe.`);
+    }
+
+    let tmTraslado = await this.tipoMovimientoRepo.findOne({ where: { codigo: 'TRASLADO' } });
+    const tipoMovId = tmTraslado ? tmTraslado.id : null;
+
+    const conteo = await this.kardexRepo.count({
+      where: {
+        documento_referencia: Like('TR-%'),
+        ...(dto.empresa_id ? { empresa_id: dto.empresa_id } : {}),
+      },
+    });
+    const numeroTraslado = `TR-${String(Math.floor(conteo / 2) + 1).padStart(4, '0')}`;
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const lin of dto.lineas) {
+        const articulo = await queryRunner.manager.findOne(Articulo, { where: { id: lin.articulo_id } });
+        if (!articulo) {
+          throw new NotFoundException(`El artículo con ID '${lin.articulo_id}' no existe.`);
+        }
+
+        const cantidad = Number(lin.cantidad);
+        if (cantidad <= 0) {
+          throw new BadRequestException(`La cantidad a trasladar debe ser mayor a cero para '${articulo.nombre}'.`);
+        }
+
+        // 1. Validar y descontar stock en bodega origen
+        let saldoOrigen = await queryRunner.manager.findOne(SaldoBodega, {
+          where: {
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+            bodega_id: dto.bodega_origen_id,
+            articulo_id: articulo.id,
+          },
+        });
+
+        const stockOrigenPrevio = saldoOrigen ? Number(saldoOrigen.stock_actual) : 0;
+        if (!saldoOrigen || stockOrigenPrevio < cantidad) {
+          throw new BadRequestException(
+            `Stock insuficiente en bodega '${bodegaOrigen.nombre}' para '${articulo.nombre}'. Disponible: ${stockOrigenPrevio}, Solicitado: ${cantidad}`,
+          );
+        }
+
+        const costoUnitario = saldoOrigen ? Number(saldoOrigen.costo_promedio) : Number(articulo.costo_promedio);
+        const costoTotal = Number((cantidad * costoUnitario).toFixed(2));
+
+        const nuevoStockOrigen = Number((stockOrigenPrevio - cantidad).toFixed(2));
+        saldoOrigen.stock_actual = nuevoStockOrigen;
+        await queryRunner.manager.save(saldoOrigen);
+
+        // 2. Incrementar stock en bodega destino
+        let saldoDestino = await queryRunner.manager.findOne(SaldoBodega, {
+          where: {
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+            bodega_id: dto.bodega_destino_id,
+            articulo_id: articulo.id,
+          },
+        });
+
+        const stockDestinoPrevio = saldoDestino ? Number(saldoDestino.stock_actual) : 0;
+        const costoDestinoPrevio = saldoDestino ? Number(saldoDestino.costo_promedio) : costoUnitario;
+        const nuevoStockDestino = Number((stockDestinoPrevio + cantidad).toFixed(2));
+        const nuevoCostoDestino = nuevoStockDestino > 0
+          ? Number(((stockDestinoPrevio * costoDestinoPrevio + cantidad * costoUnitario) / nuevoStockDestino).toFixed(2))
+          : costoUnitario;
+
+        if (!saldoDestino) {
+          saldoDestino = queryRunner.manager.create(SaldoBodega, {
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+            bodega_id: dto.bodega_destino_id,
+            articulo_id: articulo.id,
+            stock_actual: nuevoStockDestino,
+            costo_promedio: nuevoCostoDestino,
+          });
+        } else {
+          saldoDestino.stock_actual = nuevoStockDestino;
+          saldoDestino.costo_promedio = nuevoCostoDestino;
+        }
+        await queryRunner.manager.save(saldoDestino);
+
+        // 3. Kardex: Salida de Bodega Origen
+        const kardexSalida = queryRunner.manager.create(KardexMovimiento, {
+          empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+          articulo_id: articulo.id,
+          bodega_id: dto.bodega_origen_id,
+          tipo_movimiento_id: tipoMovId,
+          naturaleza: 'SALIDA',
+          fecha_movimiento: dto.fecha_traslado,
+          documento_referencia: numeroTraslado,
+          cantidad_entrada: 0,
+          costo_unitario_entrada: 0,
+          costo_total_entrada: 0,
+          cantidad_salida: cantidad,
+          costo_unitario_salida: costoUnitario,
+          costo_total_salida: costoTotal,
+          saldo_cantidad_resultante: nuevoStockOrigen,
+          costo_unitario_promedio_resultante: Number(saldoOrigen.costo_promedio),
+          saldo_costo_total_resultante: Number((nuevoStockOrigen * Number(saldoOrigen.costo_promedio)).toFixed(2)),
+          observaciones: `Traslado salida hacia '${bodegaDestino.nombre}' - Ref: ${numeroTraslado}. ${dto.observaciones || ''}`,
+        });
+        await queryRunner.manager.save(kardexSalida);
+
+        // 4. Kardex: Entrada a Bodega Destino
+        const kardexEntrada = queryRunner.manager.create(KardexMovimiento, {
+          empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+          articulo_id: articulo.id,
+          bodega_id: dto.bodega_destino_id,
+          tipo_movimiento_id: tipoMovId,
+          naturaleza: 'ENTRADA',
+          fecha_movimiento: dto.fecha_traslado,
+          documento_referencia: numeroTraslado,
+          cantidad_entrada: cantidad,
+          costo_unitario_entrada: costoUnitario,
+          costo_total_entrada: costoTotal,
+          cantidad_salida: 0,
+          costo_unitario_salida: 0,
+          costo_total_salida: 0,
+          saldo_cantidad_resultante: nuevoStockDestino,
+          costo_unitario_promedio_resultante: nuevoCostoDestino,
+          saldo_costo_total_resultante: Number((nuevoStockDestino * nuevoCostoDestino).toFixed(2)),
+          observaciones: `Traslado entrada desde '${bodegaOrigen.nombre}' - Ref: ${numeroTraslado}. ${dto.observaciones || ''}`,
+        });
+        await queryRunner.manager.save(kardexEntrada);
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        numero_traslado: numeroTraslado,
+        fecha_traslado: dto.fecha_traslado,
+        bodega_origen_id: dto.bodega_origen_id,
+        bodega_destino_id: dto.bodega_destino_id,
+        lineas_trasladadas: dto.lineas.length,
+        mensaje: `Traslado ${numeroTraslado} completado exitosamente entre bodegas.`,
+      };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async listarTraslados(empresaId?: string): Promise<any[]> {
+    const qb = this.kardexRepo.createQueryBuilder('k')
+      .leftJoinAndSelect('k.articulo', 'art')
+      .leftJoinAndSelect('k.bodega', 'bod')
+      .where("k.documento_referencia LIKE 'TR-%'")
+      .andWhere("k.naturaleza = 'SALIDA'");
+
+    if (empresaId) {
+      qb.andWhere('k.empresa_id = :empresaId', { empresaId });
+    }
+
+    return await qb.orderBy('k.created_at', 'DESC').getMany();
   }
 }

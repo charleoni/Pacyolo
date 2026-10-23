@@ -12,6 +12,7 @@ import { NotaAjuste } from './entities/nota-ajuste.entity.js';
 import { NotaAjusteLinea } from './entities/nota-ajuste-linea.entity.js';
 import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
+import { CxpService } from '../cxp/cxp.service.js';
 
 describe('InventariosService', () => {
   let service: InventariosService;
@@ -59,6 +60,7 @@ describe('InventariosService', () => {
         { provide: getRepositoryToken(NotaAjusteLinea), useFactory: mockRepo },
         { provide: getRepositoryToken(Bodega), useFactory: mockRepo },
         { provide: getRepositoryToken(TipoMovimiento), useFactory: mockRepo },
+        { provide: CxpService, useValue: { causarFactura: vi.fn() } },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();

@@ -57,7 +57,32 @@ export class AuthService {
   }
 
   private getStoredToken(): string | null {
-    return typeof localStorage !== 'undefined' ? localStorage.getItem(this.TOKEN_KEY) : null;
+    if (typeof localStorage === 'undefined') return null;
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    if (!token) return null;
+
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join(''),
+        );
+        const payload = JSON.parse(jsonPayload);
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.warn('[AuthService] El token JWT ha expirado. Limpiando sesión.');
+          localStorage.removeItem(this.TOKEN_KEY);
+          return null;
+        }
+      }
+    } catch {
+      // Ignorar si el token no es decodificable
+    }
+
+    return token;
   }
 
   private getStoredUser(): UsuarioSesion | null {

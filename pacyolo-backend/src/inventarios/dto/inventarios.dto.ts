@@ -121,11 +121,13 @@ export class EntradaLineaDto {
   articulo_id: string;
 
   @ApiProperty({ example: 10 })
+  @Type(() => Number)
   @IsNumber()
   @Min(0.01)
   cantidad: number;
 
   @ApiProperty({ example: 4500 })
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   costo_unitario: number;
@@ -167,6 +169,26 @@ export class CreateEntradaAlmacenDto {
   @IsString()
   numero_remision_proveedor?: string;
 
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  causar_cxp?: boolean;
+
+  @ApiPropertyOptional({ example: 'FE-9842' })
+  @IsOptional()
+  @IsString()
+  numero_factura_proveedor?: string;
+
+  @ApiPropertyOptional({ example: '2026-10-22' })
+  @IsOptional()
+  @IsString()
+  fecha_factura?: string;
+
+  @ApiPropertyOptional({ example: '2026-11-22' })
+  @IsOptional()
+  @IsString()
+  fecha_vencimiento?: string;
+
   @ApiProperty({ example: '2026-10-19' })
   @IsString()
   @IsNotEmpty()
@@ -194,12 +216,14 @@ export class NotaAjusteLineaDto {
   tipo_movimiento: 'ENTRADA' | 'SALIDA';
 
   @ApiProperty({ example: 2 })
+  @Type(() => Number)
   @IsNumber()
   @Min(0.01)
   cantidad: number;
 
   @ApiPropertyOptional({ example: 4500 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   costo_unitario?: number;
@@ -240,4 +264,50 @@ export class CreateNotaAjusteDto {
   @ValidateNested({ each: true })
   @Type(() => NotaAjusteLineaDto)
   lineas: NotaAjusteLineaDto[];
+}
+
+export class TrasladoLineaDto {
+  @ApiProperty({ example: 'uuid-articulo' })
+  @IsUUID()
+  @IsNotEmpty()
+  articulo_id: string;
+
+  @ApiProperty({ example: 5 })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  cantidad: number;
+}
+
+export class CreateTrasladoDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  empresa_id?: string;
+
+  @ApiProperty({ example: 'uuid-bodega-origen' })
+  @IsUUID()
+  @IsNotEmpty()
+  bodega_origen_id: string;
+
+  @ApiProperty({ example: 'uuid-bodega-destino' })
+  @IsUUID()
+  @IsNotEmpty()
+  bodega_destino_id: string;
+
+  @ApiProperty({ example: '2026-10-22' })
+  @IsString()
+  @IsNotEmpty()
+  fecha_traslado: string;
+
+  @ApiPropertyOptional({ example: 'Reabastecimiento de bodega secundaria' })
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
+
+  @ApiProperty({ type: [TrasladoLineaDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TrasladoLineaDto)
+  lineas: TrasladoLineaDto[];
 }

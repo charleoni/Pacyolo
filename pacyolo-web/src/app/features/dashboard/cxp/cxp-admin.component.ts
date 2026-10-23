@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 interface ProveedorItem {
   id: string;
@@ -184,6 +185,26 @@ interface PagoHistorial {
             </div>
           </div>
 
+          <!-- Barra de Búsqueda y Filtros de Facturas CxP -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="relative w-full sm:w-96">
+              <input
+                type="text"
+                [(ngModel)]="busquedaFactura"
+                placeholder="Buscar por N° Factura, Proveedor, NIT o Asiento..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-sans"
+              />
+              <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+              @if (busquedaFactura) {
+                <button (click)="busquedaFactura = ''" class="absolute right-3 top-2 text-slate-500 hover:text-white cursor-pointer">✕</button>
+              }
+            </div>
+
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span>Registros: <span class="text-indigo-400 font-bold font-mono">{{ facturasFiltradas().length }}</span></span>
+            </div>
+          </div>
+
           <!-- Tabla de Facturas CxP -->
           <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
@@ -200,12 +221,12 @@ interface PagoHistorial {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
-                  @for (cxp of facturas(); track cxp.id) {
+                  @for (cxp of facturasFiltradas(); track cxp.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="py-3 px-4 font-mono font-bold text-white">
                         {{ cxp.numero_factura_proveedor }}
-                        <span *ngIf="cxp.asiento?.numero_comprobante" class="block text-[10px] text-slate-500 font-mono font-normal">
-                          Asiento: {{ cxp.asiento?.numero_comprobante }}
+                        <span *ngIf="cxp.asiento?.numero_comprobante" class="block text-[10px] text-indigo-400 font-mono font-semibold">
+                          {{ cxp.asiento?.numero_comprobante }}
                         </span>
                       </td>
                       <td class="py-3 px-4">
@@ -238,6 +259,15 @@ interface PagoHistorial {
                       </td>
                       <td class="py-3 px-4 text-right whitespace-nowrap space-x-1.5">
                         <button
+                          type="button"
+                          (click)="abrirModalImprimirCausacion(cxp)"
+                          class="px-2.5 py-1 text-xs text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition cursor-pointer inline-flex items-center gap-1"
+                          title="Consultar e imprimir comprobante formal de causación contable"
+                        >
+                          <span>🖨️</span>
+                          <span>Comprobante CAU</span>
+                        </button>
+                        <button
                           *ngIf="cxp.saldo_pendiente > 0"
                           (click)="abrirModalPago(cxp)"
                           class="px-2.5 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-sm transition cursor-pointer"
@@ -255,7 +285,7 @@ interface PagoHistorial {
                   } @empty {
                     <tr>
                       <td colspan="7" class="py-12 text-center text-slate-500 text-xs">
-                        No hay facturas de proveedores causadas todavía en esta empresa.
+                        No se encontraron facturas coincidentes con la búsqueda.
                       </td>
                     </tr>
                   }
@@ -916,6 +946,7 @@ interface PagoHistorial {
                   <th class="py-2.5 px-3">Método / Ref</th>
                   <th class="py-2.5 px-3">Comprobante Egreso</th>
                   <th class="py-2.5 px-3 text-right">Monto</th>
+                  <th class="py-2.5 px-3 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800/60">
@@ -931,9 +962,20 @@ interface PagoHistorial {
                   <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
                     {{ p.monto_pago | currency:'COP':'symbol-narrow':'1.0-0' }}
                   </td>
+                  <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      (click)="abrirModalImprimirEgreso(p)"
+                      class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1"
+                      title="Imprimir Comprobante de Egreso (EGR)"
+                    >
+                      <span>🖨️</span>
+                      <span>Ver EGR</span>
+                    </button>
+                  </td>
                 </tr>
                 <tr *ngIf="historialPagos()?.length === 0">
-                  <td colspan="4" class="py-6 text-center text-slate-500">
+                  <td colspan="5" class="py-6 text-center text-slate-500">
                     No se han registrado pagos para esta factura aún.
                   </td>
                 </tr>
@@ -951,6 +993,168 @@ interface PagoHistorial {
           </div>
         </div>
       </div>
+
+      <!-- Modal Imprimible Formal para Documentos CxP (CAU / EGR) -->
+      @if (documentoCxpParaImprimir(); as doc) {
+        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-200 my-8">
+            <!-- Barra superior no imprimible -->
+            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <span class="text-xl">🖨️</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white tracking-wide uppercase">{{ doc.titulo }}</h3>
+                  <p class="text-[11px] text-slate-400 font-mono">{{ doc.consecutivo }} - Soporte Contable Oficial</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="imprimirReporte()"
+                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-indigo-600/30"
+                >
+                  <span>🖨️</span>
+                  <span>Imprimir / PDF</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="documentoCxpParaImprimir.set(null)"
+                  class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  ✕ Cerrar
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenedor Membretado Impreso -->
+            <div class="p-8 sm:p-10 space-y-6 text-xs bg-white text-slate-900">
+              <!-- Encabezado -->
+              <div class="flex justify-between items-start border-b-2 border-slate-900 pb-5">
+                <div class="space-y-1">
+                  <h1 class="text-xl font-black text-slate-900 tracking-tight">
+                    {{ authService.empresaActiva()?.razon_social || 'PACYOLO S.A.S.' }}
+                  </h1>
+                  <p class="font-mono text-xs text-slate-700 font-bold">
+                    NIT: {{ authService.empresaActiva()?.nit || '900.123.456-7' }}
+                  </p>
+                  <p class="text-[11px] text-slate-500">
+                    Sistema Integrado de Contabilidad & Cuentas por Pagar
+                  </p>
+                </div>
+
+                <div class="text-right">
+                  <div class="inline-block border-2 border-slate-900 rounded-xl p-3 bg-slate-50">
+                    <span class="block text-[10px] font-bold uppercase text-slate-500 tracking-wider">{{ doc.etiqueta }}</span>
+                    <span class="text-base font-black font-mono text-slate-900">{{ doc.consecutivo }}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1 font-mono">Fecha: {{ doc.fecha }}</p>
+                </div>
+              </div>
+
+              <!-- Beneficiario / Proveedor -->
+              <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <span class="block text-[10px] font-bold uppercase text-slate-500">Proveedor / Beneficiario</span>
+                  <p class="font-bold text-slate-900 text-sm">{{ doc.proveedor?.nombre_completo || 'Tercero' }}</p>
+                  <p class="font-mono text-[11px] text-slate-600">NIT / C.C.: {{ doc.proveedor?.numero_identificacion || 'N/A' }}</p>
+                </div>
+                <div class="text-right space-y-0.5">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Factura de Referencia:</span>
+                    <span class="font-mono font-bold text-slate-800 ml-1">{{ doc.numeroFactura }}</span>
+                  </div>
+                  @if (doc.asientoContable) {
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-slate-500">Comprobante Contable:</span>
+                      <span class="font-mono font-bold text-indigo-700 ml-1">{{ doc.asientoContable }}</span>
+                    </div>
+                  }
+                  @if (doc.fechaVencimiento) {
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-slate-500">Vencimiento:</span>
+                      <span class="font-mono text-slate-700 ml-1">{{ doc.fechaVencimiento }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Detalle de Liquidación -->
+              <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                    <tr>
+                      <th class="p-3">Concepto / Glosa</th>
+                      <th class="p-3 text-right">Base / Subtotal</th>
+                      <th class="p-3 text-right">Impuestos / Retenciones</th>
+                      <th class="p-3 text-right">Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                    <tr>
+                      <td class="p-3 font-sans">{{ doc.glosa || ('Causación de Factura ' + doc.numeroFactura) }}</td>
+                      <td class="p-3 text-right">{{ doc.subtotal | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      <td class="p-3 text-right">{{ doc.impuestos | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      <td class="p-3 text-right font-bold text-slate-900">{{ doc.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                    </tr>
+                  </tbody>
+                  @if (doc.tipo === 'EGRESO') {
+                    <tfoot class="bg-emerald-50 border-t-2 border-emerald-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="3" class="p-3 text-right uppercase text-emerald-900">Monto Efectivamente Pagado (Egreso):</td>
+                        <td class="p-3 text-right text-sm text-emerald-900">{{ doc.montoPagado | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      </tr>
+                    </tfoot>
+                  } @else {
+                    <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="3" class="p-3 text-right uppercase">Saldo Pendiente de Pago:</td>
+                        <td class="p-3 text-right text-sm text-slate-900">{{ doc.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      </tr>
+                    </tfoot>
+                  }
+                </table>
+              </div>
+
+              @if (doc.tipo === 'EGRESO') {
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs flex justify-between">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase text-slate-500">Método de Desembolso:</span>
+                    <span class="font-bold text-slate-800 ml-1">{{ doc.metodoPago }}</span>
+                  </div>
+                  @if (doc.referencia) {
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-slate-500">Referencia Bancaria:</span>
+                      <span class="font-mono font-bold text-slate-800 ml-1">{{ doc.referencia }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Firmas y Pistas de Auditoría -->
+              <div class="pt-8 grid grid-cols-3 gap-6 text-center text-xs font-mono">
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Elaboró / Causó</p>
+                  <p class="text-[10px] text-slate-500">{{ authService.usuario()?.nombres || 'Usuario Autorizado' }}</p>
+                </div>
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Revisó / Auditoría</p>
+                  <p class="text-[10px] text-slate-500">Control Financiero</p>
+                </div>
+                <div class="border-t border-slate-400 pt-2">
+                  <p class="font-bold text-slate-800">Aprobó / Tesorería</p>
+                  <p class="text-[10px] text-slate-500">Gerencia / Revisoría Fiscal</p>
+                </div>
+              </div>
+
+              <!-- Pie Legal -->
+              <div class="text-[9px] text-slate-400 border-t border-slate-200 pt-3 flex justify-between font-mono">
+                <span>Generado por PACYOLO Cloud ERP | Módulo de Cuentas por Pagar (CxP)</span>
+                <span>Pista de Auditoría: {{ doc.fecha }} | Ref: {{ doc.consecutivo }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
@@ -962,6 +1166,10 @@ export class CxpAdminComponent implements OnInit {
   conceptos = signal<ConceptoMapeo[]>([]);
   cuentasBanco = signal<CuentaBancoItem[]>([]);
   metodosPago = signal<ParametroItem[]>([]);
+
+  // Búsqueda y Visor Documental
+  busquedaFactura = '';
+  readonly documentoCxpParaImprimir = signal<any | null>(null);
 
   // Señales de Reportes Analíticos
   proveedorSeleccionadoEstado = '';
@@ -1000,8 +1208,63 @@ export class CxpAdminComponent implements OnInit {
   };
 
   private http = inject(HttpClient);
-  private authService = inject(AuthService);
+  readonly authService = inject(AuthService);
   private parametrosService = inject(ParametrosService);
+  private notificationService = inject(NotificationService);
+
+  // Filtros reactivos
+  facturasFiltradas(): CuentaPorPagarItem[] {
+    const q = this.busquedaFactura.toLowerCase().trim();
+    if (!q) return this.facturas();
+    return this.facturas().filter((f) => {
+      return (
+        (f.numero_factura_proveedor && f.numero_factura_proveedor.toLowerCase().includes(q)) ||
+        (f.tercero?.nombre_completo && f.tercero.nombre_completo.toLowerCase().includes(q)) ||
+        (f.tercero?.numero_identificacion && f.tercero.numero_identificacion.toLowerCase().includes(q)) ||
+        (f.asiento?.numero_comprobante && f.asiento.numero_comprobante.toLowerCase().includes(q))
+      );
+    });
+  }
+
+  abrirModalImprimirCausacion(cxp: CuentaPorPagarItem): void {
+    this.documentoCxpParaImprimir.set({
+      tipo: 'CAUSACION',
+      titulo: 'COMPROBANTE FORMAL DE CAUSACIÓN CONTABLE (CxP)',
+      etiqueta: 'COMPROBANTE CAU',
+      consecutivo: cxp.asiento?.numero_comprobante || `CAU-${cxp.numero_factura_proveedor}`,
+      fecha: cxp.fecha_emision,
+      numeroFactura: cxp.numero_factura_proveedor,
+      fechaVencimiento: cxp.fecha_vencimiento,
+      asientoContable: cxp.asiento?.numero_comprobante,
+      proveedor: cxp.tercero,
+      glosa: cxp.glosa || `Causación de Factura de Proveedor ${cxp.numero_factura_proveedor}`,
+      subtotal: cxp.subtotal,
+      impuestos: cxp.total_impuestos,
+      total: cxp.total_factura,
+      saldoPendiente: cxp.saldo_pendiente,
+    });
+  }
+
+  abrirModalImprimirEgreso(pago: PagoHistorial): void {
+    const fac = this.facturaAPagar();
+    this.documentoCxpParaImprimir.set({
+      tipo: 'EGRESO',
+      titulo: 'COMPROBANTE FORMAL DE EGRESO BANCARIO (EGR)',
+      etiqueta: 'COMPROBANTE EGR',
+      consecutivo: pago.asiento?.numero_comprobante || 'EGR-PAGO',
+      fecha: pago.fecha_pago,
+      numeroFactura: fac?.numero_factura_proveedor || 'N/A',
+      asientoContable: pago.asiento?.numero_comprobante,
+      proveedor: fac?.tercero,
+      glosa: pago.glosa || `Pago realizado a Factura ${fac?.numero_factura_proveedor || ''}`,
+      subtotal: fac?.subtotal || pago.monto_pago,
+      impuestos: fac?.total_impuestos || 0,
+      total: fac?.total_factura || pago.monto_pago,
+      montoPagado: pago.monto_pago,
+      metodoPago: pago.metodo_pago,
+      referencia: pago.referencia_transaccion,
+    });
+  }
 
   ngOnInit(): void {
     this.cargarDatos();
@@ -1079,10 +1342,10 @@ export class CxpAdminComponent implements OnInit {
       .post(`http://localhost:3000/api/v1/mapeo-conceptos/sembrar/${emp.empresa_id}`, {})
       .subscribe({
         next: () => {
-          alert('¡Catálogo estándar de conceptos operativos sembrado con éxito!');
+          this.notificationService.success('¡Catálogo estándar de conceptos operativos sembrado con éxito!');
           this.cargarDatos();
         },
-        error: (err) => alert(err.error?.message || 'Error al sembrar conceptos.'),
+        error: (err) => this.notificationService.error(err.error?.message || 'Error al sembrar conceptos.'),
       });
   }
 
@@ -1192,11 +1455,12 @@ export class CxpAdminComponent implements OnInit {
       next: () => {
         this.guardando.set(false);
         this.facturaAPagar.set(null);
+        this.notificationService.success('Pago registrado y comprobante de egreso generado con éxito.');
         this.cargarDatos();
       },
       error: (err) => {
         this.guardando.set(false);
-        alert(err.error?.message || 'Error registrando el pago.');
+        this.notificationService.error(err.error?.message || 'Error registrando el pago.');
       },
     });
   }

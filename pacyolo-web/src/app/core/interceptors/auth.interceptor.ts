@@ -1,9 +1,12 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { NotificationService } from '../services/notification.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
+  const notificationService = inject(NotificationService);
   const token = authService.token();
   const empresaActiva = authService.empresaActiva();
 
@@ -18,5 +21,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const clonedReq = req.clone({ headers });
-  return next(clonedReq);
+  return next(clonedReq).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401) {
+        notificationService.error(
+          'Su sesión ha expirado o no tiene autorización para realizar esta acción. Por favor verifique sus credenciales.',
+          'Sesión No Autorizada (401)',
+        );
+      }
+      return throwError(() => error);
+    }),
+  );
 };

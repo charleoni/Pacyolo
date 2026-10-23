@@ -215,4 +215,13 @@ export class InventariosService {
     if (bodega_id) params = params.set('bodega_id', bodega_id);
     return this.http.get<SaldoBodegaItem[]>(`${this.apiUrl}/existencias`, { params });
   }
+
+  // Traslados entre Bodegas
+  listarTraslados(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/traslados`);
+  }
+
+  registrarTraslado(traslado: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/traslados`, traslado);
+  }
 }

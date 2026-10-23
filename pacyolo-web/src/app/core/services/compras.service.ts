@@ -9,6 +9,11 @@ export interface OrdenCompraItem {
     id: string;
     numero_identificacion: string;
     nombre_completo: string;
+    razon_social?: string;
+    ciudad?: string;
+    direccion?: string;
+    telefono?: string;
+    email?: string;
   };
   bodega_destino?: {
     id: string;
@@ -17,6 +22,13 @@ export interface OrdenCompraItem {
   };
   fecha_emision: string;
   fecha_entrega_esperada?: string;
+  condicion_pago?: 'CONTADO' | 'CREDITO';
+  dias_credito?: number;
+  fecha_vencimiento?: string;
+  metodo_pago?: string;
+  numero_factura_proveedor?: string;
+  asiento_id?: string;
+  cxp_id?: string;
   estado: 'BORRADOR' | 'APROBADA' | 'RECIBIDA_PARCIAL' | 'RECIBIDA_TOTAL' | 'CANCELADA';
   subtotal: number;
   total_impuestos: number;
@@ -62,5 +74,9 @@ export class ComprasService {
 
   cambiarEstado(id: string, estado: string): Observable<OrdenCompraItem> {
     return this.http.patch<OrdenCompraItem>(`${this.apiUrl}/ordenes/${id}/estado`, { estado });
+  }
+
+  causarOrden(id: string, datos?: { numero_factura_proveedor?: string; fecha_factura?: string; codigo_concepto?: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/ordenes/${id}/causar`, datos || {});
   }
 }

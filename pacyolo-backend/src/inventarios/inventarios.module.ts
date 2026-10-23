@@ -9,6 +9,7 @@ import { NotaAjuste } from './entities/nota-ajuste.entity.js';
 import { NotaAjusteLinea } from './entities/nota-ajuste-linea.entity.js';
 import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
+import { CxpModule } from '../cxp/cxp.module.js';
 import { InventariosService } from './inventarios.service.js';
 import { InventariosController } from './inventarios.controller.js';
 
@@ -25,6 +26,7 @@ import { InventariosController } from './inventarios.controller.js';
       Bodega,
       TipoMovimiento,
     ]),
+    CxpModule,
   ],
   controllers: [InventariosController],
   providers: [InventariosService],

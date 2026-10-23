@@ -6,9 +6,10 @@ import {
   Body,
   Param,
   Query,
+  Headers,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiHeader } from '@nestjs/swagger';
 import { TercerosService } from './terceros.service.js';
 import { CreateTerceroDto } from './dto/create-tercero.dto.js';
 import { UpdateTerceroDto } from './dto/update-tercero.dto.js';
@@ -36,15 +37,18 @@ export class TercerosController {
 
   @Get()
   @ApiOperation({ summary: 'Listar terceros de una empresa' })
+  @ApiHeader({ name: 'x-empresa-id', required: false })
   @ApiQuery({
     name: 'empresa_id',
-    required: true,
+    required: false,
     description: 'ID de la empresa para filtrar los terceros',
   })
   @ApiResponse({ status: 200, type: [Tercero] })
   async findByEmpresa(
-    @Query('empresa_id', ParseUUIDPipe) empresaId: string,
+    @Query('empresa_id') empresaIdQuery?: string,
+    @Headers('x-empresa-id') empresaIdHeader?: string,
   ): Promise<Tercero[]> {
+    const empresaId = empresaIdQuery || empresaIdHeader;
     return await this.tercerosService.findByEmpresa(empresaId);
   }
 

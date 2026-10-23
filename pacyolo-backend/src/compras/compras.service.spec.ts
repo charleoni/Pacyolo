@@ -7,6 +7,7 @@ import { OrdenCompra } from './entities/orden-compra.entity.js';
 import { OrdenCompraLinea } from './entities/orden-compra-linea.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { Articulo } from '../inventarios/entities/articulo.entity.js';
+import { CxpService } from '../cxp/cxp.service.js';
 
 describe('ComprasService', () => {
   let service: ComprasService;
@@ -34,6 +35,7 @@ describe('ComprasService', () => {
         { provide: getRepositoryToken(OrdenCompraLinea), useFactory: mockRepo },
         { provide: getRepositoryToken(Tercero), useFactory: mockRepo },
         { provide: getRepositoryToken(Articulo), useFactory: mockRepo },
+        { provide: CxpService, useValue: { causarFactura: vi.fn() } },
         { provide: DataSource, useValue: {} },
       ],
     }).compile();

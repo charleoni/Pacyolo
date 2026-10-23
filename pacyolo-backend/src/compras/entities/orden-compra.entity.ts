@@ -55,6 +55,27 @@ export class OrdenCompra {
   @Column({ type: 'date', nullable: true })
   fecha_entrega_esperada: string | null;
 
+  @Column({ type: 'varchar', length: 20, default: 'CREDITO' })
+  condicion_pago: 'CONTADO' | 'CREDITO';
+
+  @Column({ type: 'int', default: 30 })
+  dias_credito: number;
+
+  @Column({ type: 'date', nullable: true })
+  fecha_vencimiento: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  metodo_pago: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  numero_factura_proveedor: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  asiento_id: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  cxp_id: string | null;
+
   @Column({
     type: 'varchar',
     length: 30,
