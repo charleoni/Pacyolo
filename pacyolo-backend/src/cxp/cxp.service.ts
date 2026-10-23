@@ -158,6 +158,9 @@ export class CxpService {
       .leftJoinAndSelect('cxp.tercero', 'tercero')
       .leftJoinAndSelect('cxp.cuenta_pasivo', 'cuenta_pasivo')
       .leftJoinAndSelect('cxp.asiento', 'asiento')
+      .leftJoinAndSelect('asiento.lineas', 'lineas')
+      .leftJoinAndSelect('lineas.cuenta', 'cuenta')
+      .leftJoinAndSelect('lineas.tercero', 'linea_tercero')
       .where('cxp.empresa_id = :empresa_id', { empresa_id: filter.empresa_id });
 
     if (filter.tercero_id) {
@@ -372,7 +375,12 @@ export class CxpService {
     return await this.pagoRepo.find({
       where: { cuenta_por_pagar_id },
       relations: {
-        asiento: true,
+        asiento: {
+          lineas: {
+            cuenta: true,
+            tercero: true,
+          },
+        },
         cuenta_banco: true,
       },
       order: { created_at: 'DESC' },

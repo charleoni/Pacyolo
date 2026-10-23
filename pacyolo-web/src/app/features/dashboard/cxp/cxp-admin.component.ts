@@ -25,12 +25,34 @@ interface CuentaBancoItem {
   nombre: string;
 }
 
+interface AsientoLineaItem {
+  id: string;
+  debito: number;
+  credito: number;
+  base_impuesto?: number;
+  glosa_detalle?: string;
+  documento_referencia?: string;
+  cuenta?: {
+    id: string;
+    codigo: string;
+    nombre: string;
+  };
+  tercero?: {
+    id: string;
+    numero_identificacion: string;
+    nombre_completo: string;
+  };
+}
+
 interface CuentaPorPagarItem {
   id: string;
   numero_factura_proveedor: string;
   tercero?: {
+    id?: string;
     numero_identificacion: string;
     nombre_completo: string;
+    ciudad?: string;
+    direccion?: string;
   };
   fecha_emision: string;
   fecha_vencimiento: string;
@@ -41,7 +63,13 @@ interface CuentaPorPagarItem {
   estado: 'PENDIENTE' | 'PAGADA_PARCIAL' | 'PAGADA_TOTAL';
   glosa?: string;
   asiento?: {
+    id?: string;
     numero_comprobante: string;
+    fecha_contable?: string;
+    glosa_general?: string;
+    total_debito?: number;
+    total_credito?: number;
+    lineas?: AsientoLineaItem[];
   };
 }
 
@@ -60,7 +88,9 @@ interface PagoHistorial {
   referencia_transaccion?: string;
   glosa?: string;
   asiento?: {
+    id?: string;
     numero_comprobante: string;
+    lineas?: AsientoLineaItem[];
   };
 }
 
@@ -1078,41 +1108,96 @@ interface PagoHistorial {
                 </div>
               </div>
 
-              <!-- Detalle de Liquidación -->
-              <div class="border border-slate-200 rounded-xl overflow-hidden">
-                <table class="w-full text-left text-xs border-collapse">
-                  <thead class="bg-slate-100 border-b border-slate-300 font-mono text-[10px] uppercase text-slate-700">
-                    <tr>
-                      <th class="p-3">Concepto / Glosa</th>
-                      <th class="p-3 text-right">Base / Subtotal</th>
-                      <th class="p-3 text-right">Impuestos / Retenciones</th>
-                      <th class="p-3 text-right">Valor Total</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
-                    <tr>
-                      <td class="p-3 font-sans">{{ doc.glosa || ('Causación de Factura ' + doc.numeroFactura) }}</td>
-                      <td class="p-3 text-right">{{ doc.subtotal | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                      <td class="p-3 text-right">{{ doc.impuestos | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                      <td class="p-3 text-right font-bold text-slate-900">{{ doc.total | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                    </tr>
-                  </tbody>
-                  @if (doc.tipo === 'EGRESO') {
-                    <tfoot class="bg-emerald-50 border-t-2 border-emerald-900 font-mono font-bold text-xs">
-                      <tr>
-                        <td colspan="3" class="p-3 text-right uppercase text-emerald-900">Monto Efectivamente Pagado (Egreso):</td>
-                        <td class="p-3 text-right text-sm text-emerald-900">{{ doc.montoPagado | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                      </tr>
-                    </tfoot>
-                  } @else {
-                    <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
-                      <tr>
-                        <td colspan="3" class="p-3 text-right uppercase">Saldo Pendiente de Pago:</td>
-                        <td class="p-3 text-right text-sm text-slate-900">{{ doc.saldoPendiente | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
-                      </tr>
-                    </tfoot>
+              <!-- Resumen Comercial de la Operación -->
+              <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+                <div class="bg-slate-100 px-3.5 py-2 border-b border-slate-200 flex justify-between items-center">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-700">Resumen de Liquidación Documental</span>
+                  <span class="text-[10px] font-mono font-bold" [class]="doc.saldoPendiente > 0 ? 'text-amber-700' : 'text-emerald-700'">
+                    {{ doc.saldoPendiente > 0 ? 'CARTERA PENDIENTE' : 'CANCELADA TOTAL' }}
+                  </span>
+                </div>
+                <div class="p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span class="block text-[10px] uppercase text-slate-500">Base / Subtotal</span>
+                    <span class="font-mono font-bold text-slate-800">{{ doc.subtotal | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+                  </div>
+                  <div>
+                    <span class="block text-[10px] uppercase text-slate-500">Impuestos / Retenciones</span>
+                    <span class="font-mono font-bold text-slate-800">{{ doc.impuestos | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+                  </div>
+                  <div>
+                    <span class="block text-[10px] uppercase text-slate-500">Valor Total Factura</span>
+                    <span class="font-mono font-bold text-slate-900">{{ doc.total | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+                  </div>
+                  <div>
+                    <span class="block text-[10px] uppercase text-slate-500">{{ doc.tipo === 'EGRESO' ? 'Monto Pagado' : 'Saldo Pendiente' }}</span>
+                    <span class="font-mono font-bold" [class]="doc.tipo === 'EGRESO' ? 'text-emerald-700' : 'text-amber-700'">
+                      {{ (doc.tipo === 'EGRESO' ? doc.montoPagado : doc.saldoPendiente) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ASIENTO CONTABLE OFICIAL DE PARTIDA DOBLE (CUENTAS PUC & TERCEROS) -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <span>📑</span>
+                    <span>Registro Contable de Partida Doble (Cuentas PUC & Terceros)</span>
+                  </h4>
+                  @if (doc.totalDebito > 0 && doc.totalDebito === doc.totalCredito) {
+                    <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-full font-mono">
+                      ✓ Asiento Cuadrado al Centavo
+                    </span>
                   }
-                </table>
+                </div>
+
+                <div class="border border-slate-300 rounded-xl overflow-hidden shadow-sm">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 border-b-2 border-slate-300 font-mono text-[10px] uppercase text-slate-700">
+                      <tr>
+                        <th class="p-2.5">Código PUC</th>
+                        <th class="p-2.5">Cuenta Contable</th>
+                        <th class="p-2.5">Tercero / Identificación</th>
+                        <th class="p-2.5">Detalle / Concepto</th>
+                        <th class="p-2.5 text-right">Débito ($)</th>
+                        <th class="p-2.5 text-right">Crédito ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      @for (lin of doc.lineasContables; track lin.id || $index) {
+                        <tr class="hover:bg-slate-50 transition">
+                          <td class="p-2.5 font-bold text-slate-900">{{ lin.cuenta?.codigo || 'N/A' }}</td>
+                          <td class="p-2.5 font-sans font-medium text-slate-800">{{ lin.cuenta?.nombre || lin.glosa_detalle }}</td>
+                          <td class="p-2.5 text-slate-600 font-sans text-[10px]">
+                            <span class="font-mono font-semibold">{{ lin.tercero?.numero_identificacion || doc.proveedor?.numero_identificacion || '' }}</span>
+                            <span class="block text-slate-500 truncate max-w-[140px]">{{ lin.tercero?.nombre_completo || doc.proveedor?.nombre_completo || '' }}</span>
+                          </td>
+                          <td class="p-2.5 text-slate-600 font-sans text-[11px] truncate max-w-[160px]">{{ lin.glosa_detalle || doc.glosa }}</td>
+                          <td class="p-2.5 text-right font-bold" [class.text-slate-900]="lin.debito > 0" [class.text-slate-400]="lin.debito <= 0">
+                            {{ lin.debito > 0 ? (lin.debito | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                          </td>
+                          <td class="p-2.5 text-right font-bold" [class.text-slate-900]="lin.credito > 0" [class.text-slate-400]="lin.credito <= 0">
+                            {{ lin.credito > 0 ? (lin.credito | currency:'COP':'symbol-narrow':'1.0-0') : '-' }}
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="6" class="p-6 text-center text-slate-500 font-sans">
+                            Cargando partidas contables oficiales del comprobante...
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot class="bg-slate-100 border-t-2 border-slate-900 font-mono font-bold text-xs">
+                      <tr>
+                        <td colspan="4" class="p-2.5 text-right uppercase text-slate-900">Sumas Iguales:</td>
+                        <td class="p-2.5 text-right text-sm text-slate-900">{{ doc.totalDebito | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                        <td class="p-2.5 text-right text-sm text-slate-900">{{ doc.totalCredito | currency:'COP':'symbol-narrow':'1.0-0' }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
 
               @if (doc.tipo === 'EGRESO') {
@@ -1227,26 +1312,48 @@ export class CxpAdminComponent implements OnInit {
   }
 
   abrirModalImprimirCausacion(cxp: CuentaPorPagarItem): void {
-    this.documentoCxpParaImprimir.set({
-      tipo: 'CAUSACION',
-      titulo: 'COMPROBANTE FORMAL DE CAUSACIÓN CONTABLE (CxP)',
-      etiqueta: 'COMPROBANTE CAU',
-      consecutivo: cxp.asiento?.numero_comprobante || `CAU-${cxp.numero_factura_proveedor}`,
-      fecha: cxp.fecha_emision,
-      numeroFactura: cxp.numero_factura_proveedor,
-      fechaVencimiento: cxp.fecha_vencimiento,
-      asientoContable: cxp.asiento?.numero_comprobante,
-      proveedor: cxp.tercero,
-      glosa: cxp.glosa || `Causación de Factura de Proveedor ${cxp.numero_factura_proveedor}`,
-      subtotal: cxp.subtotal,
-      impuestos: cxp.total_impuestos,
-      total: cxp.total_factura,
-      saldoPendiente: cxp.saldo_pendiente,
-    });
+    const asignarDoc = (item: CuentaPorPagarItem) => {
+      const lineas = item.asiento?.lineas || [];
+      const totalDeb = lineas.reduce((acc, l) => acc + Number(l.debito || 0), 0);
+      const totalCred = lineas.reduce((acc, l) => acc + Number(l.credito || 0), 0);
+
+      this.documentoCxpParaImprimir.set({
+        tipo: 'CAUSACION',
+        titulo: 'COMPROBANTE FORMAL DE CAUSACIÓN CONTABLE (CAU)',
+        etiqueta: 'COMPROBANTE CAU',
+        consecutivo: item.asiento?.numero_comprobante || `CAU-${item.numero_factura_proveedor}`,
+        fecha: item.fecha_emision,
+        numeroFactura: item.numero_factura_proveedor,
+        fechaVencimiento: item.fecha_vencimiento,
+        asientoContable: item.asiento?.numero_comprobante,
+        proveedor: item.tercero,
+        glosa: item.glosa || `Causación de Factura de Proveedor ${item.numero_factura_proveedor}`,
+        subtotal: item.subtotal,
+        impuestos: item.total_impuestos,
+        total: item.total_factura,
+        saldoPendiente: item.saldo_pendiente,
+        lineasContables: lineas,
+        totalDebito: totalDeb > 0 ? totalDeb : item.total_factura,
+        totalCredito: totalCred > 0 ? totalCred : item.total_factura,
+      });
+    };
+
+    if (cxp.asiento?.lineas && cxp.asiento.lineas.length > 0) {
+      asignarDoc(cxp);
+    } else {
+      this.http.get<CuentaPorPagarItem>(`http://localhost:3000/api/v1/cxp/${cxp.id}`).subscribe({
+        next: (completa) => asignarDoc(completa),
+        error: () => asignarDoc(cxp),
+      });
+    }
   }
 
   abrirModalImprimirEgreso(pago: PagoHistorial): void {
     const fac = this.facturaAPagar();
+    const lineas = pago.asiento?.lineas || [];
+    const totalDeb = lineas.reduce((acc, l) => acc + Number(l.debito || 0), 0);
+    const totalCred = lineas.reduce((acc, l) => acc + Number(l.credito || 0), 0);
+
     this.documentoCxpParaImprimir.set({
       tipo: 'EGRESO',
       titulo: 'COMPROBANTE FORMAL DE EGRESO BANCARIO (EGR)',
@@ -1263,6 +1370,9 @@ export class CxpAdminComponent implements OnInit {
       montoPagado: pago.monto_pago,
       metodoPago: pago.metodo_pago,
       referencia: pago.referencia_transaccion,
+      lineasContables: lineas,
+      totalDebito: totalDeb > 0 ? totalDeb : pago.monto_pago,
+      totalCredito: totalCred > 0 ? totalCred : pago.monto_pago,
     });
   }
 
