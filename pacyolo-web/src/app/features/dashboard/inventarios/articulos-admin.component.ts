@@ -823,20 +823,34 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label class="block font-semibold text-slate-300 mb-1">Código / SKU *</label>
+                <label class="block font-semibold text-slate-300 mb-1">
+                  Código / SKU *
+                  @if (articuloEnEdicion()) {
+                    <span class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  }
+                </label>
                 <input
                   type="text"
                   [(ngModel)]="articuloForm.codigo"
+                  [disabled]="articuloEnEdicion() !== null"
                   placeholder="Ej: ART-001"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500 uppercase"
+                  [class]="articuloEnEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                  class="w-full border rounded-xl px-3 py-2 font-mono uppercase focus:outline-none"
                 />
               </div>
 
               <div>
-                <label class="block font-semibold text-slate-300 mb-1">Tipo de Artículo *</label>
+                <label class="block font-semibold text-slate-300 mb-1">
+                  Tipo de Artículo *
+                  @if (articuloEnEdicion()) {
+                    <span class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  }
+                </label>
                 <select
                   [(ngModel)]="articuloForm.tipo_articulo"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                  [disabled]="articuloEnEdicion() !== null"
+                  [class]="articuloEnEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                  class="w-full border rounded-xl px-3 py-2 focus:outline-none"
                 >
                   <option value="INVENTARIABLE">📦 Inventariable (Control de Stock)</option>
                   <option value="SERVICIO">🛠️ Servicio (Sin Stock)</option>
@@ -891,12 +905,21 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
               </div>
 
               <div>
-                <label class="block font-semibold text-slate-300 mb-1">Costo Estimado / Referencia</label>
+                <label class="block font-semibold text-slate-300 mb-1">
+                  Costo Promedio Móvil (NIC 2)
+                  @if (articuloEnEdicion()) {
+                    <span class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Calculado por Kardex</span>
+                  } @else {
+                    <span class="text-[10px] text-slate-400 font-normal ml-1">(Inicial)</span>
+                  }
+                </label>
                 <input
                   type="number"
                   [(ngModel)]="articuloForm.costo_promedio"
+                  [disabled]="articuloEnEdicion() !== null"
                   placeholder="0"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                  [class]="articuloEnEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                  class="w-full border rounded-xl px-3 py-2 font-mono focus:outline-none"
                 />
               </div>
 
@@ -2376,27 +2399,25 @@ export class ArticulosAdminComponent implements OnInit {
     this.guardando.set(true);
     const edicion = this.articuloEnEdicion();
 
-    const payload: any = {
-      codigo: (this.articuloForm.codigo || '').trim(),
-      nombre: (this.articuloForm.nombre || '').trim(),
-      descripcion: (this.articuloForm.descripcion || '').trim() || undefined,
-      tipo_articulo: this.articuloForm.tipo_articulo || 'INVENTARIABLE',
-      categoria_id: this.articuloForm.categoria_id || undefined,
-      unidad_medida_id: this.articuloForm.unidad_medida_id || undefined,
-      codigo_barras: (this.articuloForm.codigo_barras || '').trim() || undefined,
-      precio_venta_sugerido: Number(this.articuloForm.precio_venta_sugerido ?? 0),
-      costo_promedio: Number(this.articuloForm.costo_promedio ?? 0),
-      stock_minimo: Number(this.articuloForm.stock_minimo ?? 0),
-      stock_maximo: Number(this.articuloForm.stock_maximo ?? 100),
-      tarifa_iva: Number(this.articuloForm.tarifa_iva ?? 19),
-      tarifa_inc: Number(this.articuloForm.tarifa_inc ?? 0),
-      cuenta_inventario: (this.articuloForm.cuenta_inventario || '').trim() || undefined,
-      cuenta_costo_venta: (this.articuloForm.cuenta_costo_venta || '').trim() || undefined,
-      cuenta_gasto: (this.articuloForm.cuenta_gasto || '').trim() || undefined,
-    };
-
     if (edicion) {
-      this.inventariosService.actualizarArticulo(edicion.id, payload).subscribe({
+      // EN EDICIÓN: Omitir estrictamente campos inmutables (codigo, tipo_articulo, costo_promedio)
+      const updatePayload: any = {
+        nombre: (this.articuloForm.nombre || '').trim(),
+        descripcion: (this.articuloForm.descripcion || '').trim() || undefined,
+        categoria_id: this.articuloForm.categoria_id || undefined,
+        unidad_medida_id: this.articuloForm.unidad_medida_id || undefined,
+        codigo_barras: (this.articuloForm.codigo_barras || '').trim() || undefined,
+        precio_venta_sugerido: Number(this.articuloForm.precio_venta_sugerido ?? 0),
+        stock_minimo: Number(this.articuloForm.stock_minimo ?? 0),
+        stock_maximo: Number(this.articuloForm.stock_maximo ?? 100),
+        tarifa_iva: Number(this.articuloForm.tarifa_iva ?? 19),
+        tarifa_inc: Number(this.articuloForm.tarifa_inc ?? 0),
+        cuenta_inventario: (this.articuloForm.cuenta_inventario || '').trim() || undefined,
+        cuenta_costo_venta: (this.articuloForm.cuenta_costo_venta || '').trim() || undefined,
+        cuenta_gasto: (this.articuloForm.cuenta_gasto || '').trim() || undefined,
+      };
+
+      this.inventariosService.actualizarArticulo(edicion.id, updatePayload).subscribe({
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);
@@ -2409,7 +2430,27 @@ export class ArticulosAdminComponent implements OnInit {
         },
       });
     } else {
-      this.inventariosService.crearArticulo(payload).subscribe({
+      // EN CREACIÓN: Incluye código, tipo_articulo y costo promedio inicial
+      const createPayload: any = {
+        codigo: (this.articuloForm.codigo || '').trim().toUpperCase(),
+        nombre: (this.articuloForm.nombre || '').trim(),
+        descripcion: (this.articuloForm.descripcion || '').trim() || undefined,
+        tipo_articulo: this.articuloForm.tipo_articulo || 'INVENTARIABLE',
+        categoria_id: this.articuloForm.categoria_id || undefined,
+        unidad_medida_id: this.articuloForm.unidad_medida_id || undefined,
+        codigo_barras: (this.articuloForm.codigo_barras || '').trim() || undefined,
+        precio_venta_sugerido: Number(this.articuloForm.precio_venta_sugerido ?? 0),
+        costo_promedio: Number(this.articuloForm.costo_promedio ?? 0),
+        stock_minimo: Number(this.articuloForm.stock_minimo ?? 0),
+        stock_maximo: Number(this.articuloForm.stock_maximo ?? 100),
+        tarifa_iva: Number(this.articuloForm.tarifa_iva ?? 19),
+        tarifa_inc: Number(this.articuloForm.tarifa_inc ?? 0),
+        cuenta_inventario: (this.articuloForm.cuenta_inventario || '').trim() || undefined,
+        cuenta_costo_venta: (this.articuloForm.cuenta_costo_venta || '').trim() || undefined,
+        cuenta_gasto: (this.articuloForm.cuenta_gasto || '').trim() || undefined,
+      };
+
+      this.inventariosService.crearArticulo(createPayload).subscribe({
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);

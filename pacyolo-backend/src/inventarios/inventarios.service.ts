@@ -111,10 +111,18 @@ export class InventariosService {
 
   async actualizarArticulo(id: string, dto: UpdateArticuloDto): Promise<Articulo> {
     const art = await this.obtenerArticulo(id);
-    Object.assign(art, {
-      ...dto,
-      codigo: dto.codigo ? dto.codigo.toUpperCase() : art.codigo,
-    });
+    // Blindaje de seguridad: eliminar cualquier intento de mutar campos inmutables
+    delete (dto as any).id;
+    delete (dto as any).empresa_id;
+    delete (dto as any).codigo;
+    delete (dto as any).tipo_articulo;
+    delete (dto as any).costo_promedio;
+    delete (dto as any).stock_actual;
+    delete (dto as any).ultimo_costo_compra;
+    delete (dto as any).created_at;
+    delete (dto as any).updated_at;
+
+    Object.assign(art, dto);
     return await this.articuloRepo.save(art);
   }
 

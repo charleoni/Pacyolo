@@ -13,7 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType, OmitType } from '@nestjs/swagger';
 
 export class CreateArticuloDto {
   @ApiPropertyOptional()
@@ -121,7 +121,14 @@ export class CreateArticuloDto {
   activo?: boolean;
 }
 
-export class UpdateArticuloDto extends PartialType(CreateArticuloDto) {}
+export class UpdateArticuloDto extends PartialType(
+  OmitType(CreateArticuloDto, [
+    'empresa_id',
+    'codigo',
+    'tipo_articulo',
+    'costo_promedio',
+  ] as const),
+) {}
 
 export class EntradaLineaDto {
   @ApiProperty({ example: 'uuid-articulo' })

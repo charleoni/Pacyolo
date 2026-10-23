@@ -470,11 +470,16 @@ export interface Tercero {
             <div *ngIf="pestanaFichaActiva === 'general'" class="space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label class="block font-semibold text-slate-300 mb-1">Tipo Identificación *</label>
+                  <label class="block font-semibold text-slate-300 mb-1">
+                    Tipo Identificación *
+                    <span *ngIf="esEdicion()" class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  </label>
                   <select
                     [(ngModel)]="fichaTercero.tipo_identificacion"
                     (change)="onCambioIdentificacionFicha()"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                    [disabled]="esEdicion()"
+                    [class]="esEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                    class="w-full border rounded-xl px-3 py-2 focus:outline-none"
                   >
                     <option *ngFor="let t of tiposIdentificacion()" [value]="t.codigo">
                       {{ t.codigo }} — {{ t.nombre }}
@@ -483,13 +488,18 @@ export interface Tercero {
                 </div>
 
                 <div>
-                  <label class="block font-semibold text-slate-300 mb-1">Número de Documento *</label>
+                  <label class="block font-semibold text-slate-300 mb-1">
+                    Número de Documento *
+                    <span *ngIf="esEdicion()" class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  </label>
                   <input
                     type="text"
                     [(ngModel)]="fichaTercero.numero_identificacion"
                     (input)="onCambioIdentificacionFicha()"
+                    [disabled]="esEdicion()"
                     placeholder="Ej: 900123456"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                    [class]="esEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                    class="w-full border rounded-xl px-3 py-2 font-mono focus:outline-none"
                   />
                 </div>
 

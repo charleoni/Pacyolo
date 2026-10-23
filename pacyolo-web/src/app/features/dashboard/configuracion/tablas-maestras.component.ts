@@ -440,15 +440,15 @@ export interface GrupoConfig {
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block font-semibold text-slate-300">Código Único (Mnemónico) *</label>
-                @if (esEdicion() && nuevoRegistro.en_uso) {
-                  <span class="text-[10px] text-amber-400 font-mono">🔒 Bloqueado por {{ nuevoRegistro.conteo_usos }} usos</span>
+                @if (esEdicion()) {
+                  <span class="text-[10px] text-amber-400 font-mono">🔒 Inmutable una vez creado</span>
                 }
               </div>
               <input
                 type="text"
                 [(ngModel)]="nuevoRegistro.codigo"
-                [disabled]="esEdicion() && nuevoRegistro.en_uso"
-                [class]="esEdicion() && nuevoRegistro.en_uso ? 'opacity-50 cursor-not-allowed bg-slate-900' : 'bg-slate-950 focus:border-indigo-500'"
+                [disabled]="esEdicion()"
+                [class]="esEdicion() ? 'opacity-50 cursor-not-allowed bg-slate-900 border-slate-800 select-none' : 'bg-slate-950 focus:border-indigo-500'"
                 placeholder="Ej: PPT o CHEQUE_GERENCIA"
                 class="w-full border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase focus:outline-none"
               />
@@ -1010,7 +1010,6 @@ export class TablasMaestrasComponent implements OnInit {
     // Si estamos en modo edición, llamar a actualizarParametro con payload limpio
     if (this.esEdicion() && this.idEditando()) {
       const payloadUpdate: any = {
-        codigo: this.nuevoRegistro.codigo?.trim().toUpperCase(),
         nombre: this.nuevoRegistro.nombre?.trim(),
       };
 
