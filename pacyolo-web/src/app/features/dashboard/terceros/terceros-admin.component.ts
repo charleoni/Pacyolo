@@ -1158,9 +1158,10 @@ export class TercerosAdminComponent implements OnInit {
     this.guardando.set(true);
     this.errorMsg.set(null);
 
+    const { id, created_at, updated_at, ...datosTercero } = this.fichaTercero;
     const payload = {
       empresa_id: emp.empresa_id,
-      ...this.fichaTercero,
+      ...datosTercero,
       numero_identificacion: (this.fichaTercero.numero_identificacion || '').trim(),
       nombre_completo: (this.fichaTercero.nombre_completo || '').trim(),
     };

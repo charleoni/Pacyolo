@@ -2351,7 +2351,24 @@ export class ArticulosAdminComponent implements OnInit {
 
   editarArticulo(art: ArticuloItem): void {
     this.articuloEnEdicion.set(art);
-    this.articuloForm = { ...art };
+    this.articuloForm = {
+      codigo: art.codigo || '',
+      nombre: art.nombre || '',
+      descripcion: art.descripcion || '',
+      tipo_articulo: art.tipo_articulo || 'INVENTARIABLE',
+      categoria_id: art.categoria_id || (art.categoria ? (art.categoria as any).id : ''),
+      unidad_medida_id: art.unidad_medida_id || (art.unidad_medida ? (art.unidad_medida as any).id : ''),
+      codigo_barras: art.codigo_barras || '',
+      precio_venta_sugerido: Number(art.precio_venta_sugerido ?? 0),
+      costo_promedio: Number(art.costo_promedio ?? 0),
+      stock_minimo: Number(art.stock_minimo ?? 0),
+      stock_maximo: Number(art.stock_maximo ?? 100),
+      tarifa_iva: Number(art.tarifa_iva ?? 19),
+      tarifa_inc: Number(art.tarifa_inc ?? 0),
+      cuenta_inventario: art.cuenta_inventario || '',
+      cuenta_costo_venta: art.cuenta_costo_venta || '',
+      cuenta_gasto: art.cuenta_gasto || '',
+    };
     this.mostrarModalArticulo.set(true);
   }
 
@@ -2359,8 +2376,27 @@ export class ArticulosAdminComponent implements OnInit {
     this.guardando.set(true);
     const edicion = this.articuloEnEdicion();
 
+    const payload: any = {
+      codigo: (this.articuloForm.codigo || '').trim(),
+      nombre: (this.articuloForm.nombre || '').trim(),
+      descripcion: (this.articuloForm.descripcion || '').trim() || undefined,
+      tipo_articulo: this.articuloForm.tipo_articulo || 'INVENTARIABLE',
+      categoria_id: this.articuloForm.categoria_id || undefined,
+      unidad_medida_id: this.articuloForm.unidad_medida_id || undefined,
+      codigo_barras: (this.articuloForm.codigo_barras || '').trim() || undefined,
+      precio_venta_sugerido: Number(this.articuloForm.precio_venta_sugerido ?? 0),
+      costo_promedio: Number(this.articuloForm.costo_promedio ?? 0),
+      stock_minimo: Number(this.articuloForm.stock_minimo ?? 0),
+      stock_maximo: Number(this.articuloForm.stock_maximo ?? 100),
+      tarifa_iva: Number(this.articuloForm.tarifa_iva ?? 19),
+      tarifa_inc: Number(this.articuloForm.tarifa_inc ?? 0),
+      cuenta_inventario: (this.articuloForm.cuenta_inventario || '').trim() || undefined,
+      cuenta_costo_venta: (this.articuloForm.cuenta_costo_venta || '').trim() || undefined,
+      cuenta_gasto: (this.articuloForm.cuenta_gasto || '').trim() || undefined,
+    };
+
     if (edicion) {
-      this.inventariosService.actualizarArticulo(edicion.id, this.articuloForm).subscribe({
+      this.inventariosService.actualizarArticulo(edicion.id, payload).subscribe({
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);
@@ -2373,7 +2409,7 @@ export class ArticulosAdminComponent implements OnInit {
         },
       });
     } else {
-      this.inventariosService.crearArticulo(this.articuloForm).subscribe({
+      this.inventariosService.crearArticulo(payload).subscribe({
         next: () => {
           this.guardando.set(false);
           this.mostrarModalArticulo.set(false);

@@ -8,11 +8,12 @@ import {
   IsEnum,
   IsArray,
   ValidateNested,
+  ValidateIf,
   MaxLength,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateArticuloDto {
   @ApiPropertyOptional()
@@ -43,11 +44,13 @@ export class CreateArticuloDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @ValidateIf((o, v) => !!v)
   @IsUUID()
   categoria_id?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @ValidateIf((o, v) => !!v)
   @IsUUID()
   unidad_medida_id?: string;
 
@@ -59,35 +62,41 @@ export class CreateArticuloDto {
 
   @ApiPropertyOptional({ example: 8500 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   precio_venta_sugerido?: number;
 
   @ApiPropertyOptional({ example: 4500 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   costo_promedio?: number;
 
   @ApiPropertyOptional({ example: 5 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   stock_minimo?: number;
 
   @ApiPropertyOptional({ example: 100 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   stock_maximo?: number;
 
   @ApiPropertyOptional({ example: 19 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   tarifa_iva?: number;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   tarifa_inc?: number;
 
@@ -112,7 +121,7 @@ export class CreateArticuloDto {
   activo?: boolean;
 }
 
-export class UpdateArticuloDto extends CreateArticuloDto {}
+export class UpdateArticuloDto extends PartialType(CreateArticuloDto) {}
 
 export class EntradaLineaDto {
   @ApiProperty({ example: 'uuid-articulo' })
