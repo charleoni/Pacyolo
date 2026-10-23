@@ -1583,7 +1583,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
 
             <!-- CONTENEDOR DOCUMENTAL IMPRESO -->
             <div id="hoja-impresion" class="p-8 sm:p-10 space-y-6 text-xs bg-white text-slate-900">
-              @if (doc.datos.estado === 'ANULADA') {
+              @if (doc.datos?.estado === 'ANULADA') {
                 <div class="border-2 border-dashed border-rose-600 bg-rose-50 text-rose-700 font-black text-center py-2.5 rounded-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2">
                   <span>⚠️</span>
                   <span>DOCUMENTO ANULADO — REVERTIDO EN KARDEX Y CONTABILIDAD</span>
@@ -1979,51 +1979,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </table>
                 </div>
 
-                <!-- Resumen Contable Oficial (Partida Doble NIIF) -->
-                @if (doc.datos.asiento) {
-                  <div class="mt-3 bg-slate-50 border border-slate-300 rounded-xl p-3">
-                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 text-xs">
-                      <span class="font-bold text-slate-900 uppercase">
-                        Comprobante Contable Asociado:
-                        <span class="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-300 ml-1">
-                          {{ doc.datos.asiento.numero_comprobante }}
-                        </span>
-                      </span>
-                      <span class="text-[11px] text-slate-600 font-mono">
-                        Estado: <b class="text-emerald-700">{{ doc.datos.asiento.estado }}</b>
-                      </span>
-                    </div>
 
-                    @if (doc.datos.asiento.lineas?.length > 0) {
-                      <div class="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                        <table class="w-full text-left text-[11px] border-collapse">
-                          <thead class="bg-slate-100 font-mono text-[10px] uppercase text-slate-700 border-b border-slate-200">
-                            <tr>
-                              <th class="p-1.5">Cuenta PUC</th>
-                              <th class="p-1.5">Nombre Cuenta</th>
-                              <th class="p-1.5 text-right">Débito</th>
-                              <th class="p-1.5 text-right">Crédito</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100 font-mono">
-                            @for (lin of doc.datos.asiento.lineas; track lin.id || $index) {
-                              <tr>
-                                <td class="p-1.5 font-bold text-slate-900">{{ lin.cuenta?.codigo }}</td>
-                                <td class="p-1.5 font-sans text-slate-700">{{ lin.cuenta?.nombre }}</td>
-                                <td class="p-1.5 text-right text-emerald-700 font-bold">
-                                  {{ Number(lin.debito) > 0 ? ('$' + Number(lin.debito).toLocaleString('es-CO')) : '-' }}
-                                </td>
-                                <td class="p-1.5 text-right text-indigo-700 font-bold">
-                                  {{ Number(lin.credito) > 0 ? ('$' + Number(lin.credito).toLocaleString('es-CO')) : '-' }}
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                    }
-                  </div>
-                }
               }
 
               <!-- Firmas y Pistas de Auditoría -->
@@ -2192,7 +2148,7 @@ export class ArticulosAdminComponent implements OnInit {
         !q ||
         (e.articulo?.codigo && e.articulo.codigo.toLowerCase().includes(q)) ||
         (e.articulo?.nombre && e.articulo.nombre.toLowerCase().includes(q));
-      const matchBodega = !bodegaId || e.bodega?.id === bodegaId;
+      const matchBodega = !bodegaId || e.bodega?.id === bodegaId || (e as any).bodega_id === bodegaId;
       return matchQ && matchBodega;
     });
   }
@@ -2332,6 +2288,7 @@ export class ArticulosAdminComponent implements OnInit {
       totalStock: this.totalStockExistencias(),
       totalValorado: this.totalValoradoExistencias(),
       items: this.existenciasFiltradas(),
+      datos: {},
     });
   }
 
@@ -2474,6 +2431,7 @@ export class ArticulosAdminComponent implements OnInit {
     this.cargarEntradas();
     this.cargarAjustes();
     this.cargarTraslados();
+    this.cargarExistencias();
 
     // Cargar catálogos
     this.parametrosService.obtenerCategoriasArticulos().subscribe((cats: ParametroItem[]) => this.categorias.set(cats));
