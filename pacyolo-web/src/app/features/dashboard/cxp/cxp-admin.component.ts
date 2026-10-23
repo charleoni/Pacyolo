@@ -884,16 +884,51 @@ interface PagoHistorial {
 
           <div class="space-y-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Cuenta de Banco o Caja *</label>
-              <select
-                [(ngModel)]="nuevoPago.cuenta_banco_id"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 focus:outline-none focus:border-indigo-500 font-medium"
-              >
-                <option value="">-- Seleccionar Banco o Caja --</option>
-                <option *ngFor="let b of cuentasBanco()" [value]="b.id">
-                  {{ b.codigo }} - {{ b.nombre }}
-                </option>
-              </select>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-semibold text-slate-300">Cuenta de Banco o Caja (Desembolso) *</label>
+                <button
+                  type="button"
+                  (click)="abrirModalCrearBanco()"
+                  class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>+</span>
+                  <span>Crear Banco / Caja</span>
+                </button>
+              </div>
+
+              @if (bancoSeleccionado(); as b) {
+                <div class="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl p-2.5 flex items-center justify-between transition">
+                  <div class="flex items-center gap-2.5">
+                    <span class="text-lg">🏦</span>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold text-indigo-400 text-xs">{{ b.codigo }}</span>
+                        <span class="font-medium text-white text-xs">{{ b.nombre }}</span>
+                      </div>
+                      <span class="text-[10px] text-slate-500">Cuenta Auxiliar PUC • Clase Activo</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="mostrarLookupBanco.set(true)"
+                    class="px-2.5 py-1 text-[11px] font-semibold text-indigo-300 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition cursor-pointer"
+                  >
+                    🔍 Cambiar
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="mostrarLookupBanco.set(true)"
+                  class="w-full bg-slate-950 border border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-3 text-left transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-base text-slate-500 group-hover:text-indigo-400">🔍</span>
+                    <span class="text-xs text-slate-400 group-hover:text-white font-medium">Seleccionar Cuenta de Banco o Caja...</span>
+                  </div>
+                  <span class="text-[10px] bg-slate-900 text-slate-400 group-hover:text-indigo-300 border border-slate-800 px-2 py-0.5 rounded">Catálogo PUC</span>
+                </button>
+              }
             </div>
 
             <div>
@@ -1280,6 +1315,207 @@ interface PagoHistorial {
           </div>
         </div>
       }
+
+      <!-- Modal de Búsqueda Avanzada de Cuentas de Banco / Caja (Lookup Modal) -->
+      @if (mostrarLookupBanco()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">🏦</span>
+                <div>
+                  <h3 class="text-base font-bold text-white">Seleccionar Cuenta de Banco o Caja</h3>
+                  <p class="text-xs text-slate-400">Cuentas auxiliares autorizadas para desembolsos (PUC 1105 / 1110)</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="abrirModalCrearBanco()"
+                  class="px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/20 transition cursor-pointer flex items-center gap-1"
+                >
+                  <span>+</span>
+                  <span>Nueva Cuenta</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="mostrarLookupBanco.set(false)"
+                  class="text-slate-400 hover:text-white text-2xl font-bold px-1"
+                >&times;</button>
+              </div>
+            </div>
+
+            <!-- Buscador -->
+            <div class="relative">
+              <input
+                type="text"
+                [(ngModel)]="busquedaBanco"
+                placeholder="Buscar por código (ej. 1110) o nombre de banco/caja..."
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                autofocus
+              />
+              <span class="absolute left-3 top-3 text-slate-500 text-xs">🔍</span>
+            </div>
+
+            <!-- Tabla de Cuentas Bancarias / Caja -->
+            <div class="border border-slate-800 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-950 font-mono text-[10px] uppercase text-slate-400 border-b border-slate-800 sticky top-0">
+                  <tr>
+                    <th class="p-2.5">Código PUC</th>
+                    <th class="p-2.5">Nombre de la Cuenta</th>
+                    <th class="p-2.5">Tipo</th>
+                    <th class="p-2.5 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-sans">
+                  @for (b of bancosFiltrados(); track b.id) {
+                    <tr
+                      (click)="seleccionarBanco(b)"
+                      class="hover:bg-slate-800/40 cursor-pointer transition group"
+                    >
+                      <td class="p-2.5 font-mono font-bold text-indigo-400">{{ b.codigo }}</td>
+                      <td class="p-2.5 font-medium text-white">{{ b.nombre }}</td>
+                      <td class="p-2.5">
+                        <span
+                          class="px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                          [class]="b.codigo.startsWith('1110') ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'"
+                        >
+                          {{ b.codigo.startsWith('1110') ? 'Banco' : 'Caja' }}
+                        </span>
+                      </td>
+                      <td class="p-2.5 text-right">
+                        <button
+                          type="button"
+                          (click)="seleccionarBanco(b)"
+                          class="px-2.5 py-1 text-[11px] font-bold text-indigo-400 group-hover:text-white bg-indigo-500/10 group-hover:bg-indigo-600 rounded-lg transition cursor-pointer"
+                        >
+                          Seleccionar
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="p-6 text-center text-slate-500 text-xs">
+                        No se encontraron cuentas de banco o caja coincidentes.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button
+                type="button"
+                (click)="mostrarLookupBanco.set(false)"
+                class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal para Crear Nueva Cuenta Bancaria / Caja -->
+      @if (mostrarModalCrearBanco()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🏦</span>
+                <div>
+                  <h3 class="text-base font-bold text-white">Nueva Cuenta Bancaria o Caja</h3>
+                  <p class="text-xs text-slate-400">Registrar en el Plan Único de Cuentas (PUC) NIIF</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                (click)="mostrarModalCrearBanco.set(false)"
+                class="text-slate-400 hover:text-white text-2xl font-bold px-1"
+              >&times;</button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Tipo de Cuenta *</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    (click)="cambiarTipoCreacionBanco('BANCO')"
+                    [class]="tipoCreacionBanco === 'BANCO' ? 'bg-indigo-600 text-white font-bold border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'"
+                    class="py-2 px-3 rounded-xl border text-center transition cursor-pointer"
+                  >
+                    🏦 Banco (1110)
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cambiarTipoCreacionBanco('CAJA_GENERAL')"
+                    [class]="tipoCreacionBanco === 'CAJA_GENERAL' ? 'bg-indigo-600 text-white font-bold border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'"
+                    class="py-2 px-3 rounded-xl border text-center transition cursor-pointer"
+                  >
+                    💵 Caja General (110505)
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cambiarTipoCreacionBanco('CAJA_MENOR')"
+                    [class]="tipoCreacionBanco === 'CAJA_MENOR' ? 'bg-indigo-600 text-white font-bold border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'"
+                    class="py-2 px-3 rounded-xl border text-center transition cursor-pointer"
+                  >
+                    📦 Caja Menor (110510)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Código Contable PUC (8 Dígitos) *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoBancoForm.codigo"
+                  placeholder="Ej: 11100503"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none focus:border-indigo-500"
+                />
+                <span class="text-[10px] text-slate-500 mt-1 block">Código sugerido automáticamente según las cuentas existentes.</span>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Nombre Descriptivo de la Cuenta *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="nuevoBancoForm.nombre"
+                  placeholder="Ej: Bancolombia Cta Ahorros #4582 / Davivienda Corriente"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                (click)="mostrarModalCrearBanco.set(false)"
+                class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="guardarNuevoBanco()"
+                [disabled]="guardandoBanco() || !nuevoBancoForm.codigo || !nuevoBancoForm.nombre"
+                class="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                @if (guardandoBanco()) {
+                  <span class="inline-block animate-spin">⏳</span>
+                  <span>Guardando...</span>
+                } @else {
+                  <span>✓</span>
+                  <span>Crear y Seleccionar</span>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
@@ -1290,6 +1526,16 @@ export class CxpAdminComponent implements OnInit {
   proveedores = signal<ProveedorItem[]>([]);
   conceptos = signal<ConceptoMapeo[]>([]);
   cuentasBanco = signal<CuentaBancoItem[]>([]);
+  mostrarLookupBanco = signal<boolean>(false);
+  mostrarModalCrearBanco = signal<boolean>(false);
+  guardandoBanco = signal<boolean>(false);
+  busquedaBanco = '';
+  tipoCreacionBanco: 'BANCO' | 'CAJA_GENERAL' | 'CAJA_MENOR' = 'BANCO';
+  nuevoBancoForm = {
+    codigo: '',
+    nombre: '',
+  };
+
   metodosPago = signal<ParametroItem[]>([]);
 
   // Búsqueda y Visor Documental
@@ -1462,18 +1708,7 @@ export class CxpAdminComponent implements OnInit {
         error: (err) => console.error('Error cargando conceptos:', err),
       });
 
-    // Cuentas de banco/caja (clase 11)
-    this.http
-      .get<any[]>(`http://localhost:3000/api/v1/puc?empresa_id=${emp.empresa_id}`)
-      .subscribe({
-        next: (cuentas) => {
-          const bancos = cuentas.filter(
-            (c) => c.es_auxiliar && (c.codigo.startsWith('1105') || c.codigo.startsWith('1110')),
-          );
-          this.cuentasBanco.set(bancos);
-        },
-        error: (err) => console.error('Error cargando bancos:', err),
-      });
+    this.cargarBancos();
 
     // Métodos de Pago dinámicos
     this.parametrosService.obtenerMetodosPago().subscribe({
@@ -1670,6 +1905,106 @@ export class CxpAdminComponent implements OnInit {
           },
         });
       });
+  }
+
+
+  cargarBancos(cb?: () => void): void {
+    const emp = this.authService.empresaActiva();
+    if (!emp) return;
+    this.http
+      .get<any[]>(`http://localhost:3000/api/v1/puc?empresa_id=${emp.empresa_id}`)
+      .subscribe({
+        next: (cuentas) => {
+          const bancos = cuentas.filter(
+            (c) =>
+              (c.permite_movimiento || c.nivel >= 8) &&
+              (c.codigo.startsWith('1105') || c.codigo.startsWith('1110')),
+          );
+          this.cuentasBanco.set(bancos);
+          if (cb) cb();
+        },
+        error: (err) => console.error('Error cargando bancos:', err),
+      });
+  }
+
+  bancoSeleccionado(): CuentaBancoItem | undefined {
+    return this.cuentasBanco().find((b) => b.id === this.nuevoPago.cuenta_banco_id);
+  }
+
+  bancosFiltrados(): CuentaBancoItem[] {
+    const q = this.busquedaBanco.toLowerCase().trim();
+    if (!q) return this.cuentasBanco();
+    return this.cuentasBanco().filter(
+      (b) => b.codigo.toLowerCase().includes(q) || b.nombre.toLowerCase().includes(q),
+    );
+  }
+
+  seleccionarBanco(b: CuentaBancoItem): void {
+    this.nuevoPago.cuenta_banco_id = b.id;
+    this.mostrarLookupBanco.set(false);
+  }
+
+  abrirModalCrearBanco(): void {
+    this.tipoCreacionBanco = 'BANCO';
+    this.sugerirCodigoBanco('BANCO');
+    this.nuevoBancoForm.nombre = '';
+    this.mostrarModalCrearBanco.set(true);
+  }
+
+  cambiarTipoCreacionBanco(tipo: 'BANCO' | 'CAJA_GENERAL' | 'CAJA_MENOR'): void {
+    this.tipoCreacionBanco = tipo;
+    this.sugerirCodigoBanco(tipo);
+  }
+
+  sugerirCodigoBanco(tipo: 'BANCO' | 'CAJA_GENERAL' | 'CAJA_MENOR'): void {
+    const prefijo = tipo === 'BANCO' ? '111005' : tipo === 'CAJA_GENERAL' ? '110505' : '110510';
+    const cuentas = this.cuentasBanco().filter((c) => c.codigo.startsWith(prefijo));
+    let max = 0;
+    for (const c of cuentas) {
+      const sufijo = parseInt(c.codigo.slice(prefijo.length), 10);
+      if (!isNaN(sufijo) && sufijo > max) max = sufijo;
+    }
+    const siguiente = String(max + 1).padStart(2, '0');
+    this.nuevoBancoForm.codigo = `${prefijo}${siguiente}`;
+  }
+
+  guardarNuevoBanco(): void {
+    const emp = this.authService.empresaActiva();
+    if (!emp) return;
+    const codigo = this.nuevoBancoForm.codigo.trim();
+    const nombre = this.nuevoBancoForm.nombre.trim();
+    if (!codigo || !nombre) {
+      this.notificationService.error('Debe ingresar el código y el nombre de la cuenta.');
+      return;
+    }
+
+    this.guardandoBanco.set(true);
+    const payload = {
+      empresa_id: emp.empresa_id,
+      codigo,
+      nombre,
+      nivel: 8,
+      clase: 'ACTIVO',
+      naturaleza: 'DEBITO',
+      permite_movimiento: true,
+      exige_tercero: false,
+    };
+
+    this.http.post<any>('http://localhost:3000/api/v1/puc', payload).subscribe({
+      next: (cuentaCreada) => {
+        this.guardandoBanco.set(false);
+        this.mostrarModalCrearBanco.set(false);
+        this.mostrarLookupBanco.set(false);
+        this.notificationService.success(`Cuenta contable ${codigo} - ${nombre} creada exitosamente en el PUC.`);
+        this.cargarBancos(() => {
+          this.nuevoPago.cuenta_banco_id = cuentaCreada.id;
+        });
+      },
+      error: (err) => {
+        this.guardandoBanco.set(false);
+        this.notificationService.error(err.error?.message || 'Error al crear la cuenta bancaria en el PUC.');
+      },
+    });
   }
 
   autoSeleccionarProveedorEstado(): void {
