@@ -2801,10 +2801,13 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   anularNotaAjuste(aj: NotaAjusteItem): void {
-    this.notificationService.confirm(
-      `¿Está seguro de ANULAR la Nota de Ajuste ${aj.numero_nota}? Se revertirá automáticamente el stock de las bodegas, se registrará el contra-asiento contable oficial y se actualizará el Kardex NIIF.`,
-      'Confirmar Anulación de Ajuste',
-    ).then((confirmado) => {
+    this.notificationService.confirm({
+      title: 'Confirmar Anulación de Ajuste',
+      message: `¿Está seguro de ANULAR la Nota de Ajuste ${aj.numero_nota}? Se revertirá automáticamente el stock de las bodegas, se registrará el contra-asiento contable oficial y se actualizará el Kardex NIIF.`,
+      confirmText: 'Sí, Anular Ajuste',
+      cancelText: 'Cancelar',
+      intent: 'danger',
+    }).then((confirmado) => {
       if (!confirmado) return;
       this.guardando.set(true);
       this.inventariosService.anularAjuste(aj.id, 'Anulación solicitada por usuario en panel de control').subscribe({
