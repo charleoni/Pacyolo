@@ -103,6 +103,22 @@ export class CxpController {
     return this.cxpService.listarPagos(id);
   }
 
+  @Post('pagos/:id/anular')
+  @ApiOperation({
+    summary: 'Anular un pago de CxP formalmente',
+    description: 'Revierte el saldo y estado de la cuenta por pagar, anula el comprobante de egreso contable (EGR), marca el pago como ANULADO y registra la pista de auditoría inmutable.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del pago a anular' })
+  @ApiResponse({ status: 200, description: 'Pago anulado exitosamente.' })
+  anularPago(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('motivo') motivo?: string,
+    @Body('usuario_id') usuarioId?: string,
+    @Body('usuario_email') usuarioEmail?: string,
+  ): Promise<PagoCxp> {
+    return this.cxpService.anularPago(id, motivo || 'Anulación de pago solicitada por el usuario', usuarioId, usuarioEmail);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Consultar detalle de una cuenta por pagar' })
   @ApiParam({ name: 'id', description: 'UUID de la cuenta por pagar' })

@@ -55,4 +55,14 @@ export class RegistrarPagoCxpDto {
   @IsString()
   @IsOptional()
   glosa?: string;
+
+  @ApiPropertyOptional({ description: 'ID del usuario que registra el pago' })
+  @IsUUID()
+  @IsOptional()
+  usuario_id?: string;
+
+  @ApiPropertyOptional({ description: 'Email o nombre del usuario que registra el pago' })
+  @IsString()
+  @IsOptional()
+  creado_por?: string;
 }

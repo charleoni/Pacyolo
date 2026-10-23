@@ -87,10 +87,22 @@ interface PagoHistorial {
   metodo_pago: string;
   referencia_transaccion?: string;
   glosa?: string;
+  estado?: 'APLICADO' | 'ANULADO';
   asiento?: {
     id?: string;
     numero_comprobante: string;
     lineas?: AsientoLineaItem[];
+  };
+  cuenta_banco?: {
+    id: string;
+    codigo: string;
+    nombre: string;
+  };
+  cuenta_por_pagar?: {
+    id: string;
+    numero_factura_proveedor: string;
+    monto_total?: number;
+    tercero?: any;
   };
 }
 
@@ -974,9 +986,10 @@ interface PagoHistorial {
                 <tr>
                   <th class="py-2.5 px-3">Fecha</th>
                   <th class="py-2.5 px-3">Método / Ref</th>
-                  <th class="py-2.5 px-3">Comprobante Egreso</th>
+                  <th class="py-2.5 px-3">Comprobante EGR</th>
                   <th class="py-2.5 px-3 text-right">Monto</th>
-                  <th class="py-2.5 px-3 text-right">Acción</th>
+                  <th class="py-2.5 px-3 text-center">Estado</th>
+                  <th class="py-2.5 px-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800/60">
@@ -992,20 +1005,39 @@ interface PagoHistorial {
                   <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
                     {{ p.monto_pago | currency:'COP':'symbol-narrow':'1.0-0' }}
                   </td>
-                  <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                  <td class="py-2.5 px-3 text-center">
+                    <span
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                      [class]="p.estado === 'ANULADO' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'"
+                    >
+                      {{ p.estado || 'APLICADO' }}
+                    </span>
+                  </td>
+                  <td class="py-2.5 px-3 text-right whitespace-nowrap space-x-1">
                     <button
                       type="button"
                       (click)="abrirModalImprimirEgreso(p)"
-                      class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1"
+                      class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1"
                       title="Imprimir Comprobante de Egreso (EGR)"
                     >
                       <span>🖨️</span>
                       <span>Ver EGR</span>
                     </button>
+                    @if (p.estado !== 'ANULADO') {
+                      <button
+                        type="button"
+                        (click)="anularPago(p)"
+                        class="px-2 py-1 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded border border-rose-500/30 text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1 transition"
+                        title="Anular formalmente este pago (revierte saldo de factura y comprobante EGR)"
+                      >
+                        <span>🚫</span>
+                        <span>Anular</span>
+                      </button>
+                    }
                   </td>
                 </tr>
                 <tr *ngIf="historialPagos()?.length === 0">
-                  <td colspan="5" class="py-6 text-center text-slate-500">
+                  <td colspan="6" class="py-6 text-center text-slate-500">
                     No se han registrado pagos para esta factura aún.
                   </td>
                 </tr>
@@ -1080,6 +1112,14 @@ interface PagoHistorial {
                   <p class="text-[10px] text-slate-500 mt-1 font-mono">Fecha: {{ doc.fecha }}</p>
                 </div>
               </div>
+
+              @if (doc.estado === 'ANULADO') {
+                <div class="border-2 border-dashed border-rose-600 bg-rose-50 text-rose-700 font-black text-center py-2.5 rounded-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+                  <span>⚠️</span>
+                  <span>COMPROBANTE DE EGRESO ANULADO — REVERTIDO EN BANCOS Y CXP</span>
+                  <span>⚠️</span>
+                </div>
+              }
 
               <!-- Beneficiario / Proveedor -->
               <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -1354,25 +1394,29 @@ export class CxpAdminComponent implements OnInit {
     const totalDeb = lineas.reduce((acc, l) => acc + Number(l.debito || 0), 0);
     const totalCred = lineas.reduce((acc, l) => acc + Number(l.credito || 0), 0);
 
+    const proveedor = (pago as any).cuenta_por_pagar?.tercero || fac?.tercero;
+    const numFactura = (pago as any).cuenta_por_pagar?.numero_factura_proveedor || fac?.numero_factura_proveedor || 'N/A';
+
     this.documentoCxpParaImprimir.set({
       tipo: 'EGRESO',
       titulo: 'COMPROBANTE FORMAL DE EGRESO BANCARIO (EGR)',
       etiqueta: 'COMPROBANTE EGR',
       consecutivo: pago.asiento?.numero_comprobante || 'EGR-PAGO',
       fecha: pago.fecha_pago,
-      numeroFactura: fac?.numero_factura_proveedor || 'N/A',
+      numeroFactura: numFactura,
       asientoContable: pago.asiento?.numero_comprobante,
-      proveedor: fac?.tercero,
-      glosa: pago.glosa || `Pago realizado a Factura ${fac?.numero_factura_proveedor || ''}`,
+      proveedor: proveedor,
+      glosa: pago.glosa || `Pago realizado a Factura ${numFactura}`,
       subtotal: fac?.subtotal || pago.monto_pago,
       impuestos: fac?.total_impuestos || 0,
-      total: fac?.total_factura || pago.monto_pago,
+      total: fac?.total_factura || (pago as any).cuenta_por_pagar?.monto_total || pago.monto_pago,
       montoPagado: pago.monto_pago,
       metodoPago: pago.metodo_pago,
       referencia: pago.referencia_transaccion,
       lineasContables: lineas,
       totalDebito: totalDeb > 0 ? totalDeb : pago.monto_pago,
       totalCredito: totalCred > 0 ? totalCred : pago.monto_pago,
+      estado: pago.estado || 'APLICADO',
     });
   }
 
@@ -1550,6 +1594,7 @@ export class CxpAdminComponent implements OnInit {
 
     this.guardando.set(true);
 
+    const user = this.authService.usuario();
     const payload = {
       empresa_id: emp.empresa_id,
       cuenta_por_pagar_id: factura.id,
@@ -1559,6 +1604,8 @@ export class CxpAdminComponent implements OnInit {
       metodo_pago: this.nuevoPago.metodo_pago,
       referencia_transaccion: this.nuevoPago.referencia_transaccion.trim() || undefined,
       glosa: `Pago factura ${factura.numero_factura_proveedor}`,
+      usuario_id: user?.id,
+      creado_por: user?.email,
     };
 
     this.http.post('http://localhost:3000/api/v1/cxp/pagar', payload).subscribe({
@@ -1576,10 +1623,53 @@ export class CxpAdminComponent implements OnInit {
   }
 
   verHistorialPagos(cxp: CuentaPorPagarItem): void {
+    this.facturaAPagar.set(cxp);
     this.http.get<PagoHistorial[]>(`http://localhost:3000/api/v1/cxp/${cxp.id}/pagos`).subscribe({
       next: (data) => this.historialPagos.set(data),
       error: (err) => console.error('Error cargando historial de pagos:', err),
     });
+  }
+
+  anularPago(pago: PagoHistorial): void {
+    const fac = this.facturaAPagar();
+    const facInfo = fac ? ` de la Factura ${fac.numero_factura_proveedor}` : '';
+    this.notificationService
+      .confirm({
+        title: 'Confirmar Anulación de Pago',
+        message: `¿Está seguro de ANULAR este pago por valor de ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(pago.monto_pago)}${facInfo}? Se revertirá automáticamente el saldo de la cuenta por pagar y se anulará formalmente el Comprobante de Egreso ${pago.asiento?.numero_comprobante || ''}.`,
+        confirmText: 'Sí, Anular Pago',
+        cancelText: 'Cancelar',
+        intent: 'danger',
+      })
+      .then((confirmado) => {
+        if (!confirmado) return;
+
+        this.guardando.set(true);
+        const user = this.authService.usuario();
+        const payload = {
+          motivo: 'Anulación de pago solicitada por el usuario en panel CxP',
+          usuario_id: user?.id,
+          usuario_email: user?.email,
+        };
+
+        this.http.post(`http://localhost:3000/api/v1/cxp/pagos/${pago.id}/anular`, payload).subscribe({
+          next: () => {
+            this.guardando.set(false);
+            this.notificationService.success(
+              'Pago anulado formalmente. Saldo de factura y comprobante de egreso revertidos con éxito.',
+              'Pago Anulado',
+            );
+            if (fac) {
+              this.verHistorialPagos(fac);
+            }
+            this.cargarDatos();
+          },
+          error: (err) => {
+            this.guardando.set(false);
+            this.notificationService.error(err.error?.message || 'Error al anular pago.');
+          },
+        });
+      });
   }
 
   autoSeleccionarProveedorEstado(): void {

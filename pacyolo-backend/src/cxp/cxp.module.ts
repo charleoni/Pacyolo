@@ -8,6 +8,7 @@ import { PucCuenta } from '../puc/entities/puc.entity.js';
 import { AsientosModule } from '../asientos/asientos.module.js';
 import { ImpuestosModule } from '../impuestos/impuestos.module.js';
 import { MapeoModule } from '../mapeo/mapeo.module.js';
+import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 import { CxpService } from './cxp.service.js';
 import { CxpController } from './cxp.controller.js';
 
@@ -17,6 +18,7 @@ import { CxpController } from './cxp.controller.js';
     AsientosModule,
     ImpuestosModule,
     MapeoModule,
+    AuditoriaModule,
   ],
   controllers: [CxpController],
   providers: [CxpService],

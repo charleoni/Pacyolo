@@ -13,6 +13,7 @@ import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { MapeoService } from '../mapeo/mapeo.service.js';
 import { ImpuestosService } from '../impuestos/impuestos.service.js';
 import { AsientosService } from '../asientos/asientos.service.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { TipoOperacionTributaria } from '../impuestos/dto/calcular-impuestos.dto.js';
 import { TipoComprobante } from '../asientos/entities/asiento.entity.js';
 import { CreateAsientoLineaDto } from '../asientos/dto/create-asiento-linea.dto.js';
@@ -36,6 +37,7 @@ export class CxpService {
     private readonly mapeoService: MapeoService,
     private readonly impuestosService: ImpuestosService,
     private readonly asientosService: AsientosService,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   /**
@@ -334,6 +336,7 @@ export class CxpService {
         dto.referencia_transaccion ??
         `EGR-${cxp.numero_factura_proveedor}-${Date.now()}`,
       lineas,
+      created_by: dto.usuario_id,
     });
 
     const nuevoSaldo = Math.round((saldoPendiente - montoPago) * 100) / 100;
@@ -355,9 +358,34 @@ export class CxpService {
       metodo_pago: dto.metodo_pago ?? MetodoPago.TRANSFERENCIA,
       referencia_transaccion: dto.referencia_transaccion ?? null,
       glosa: dto.glosa ?? null,
+      estado: 'APLICADO',
+      usuario_id: dto.usuario_id || null,
     });
 
     const guardado = await this.pagoRepo.save(pago);
+
+    // Pista de auditoría obligatoria de pago
+    try {
+      await this.auditoriaService.registrarLog({
+        empresa_id: dto.empresa_id,
+        usuario_id: dto.usuario_id || null,
+        usuario_email: dto.creado_por || 'sistema@pacyolo.com',
+        modulo: 'CXP',
+        accion: 'REGISTRAR_PAGO',
+        entidad_id: guardado.id,
+        ruta: '/api/v1/cxp/pagar',
+        datos_nuevos: {
+          factura_proveedor: cxp.numero_factura_proveedor,
+          tercero: cxp.tercero.nombre_completo,
+          monto_pagado: montoPago,
+          metodo_pago: dto.metodo_pago,
+          comprobante_egreso: asientoEgreso.numero_comprobante,
+          saldo_restante: nuevoSaldo,
+        },
+      });
+    } catch (auditErr: any) {
+      console.error('Error registrando auditoría de pago:', auditErr.message);
+    }
 
     const res = await this.pagoRepo.findOne({
       where: { id: guardado.id },
@@ -382,9 +410,94 @@ export class CxpService {
           },
         },
         cuenta_banco: true,
+        cuenta_por_pagar: {
+          tercero: true,
+        },
       },
       order: { created_at: 'DESC' },
     });
+  }
+
+  async anularPago(id: string, motivo: string, usuarioId?: string, usuarioEmail?: string): Promise<PagoCxp> {
+    const pago = await this.pagoRepo.findOne({
+      where: { id },
+      relations: {
+        cuenta_por_pagar: {
+          tercero: true,
+        },
+        asiento: true,
+      },
+    });
+
+    if (!pago) {
+      throw new NotFoundException(`El pago con ID '${id}' no existe.`);
+    }
+
+    if (pago.estado === 'ANULADO') {
+      throw new BadRequestException('Este pago ya se encuentra anulado.');
+    }
+
+    const cxp = pago.cuenta_por_pagar;
+    if (!cxp) {
+      throw new BadRequestException('No se encontró la factura por pagar vinculada a este pago.');
+    }
+
+    // 1. Revertir saldo pendiente de la cuenta por pagar
+    const saldoAnterior = Number(cxp.saldo_pendiente);
+    const montoReversado = Number(pago.monto_pagado);
+    const totalFactura = Number(cxp.monto_total);
+    const nuevoSaldo = Math.round((saldoAnterior + montoReversado) * 100) / 100;
+
+    cxp.saldo_pendiente = nuevoSaldo;
+    cxp.estado =
+      nuevoSaldo >= totalFactura
+        ? EstadoCuentaPorPagar.PENDIENTE
+        : EstadoCuentaPorPagar.PAGADA_PARCIAL;
+
+    await this.cxpRepo.save(cxp);
+
+    // 2. Anular comprobante contable de egreso oficial (EGR)
+    if (pago.asiento_id) {
+      try {
+        await this.asientosService.anular(
+          pago.asiento_id,
+          `Anulación de pago de factura ${cxp.numero_factura_proveedor}: ${motivo}`,
+          usuarioId,
+        );
+      } catch (err: any) {
+        console.error(`Error anulando asiento ${pago.asiento_id} de pago cxp:`, err.message);
+      }
+    }
+
+    // 3. Marcar pago como ANULADO
+    pago.estado = 'ANULADO';
+    pago.motivo_anulacion = motivo;
+    pago.anulado_at = new Date();
+    pago.anulado_por = usuarioId || null;
+    await this.pagoRepo.save(pago);
+
+    // 4. Registrar pista de auditoría inmutable
+    try {
+      await this.auditoriaService.registrarLog({
+        empresa_id: pago.empresa_id,
+        usuario_id: usuarioId || null,
+        usuario_email: usuarioEmail || 'sistema@pacyolo.com',
+        modulo: 'CXP',
+        accion: 'ANULAR_PAGO',
+        entidad_id: pago.id,
+        ruta: `/api/v1/cxp/pagos/${id}/anular`,
+        datos_nuevos: {
+          factura_proveedor: cxp.numero_factura_proveedor,
+          monto_reversado: montoReversado,
+          nuevo_saldo_cxp: nuevoSaldo,
+          motivo,
+        },
+      });
+    } catch (auditErr: any) {
+      console.error('Error registrando auditoría de anulación de pago:', auditErr.message);
+    }
+
+    return pago;
   }
 
   // =========================================================================
