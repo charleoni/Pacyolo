@@ -40,3 +40,11 @@
   - **Existencias por Bodega**: Físico y Valorado (Stock actual, costo unitario, valor total del inventario).
   - **Kardex Integral NIIF**: Movimientos cronológicos detallados (Entradas, Salidas, Traslados, Ajustes, Costo promedio móvil resultante).
   - **Consulta Documental**: Búsqueda e inspección de cualquier documento fuente por consecutivo (`OC-XXXX`, `EA-XXXX`, `TR-XXXX`, `AJ-XXXX`, `CAU-XXXX`).
+
+## 6. Principio de Gobernanza Contable Total: Los 4 Pilares de Todo Documento
+- Todo documento operativo, comercial o de control que nazca en el sistema (Notas de Ajuste, Entradas de Almacén con causación, Traslados con impacto, Facturas, Recaudos, Pagos) DEBE satisfacer estrictamente los **4 Pilares Documentales**:
+  1. **Contabilización Obligatoria**: PACYOLO es ante todo un ERP Contable. Todo hecho económico o variación patrimonial/física valorada DEBE generar automáticamente su Comprobante de Diario (`Asiento` + `AsientoLinea`) con estricta partida doble (Sumas Iguales: Débitos = Créditos) y vinculación bidireccional (`asiento_id`).
+  2. **Impresión Formal Membretada**: Todo documento debe contar con vista previa e impresión formal (`window.print()` con CSS print optimizado o PDF) con datos fiscales de la empresa, consecutivo oficial, desglose de cuentas/ítems y firmas reglamentarias (Elaboró, Revisó, Aprobó).
+  3. **Edición o Control de Anulación/Ajuste**: Debe poder consultarse y gestionarse; si está en estado borrador o preliminar se permite edición con campos inmutables protegidos; si ya está causado o aprobado, no puede eliminarse destructivamente, requiriendo anulación auditada o nota de ajuste.
+  4. **Pistas de Auditoría Inmutables**: Registro estricto del usuario ejecutor (`usuario_id` / `creado_por`), timestamp inmutable y registro en bitácora de auditoría (`aud_pistas`).
+

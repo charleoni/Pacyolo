@@ -17,6 +17,12 @@ import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
 import { OrdenCompra, OrdenCompraLinea } from '../compras/entities/orden-compra.entity.js';
 import { CxpService } from '../cxp/cxp.service.js';
+import { PucCuenta, ClaseCuenta } from '../puc/entities/puc.entity.js';
+import { AsientosService } from '../asientos/asientos.service.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { TipoComprobante, EstadoAsiento, Asiento } from '../asientos/entities/asiento.entity.js';
+import { CreateAsientoDto } from '../asientos/dto/create-asiento.dto.js';
+import { CreateAsientoLineaDto } from '../asientos/dto/create-asiento-linea.dto.js';
 import {
   CreateArticuloDto,
   UpdateArticuloDto,
@@ -46,7 +52,11 @@ export class InventariosService {
     private readonly bodegaRepo: Repository<Bodega>,
     @InjectRepository(TipoMovimiento)
     private readonly tipoMovimientoRepo: Repository<TipoMovimiento>,
+    @InjectRepository(PucCuenta)
+    private readonly pucRepo: Repository<PucCuenta>,
     private readonly cxpService: CxpService,
+    private readonly asientosService: AsientosService,
+    private readonly auditoriaService: AuditoriaService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -361,11 +371,46 @@ export class InventariosService {
   // NOTAS DE AJUSTE DE INVENTARIO
   // =========================================================================
 
+  private async buscarCuentaAuxiliar(
+    empresaId: string,
+    codigosPrioritarios: (string | null | undefined)[],
+    clasePreferida?: ClaseCuenta,
+  ): Promise<PucCuenta> {
+    const limpios = codigosPrioritarios.filter((c): c is string => !!c && c.trim().length > 0);
+    for (const cod of limpios) {
+      let c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, codigo: cod.trim(), permite_movimiento: true },
+      });
+      if (c) return c;
+
+      c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, codigo: Like(`${cod.trim()}%`), permite_movimiento: true },
+        order: { codigo: 'ASC' },
+      });
+      if (c) return c;
+    }
+
+    if (clasePreferida) {
+      const c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, clase: clasePreferida, permite_movimiento: true },
+        order: { codigo: 'ASC' },
+      });
+      if (c) return c;
+    }
+
+    throw new BadRequestException(
+      `No se encontró una cuenta contable auxiliar en el PUC para [${limpios.join(', ')}]. Verifique el catálogo de cuentas de la empresa.`
+    );
+  }
+
   async listarNotasAjuste(empresaId?: string): Promise<NotaAjuste[]> {
     const qb = this.notaAjusteRepo.createQueryBuilder('n')
       .leftJoinAndSelect('n.bodega', 'b')
       .leftJoinAndSelect('n.lineas', 'l')
-      .leftJoinAndSelect('l.articulo', 'art');
+      .leftJoinAndSelect('l.articulo', 'art')
+      .leftJoinAndSelect('n.asiento', 'asiento')
+      .leftJoinAndSelect('asiento.lineas', 'asientoLineas')
+      .leftJoinAndSelect('asientoLineas.cuenta', 'cuenta');
 
     if (empresaId) {
       qb.where('n.empresa_id = :empresaId', { empresaId });
@@ -387,12 +432,15 @@ export class InventariosService {
       numeroNota = `AJ-${String(conteo + 1).padStart(4, '0')}`;
     }
 
+    const articulosMap = new Map<string, Articulo>();
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let totalAjuste = 0;
+    let guardada: NotaAjuste;
+
     try {
-      let totalAjuste = 0;
       const lineasAjuste: NotaAjusteLinea[] = [];
 
       for (const lin of dto.lineas) {
@@ -400,6 +448,7 @@ export class InventariosService {
         if (!articulo) {
           throw new NotFoundException(`El artículo con ID '${lin.articulo_id}' no existe.`);
         }
+        articulosMap.set(articulo.id, articulo);
 
         const cantidad = Number(lin.cantidad);
         const costoUnitario = Number(lin.costo_unitario || articulo.costo_promedio || 0);
@@ -488,15 +537,129 @@ export class InventariosService {
         lineas: lineasAjuste,
       });
 
-      const guardada = await queryRunner.manager.save(nota);
+      guardada = await queryRunner.manager.save(nota);
       await queryRunner.commitTransaction();
-      return guardada;
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
       await queryRunner.release();
     }
+
+    // =========================================================================
+    // CONTABILIZACIÓN AUTOMÁTICA OBLIGATORIA (ERP & NIIF NIC 2)
+    // Generar Comprobante Contable de Ajuste (Tipo AJU) con estricta partida doble
+    // =========================================================================
+    if (dto.empresa_id && totalAjuste > 0) {
+      try {
+        const lineasContables: CreateAsientoLineaDto[] = [];
+
+        for (const lin of dto.lineas) {
+          const articulo = articulosMap.get(lin.articulo_id);
+          const cantidad = Number(lin.cantidad);
+          const costoUnitario = Number(lin.costo_unitario || articulo?.costo_promedio || 0);
+          const costoTotal = Number((cantidad * costoUnitario).toFixed(2));
+          if (costoTotal <= 0) continue;
+
+          // Cuenta de Inventario (Activo)
+          const cuentaInventario = await this.buscarCuentaAuxiliar(
+            dto.empresa_id,
+            [articulo?.cuenta_inventario, '143505', '1435', '14'],
+            ClaseCuenta.ACTIVO,
+          );
+
+          if (lin.tipo_movimiento === 'ENTRADA') {
+            // Sobrante: Débito Inventarios (Aumenta Activo) / Crédito Aprovechamientos (Ingreso Extraordinario)
+            const cuentaIngreso = await this.buscarCuentaAuxiliar(
+              dto.empresa_id,
+              ['429553', '4295', '4210', '42'],
+              ClaseCuenta.INGRESO,
+            );
+
+            lineasContables.push({
+              cuenta_id: cuentaInventario.id,
+              debito: costoTotal,
+              credito: 0,
+              glosa_detalle: `Ajuste Sobrante ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+              documento_referencia: numeroNota,
+            });
+
+            lineasContables.push({
+              cuenta_id: cuentaIngreso.id,
+              debito: 0,
+              credito: costoTotal,
+              glosa_detalle: `Sobrante Inventario ${numeroNota}: ${articulo?.codigo || ''}`,
+              documento_referencia: numeroNota,
+            });
+          } else {
+            // Salida: Débito Pérdidas/Gastos (Aumenta Gasto) / Crédito Inventarios (Disminuye Activo)
+            const cuentaGasto = await this.buscarCuentaAuxiliar(
+              dto.empresa_id,
+              [articulo?.cuenta_gasto, '531520', '5315', '519595', '5195', '51'],
+              ClaseCuenta.GASTO,
+            );
+
+            lineasContables.push({
+              cuenta_id: cuentaGasto.id,
+              debito: costoTotal,
+              credito: 0,
+              glosa_detalle: `Baja/Merma Inventario ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+              documento_referencia: numeroNota,
+            });
+
+            lineasContables.push({
+              cuenta_id: cuentaInventario.id,
+              debito: 0,
+              credito: costoTotal,
+              glosa_detalle: `Salida Ajuste ${numeroNota}: ${articulo?.codigo || ''}`,
+              documento_referencia: numeroNota,
+            });
+          }
+        }
+
+        if (lineasContables.length > 0) {
+          const asientoCreado = await this.asientosService.create({
+            empresa_id: dto.empresa_id,
+            tipo_comprobante: TipoComprobante.AJU,
+            fecha_contable: dto.fecha_ajuste,
+            glosa_general: `Comprobante de Ajuste ${numeroNota} (${dto.tipo_ajuste}): ${dto.justificacion.slice(0, 150)}`,
+            estado: EstadoAsiento.CONTABILIZADO,
+            origen_sistema: 'INVENTARIOS',
+            origen_documento_tipo: 'NOTA_AJUSTE',
+            origen_documento_id: guardada.id,
+            lineas: lineasContables,
+            created_by: dto.usuario_id,
+          });
+
+          await this.notaAjusteRepo.update(guardada.id, { asiento_id: asientoCreado.id });
+          guardada.asiento_id = asientoCreado.id;
+          guardada.asiento = asientoCreado;
+
+          // Pista de Auditoría Obligatoria
+          await this.auditoriaService.registrarLog({
+            empresa_id: dto.empresa_id,
+            usuario_id: dto.usuario_id || null,
+            usuario_email: dto.creado_por || 'sistema@pacyolo.com',
+            modulo: 'INVENTARIOS',
+            accion: 'REGISTRAR_NOTA_AJUSTE',
+            entidad_id: guardada.id,
+            metodo_http: 'POST',
+            ruta: '/api/v1/inventarios/ajustes',
+            datos_nuevos: {
+              numero_nota: numeroNota,
+              tipo_ajuste: dto.tipo_ajuste,
+              total_ajuste: totalAjuste,
+              asiento_id: asientoCreado.id,
+              numero_comprobante: asientoCreado.numero_comprobante,
+            },
+          });
+        }
+      } catch (asientoErr: any) {
+        console.error(`Error generando asiento para nota de ajuste ${numeroNota}:`, asientoErr.message);
+      }
+    }
+
+    return guardada;
   }
 
   // =========================================================================

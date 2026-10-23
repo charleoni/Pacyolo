@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { Articulo } from './articulo.entity.js';
+import { Asiento } from '../../asientos/entities/asiento.entity.js';
 
 export type TipoAjusteInventario = 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO';
 
@@ -50,6 +51,10 @@ export class NotaAjuste {
 
   @Column({ type: 'uuid', nullable: true })
   asiento_id: string | null;
+
+  @ManyToOne(() => Asiento, { nullable: true, eager: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'asiento_id' })
+  asiento?: Asiento | null;
 
   @OneToMany(() => NotaAjusteLinea, (linea) => linea.nota_ajuste, {
     cascade: true,

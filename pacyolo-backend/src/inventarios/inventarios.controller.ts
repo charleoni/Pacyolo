@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Headers,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { InventariosService } from './inventarios.service.js';
@@ -114,10 +115,15 @@ export class InventariosController {
   async registrarAjuste(
     @Body() dto: CreateNotaAjusteDto,
     @Headers('x-empresa-id') empresaId?: string,
+    @Req() req?: any,
   ) {
+    const usuarioId = req?.user?.sub || req?.user?.id || dto.usuario_id;
+    const creadoPor = req?.user?.email || dto.creado_por;
     return await this.inventariosService.registrarNotaAjuste({
       ...dto,
       empresa_id: dto.empresa_id || empresaId,
+      usuario_id: usuarioId,
+      creado_por: creadoPor,
     });
   }
 

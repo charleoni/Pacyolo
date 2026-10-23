@@ -275,6 +275,16 @@ export class CreateNotaAjusteDto {
   @IsNotEmpty()
   justificacion: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  usuario_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  creado_por?: string;
+
   @ApiProperty({ type: [NotaAjusteLineaDto] })
   @IsArray()
   @ValidateNested({ each: true })

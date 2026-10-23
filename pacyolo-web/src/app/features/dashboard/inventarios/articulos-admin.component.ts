@@ -577,6 +577,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     <th class="p-3.5">Justificación de Auditoría</th>
                     <th class="p-3.5 text-center">Ítems</th>
                     <th class="p-3.5 text-right">Total Valorado</th>
+                    <th class="p-3.5 text-center">Asiento</th>
                     <th class="p-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -605,6 +606,15 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                       <td class="p-3.5 text-right font-mono font-bold text-amber-400">
                         \${{ Number(aj.total_ajuste).toLocaleString('es-CO') }}
                       </td>
+                      <td class="p-3.5 text-center font-mono">
+                        @if (aj.asiento?.numero_comprobante) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            {{ aj.asiento.numero_comprobante }}
+                          </span>
+                        } @else {
+                          <span class="text-[10px] text-slate-500 italic">Sin asiento</span>
+                        }
+                      </td>
                       <td class="p-3.5 text-right whitespace-nowrap">
                         <button
                           type="button"
@@ -619,7 +629,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="8" class="p-8 text-center text-slate-500">
+                      <td colspan="9" class="p-8 text-center text-slate-500">
                         No se encontraron notas de ajuste coincidentes.
                       </td>
                     </tr>
@@ -1624,6 +1634,52 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     </tfoot>
                   </table>
                 </div>
+
+                <!-- Resumen Contable Oficial (Partida Doble NIIF) -->
+                @if (doc.datos.asiento) {
+                  <div class="mt-3 bg-slate-50 border border-slate-300 rounded-xl p-3">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 text-xs">
+                      <span class="font-bold text-slate-900 uppercase">
+                        Comprobante Contable Asociado:
+                        <span class="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-300 ml-1">
+                          {{ doc.datos.asiento.numero_comprobante }}
+                        </span>
+                      </span>
+                      <span class="text-[11px] text-slate-600 font-mono">
+                        Estado: <b class="text-emerald-700">{{ doc.datos.asiento.estado }}</b>
+                      </span>
+                    </div>
+
+                    @if (doc.datos.asiento.lineas?.length > 0) {
+                      <div class="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                          <thead class="bg-slate-100 font-mono text-[10px] uppercase text-slate-700 border-b border-slate-200">
+                            <tr>
+                              <th class="p-1.5">Cuenta PUC</th>
+                              <th class="p-1.5">Nombre Cuenta</th>
+                              <th class="p-1.5 text-right">Débito</th>
+                              <th class="p-1.5 text-right">Crédito</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100 font-mono">
+                            @for (lin of doc.datos.asiento.lineas; track lin.id || $index) {
+                              <tr>
+                                <td class="p-1.5 font-bold text-slate-900">{{ lin.cuenta?.codigo }}</td>
+                                <td class="p-1.5 font-sans text-slate-700">{{ lin.cuenta?.nombre }}</td>
+                                <td class="p-1.5 text-right text-emerald-700 font-bold">
+                                  {{ Number(lin.debito) > 0 ? ('$' + Number(lin.debito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                                <td class="p-1.5 text-right text-indigo-700 font-bold">
+                                  {{ Number(lin.credito) > 0 ? ('$' + Number(lin.credito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  </div>
+                }
               }
 
               <!-- 2. NOTA DE AJUSTE -->
@@ -1681,6 +1737,52 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     </tfoot>
                   </table>
                 </div>
+
+                <!-- Resumen Contable Oficial (Partida Doble NIIF) -->
+                @if (doc.datos.asiento) {
+                  <div class="mt-3 bg-slate-50 border border-slate-300 rounded-xl p-3">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 text-xs">
+                      <span class="font-bold text-slate-900 uppercase">
+                        Comprobante Contable Asociado:
+                        <span class="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-300 ml-1">
+                          {{ doc.datos.asiento.numero_comprobante }}
+                        </span>
+                      </span>
+                      <span class="text-[11px] text-slate-600 font-mono">
+                        Estado: <b class="text-emerald-700">{{ doc.datos.asiento.estado }}</b>
+                      </span>
+                    </div>
+
+                    @if (doc.datos.asiento.lineas?.length > 0) {
+                      <div class="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                          <thead class="bg-slate-100 font-mono text-[10px] uppercase text-slate-700 border-b border-slate-200">
+                            <tr>
+                              <th class="p-1.5">Cuenta PUC</th>
+                              <th class="p-1.5">Nombre Cuenta</th>
+                              <th class="p-1.5 text-right">Débito</th>
+                              <th class="p-1.5 text-right">Crédito</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100 font-mono">
+                            @for (lin of doc.datos.asiento.lineas; track lin.id || $index) {
+                              <tr>
+                                <td class="p-1.5 font-bold text-slate-900">{{ lin.cuenta?.codigo }}</td>
+                                <td class="p-1.5 font-sans text-slate-700">{{ lin.cuenta?.nombre }}</td>
+                                <td class="p-1.5 text-right text-emerald-700 font-bold">
+                                  {{ Number(lin.debito) > 0 ? ('$' + Number(lin.debito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                                <td class="p-1.5 text-right text-indigo-700 font-bold">
+                                  {{ Number(lin.credito) > 0 ? ('$' + Number(lin.credito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  </div>
+                }
               }
 
               <!-- 3. TRASLADO ENTRE BODEGAS -->
@@ -1838,6 +1940,52 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     </tfoot>
                   </table>
                 </div>
+
+                <!-- Resumen Contable Oficial (Partida Doble NIIF) -->
+                @if (doc.datos.asiento) {
+                  <div class="mt-3 bg-slate-50 border border-slate-300 rounded-xl p-3">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 text-xs">
+                      <span class="font-bold text-slate-900 uppercase">
+                        Comprobante Contable Asociado:
+                        <span class="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-300 ml-1">
+                          {{ doc.datos.asiento.numero_comprobante }}
+                        </span>
+                      </span>
+                      <span class="text-[11px] text-slate-600 font-mono">
+                        Estado: <b class="text-emerald-700">{{ doc.datos.asiento.estado }}</b>
+                      </span>
+                    </div>
+
+                    @if (doc.datos.asiento.lineas?.length > 0) {
+                      <div class="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                          <thead class="bg-slate-100 font-mono text-[10px] uppercase text-slate-700 border-b border-slate-200">
+                            <tr>
+                              <th class="p-1.5">Cuenta PUC</th>
+                              <th class="p-1.5">Nombre Cuenta</th>
+                              <th class="p-1.5 text-right">Débito</th>
+                              <th class="p-1.5 text-right">Crédito</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100 font-mono">
+                            @for (lin of doc.datos.asiento.lineas; track lin.id || $index) {
+                              <tr>
+                                <td class="p-1.5 font-bold text-slate-900">{{ lin.cuenta?.codigo }}</td>
+                                <td class="p-1.5 font-sans text-slate-700">{{ lin.cuenta?.nombre }}</td>
+                                <td class="p-1.5 text-right text-emerald-700 font-bold">
+                                  {{ Number(lin.debito) > 0 ? ('$' + Number(lin.debito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                                <td class="p-1.5 text-right text-indigo-700 font-bold">
+                                  {{ Number(lin.credito) > 0 ? ('$' + Number(lin.credito).toLocaleString('es-CO')) : '-' }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  </div>
+                }
               }
 
               <!-- Firmas y Pistas de Auditoría -->
@@ -2603,12 +2751,21 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   guardarAjuste(): void {
+    const emp = this.authService.empresaActiva();
+    const payload = {
+      ...this.ajusteForm,
+      empresa_id: emp?.empresa_id || undefined,
+    };
     this.guardando.set(true);
-    this.inventariosService.registrarAjuste(this.ajusteForm).subscribe({
-      next: () => {
+    this.inventariosService.registrarAjuste(payload).subscribe({
+      next: (res: any) => {
         this.guardando.set(false);
         this.mostrarModalAjuste.set(false);
-        this.notificationService.success('Nota de ajuste de inventario registrada y aplicada al Kardex.');
+        const comprobante = res?.asiento?.numero_comprobante ? ` (Comprobante ${res.asiento.numero_comprobante})` : '';
+        this.notificationService.success(
+          `Nota de ajuste ${res?.numero_nota || ''} registrada, aplicada al Kardex y contabilizada${comprobante}.`,
+          'Ajuste Exitoso',
+        );
         this.cargarAjustes();
         this.cargarArticulos();
         if (this.pestanaActiva() === 'kardex') this.cargarKardex();

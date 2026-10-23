@@ -119,6 +119,25 @@ export interface NotaAjusteItem {
   fecha_ajuste: string;
   justificacion: string;
   total_ajuste: number;
+  asiento_id?: string | null;
+  asiento?: {
+    id: string;
+    numero_comprobante: string;
+    tipo_comprobante: string;
+    fecha_contable: string;
+    glosa_general: string;
+    estado: string;
+    lineas?: {
+      id: string;
+      cuenta?: {
+        codigo: string;
+        nombre: string;
+      };
+      debito: number;
+      credito: number;
+      glosa_detalle: string;
+    }[];
+  } | null;
   lineas: {
     id: string;
     articulo?: {
