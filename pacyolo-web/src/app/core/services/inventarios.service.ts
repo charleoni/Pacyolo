@@ -116,6 +116,7 @@ export interface NotaAjusteItem {
     nombre: string;
   };
   tipo_ajuste: 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO';
+  estado?: 'APLICADA' | 'ANULADA';
   fecha_ajuste: string;
   justificacion: string;
   total_ajuste: number;
@@ -217,6 +218,10 @@ export class InventariosService {
 
   registrarAjuste(ajuste: any): Observable<NotaAjusteItem> {
     return this.http.post<NotaAjusteItem>(`${this.apiUrl}/ajustes`, ajuste);
+  }
+
+  anularAjuste(id: string, motivo: string): Observable<NotaAjusteItem> {
+    return this.http.post<NotaAjusteItem>(`${this.apiUrl}/ajustes/${id}/anular`, { motivo });
   }
 
   // Kardex y Existencias

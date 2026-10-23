@@ -584,7 +584,16 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
                   @for (aj of ajustesFiltrados(); track aj.id) {
                     <tr class="hover:bg-slate-800/30 transition">
-                      <td class="p-3.5 font-mono font-bold text-white">{{ aj.numero_nota }}</td>
+                      <td class="p-3.5 font-mono font-bold text-white">
+                        <div class="flex items-center gap-1.5">
+                          <span>{{ aj.numero_nota }}</span>
+                          @if (aj.estado === 'ANULADA') {
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              ANULADA
+                            </span>
+                          }
+                        </div>
+                      </td>
                       <td class="p-3.5 text-slate-400 font-mono">{{ aj.fecha_ajuste }}</td>
                       <td class="p-3.5">{{ aj.bodega?.nombre }}</td>
                       <td class="p-3.5">
@@ -615,7 +624,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                           <span class="text-[10px] text-slate-500 italic">Sin asiento</span>
                         }
                       </td>
-                      <td class="p-3.5 text-right whitespace-nowrap">
+                      <td class="p-3.5 text-right whitespace-nowrap space-x-1">
                         <button
                           type="button"
                           (click)="abrirModalImprimirAjuste(aj)"
@@ -625,6 +634,17 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                           <span>🖨️</span>
                           <span>Imprimir / Ver</span>
                         </button>
+                        @if (aj.estado !== 'ANULADA') {
+                          <button
+                            type="button"
+                            (click)="anularNotaAjuste(aj)"
+                            class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                            title="Anular formalmente esta nota de ajuste (revierte stock, Kardex y asiento contable)"
+                          >
+                            <span>🚫</span>
+                            <span>Anular</span>
+                          </button>
+                        }
                       </td>
                     </tr>
                   } @empty {
@@ -1244,6 +1264,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 <label class="block font-semibold text-slate-300 mb-1">Tipo de Ajuste *</label>
                 <select
                   [(ngModel)]="ajusteForm.tipo_ajuste"
+                  (change)="alCambiarTipoAjuste()"
                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
                 >
                   <option value="SOBRANTE">📥 SOBRANTE (Aumenta Stock)</option>
@@ -1319,13 +1340,23 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                     </div>
 
                     <div class="col-span-3">
-                      <select
-                        [(ngModel)]="lin.tipo_movimiento"
-                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white"
-                      >
-                        <option value="ENTRADA">📥 Suma</option>
-                        <option value="SALIDA">📤 Resta</option>
-                      </select>
+                      @if (ajusteForm.tipo_ajuste === 'FALTANTE_MERMA') {
+                        <div class="w-full bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
+                          📤 Resta (- Stock)
+                        </div>
+                      } @else if (ajusteForm.tipo_ajuste === 'SOBRANTE') {
+                        <div class="w-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
+                          📥 Suma (+ Stock)
+                        </div>
+                      } @else {
+                        <select
+                          [(ngModel)]="lin.tipo_movimiento"
+                          class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white"
+                        >
+                          <option value="ENTRADA">📥 Suma</option>
+                          <option value="SALIDA">📤 Resta</option>
+                        </select>
+                      }
                     </div>
 
                     <div class="col-span-3">
@@ -1552,6 +1583,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
 
             <!-- CONTENEDOR DOCUMENTAL IMPRESO -->
             <div id="hoja-impresion" class="p-8 sm:p-10 space-y-6 text-xs bg-white text-slate-900">
+              @if (doc.datos.estado === 'ANULADA') {
+                <div class="border-2 border-dashed border-rose-600 bg-rose-50 text-rose-700 font-black text-center py-2.5 rounded-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+                  <span>⚠️</span>
+                  <span>DOCUMENTO ANULADO — REVERTIDO EN KARDEX Y CONTABILIDAD</span>
+                  <span>⚠️</span>
+                </div>
+              }
               <!-- Encabezado Membretado Oficial -->
               <div class="flex justify-between items-start border-b-2 border-slate-900 pb-5">
                 <div class="space-y-1">
@@ -2356,12 +2394,13 @@ export class ArticulosAdminComponent implements OnInit {
       ) {
         this.ajusteForm.lineas = [];
       }
+      const movAjuste = this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA' ? 'SALIDA' : 'ENTRADA';
       for (const art of articulosSeleccionados) {
         const yaExiste = this.ajusteForm.lineas.some((l: any) => l.articulo_id === art.id);
         if (!yaExiste) {
           this.ajusteForm.lineas.push({
             articulo_id: art.id,
-            tipo_movimiento: 'ENTRADA',
+            tipo_movimiento: movAjuste,
             cantidad: 1,
           });
         }
@@ -2728,26 +2767,63 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   abrirModalAjuste(): void {
+    const primerArticulo = this.articulos()[0];
     this.ajusteForm = {
       bodega_id: this.bodegas()[0]?.id || '',
-      tipo_ajuste: 'SOBRANTE',
+      tipo_ajuste: 'FALTANTE_MERMA',
       fecha_ajuste: new Date().toISOString().slice(0, 10),
       justificacion: '',
-      lineas: [{ articulo_id: this.articulos()[0]?.id || '', tipo_movimiento: 'ENTRADA', cantidad: 1 }],
+      lineas: [{ articulo_id: primerArticulo?.id || '', tipo_movimiento: 'SALIDA', cantidad: 1 }],
     };
     this.mostrarModalAjuste.set(true);
   }
 
+  alCambiarTipoAjuste(): void {
+    const tipo = this.ajusteForm.tipo_ajuste;
+    if (tipo === 'FALTANTE_MERMA') {
+      this.ajusteForm.lineas.forEach((l: any) => (l.tipo_movimiento = 'SALIDA'));
+    } else if (tipo === 'SOBRANTE') {
+      this.ajusteForm.lineas.forEach((l: any) => (l.tipo_movimiento = 'ENTRADA'));
+    }
+  }
+
   agregarLineaAjuste(): void {
+    const mov = this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA' ? 'SALIDA' : 'ENTRADA';
     this.ajusteForm.lineas.push({
       articulo_id: this.articulos()[0]?.id || '',
-      tipo_movimiento: 'ENTRADA',
+      tipo_movimiento: mov,
       cantidad: 1,
     });
   }
 
   removerLineaAjuste(index: number): void {
     this.ajusteForm.lineas.splice(index, 1);
+  }
+
+  anularNotaAjuste(aj: NotaAjusteItem): void {
+    this.notificationService.confirm(
+      `¿Está seguro de ANULAR la Nota de Ajuste ${aj.numero_nota}? Se revertirá automáticamente el stock de las bodegas, se registrará el contra-asiento contable oficial y se actualizará el Kardex NIIF.`,
+      'Confirmar Anulación de Ajuste',
+    ).then((confirmado) => {
+      if (!confirmado) return;
+      this.guardando.set(true);
+      this.inventariosService.anularAjuste(aj.id, 'Anulación solicitada por usuario en panel de control').subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.notificationService.success(
+            `Nota de ajuste ${aj.numero_nota} anulada exitosamente. Stock, Kardex y asiento contable revertidos con éxito.`,
+            'Ajuste Anulado',
+          );
+          this.cargarAjustes();
+          this.cargarArticulos();
+          if (this.pestanaActiva() === 'kardex') this.cargarKardex();
+        },
+        error: (err) => {
+          this.guardando.set(false);
+          this.notificationService.error(err.error?.message || 'Error al anular nota de ajuste');
+        },
+      });
+    });
   }
 
   guardarAjuste(): void {

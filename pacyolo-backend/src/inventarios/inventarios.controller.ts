@@ -127,6 +127,21 @@ export class InventariosController {
     });
   }
 
+  @Post('ajustes/:id/anular')
+  @ApiOperation({ summary: 'Anular formalmente una nota de ajuste (revierte Kardex, stock y asiento contable)' })
+  async anularAjuste(
+    @Param('id') id: string,
+    @Body('motivo') motivo?: string,
+    @Req() req?: any,
+  ) {
+    const usuarioId = req?.user?.sub || req?.user?.id;
+    return await this.inventariosService.anularNotaAjuste(
+      id,
+      motivo || 'Anulación formal de nota de ajuste por usuario',
+      usuarioId,
+    );
+  }
+
   // ==========================================
   // KARDEX & EXISTENCIAS
   // ==========================================

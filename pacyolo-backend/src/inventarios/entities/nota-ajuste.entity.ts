@@ -49,6 +49,9 @@ export class NotaAjuste {
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   total_ajuste: number;
 
+  @Column({ type: 'varchar', length: 20, default: 'APLICADA' })
+  estado: 'APLICADA' | 'ANULADA';
+
   @Column({ type: 'uuid', nullable: true })
   asiento_id: string | null;
 

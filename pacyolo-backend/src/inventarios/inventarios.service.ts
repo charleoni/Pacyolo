@@ -450,6 +450,15 @@ export class InventariosService {
         }
         articulosMap.set(articulo.id, articulo);
 
+        // FORZAR NATURALEZA SEGÚN EL TIPO DE AJUSTE (Regla Estricta: FALTANTE siempre resta stock, SOBRANTE siempre suma)
+        let tipoMovimiento = lin.tipo_movimiento;
+        if (dto.tipo_ajuste === 'FALTANTE_MERMA') {
+          tipoMovimiento = 'SALIDA';
+        } else if (dto.tipo_ajuste === 'SOBRANTE') {
+          tipoMovimiento = 'ENTRADA';
+        }
+        lin.tipo_movimiento = tipoMovimiento;
+
         const cantidad = Number(lin.cantidad);
         const costoUnitario = Number(lin.costo_unitario || articulo.costo_promedio || 0);
         const costoTotal = Number((cantidad * costoUnitario).toFixed(2));
@@ -457,7 +466,7 @@ export class InventariosService {
 
         const nuevaLinea = queryRunner.manager.create(NotaAjusteLinea, {
           articulo_id: articulo.id,
-          tipo_movimiento: lin.tipo_movimiento,
+          tipo_movimiento: tipoMovimiento,
           cantidad,
           costo_unitario: costoUnitario,
           costo_total: costoTotal,
@@ -479,7 +488,7 @@ export class InventariosService {
         let nuevoStockBodega = stockPrevio;
         let nuevoStockGlobal = stockGlobalPrevio;
 
-        if (lin.tipo_movimiento === 'ENTRADA') {
+        if (tipoMovimiento === 'ENTRADA') {
           nuevoStockBodega = stockPrevio + cantidad;
           nuevoStockGlobal = stockGlobalPrevio + cantidad;
         } else {
@@ -660,6 +669,133 @@ export class InventariosService {
     }
 
     return guardada;
+  }
+
+  async anularNotaAjuste(id: string, motivo: string, usuarioId?: string): Promise<NotaAjuste> {
+    const nota = await this.notaAjusteRepo.findOne({
+      where: { id },
+      relations: {
+        lineas: { articulo: true },
+        asiento: true,
+      },
+    });
+
+    if (!nota) {
+      throw new NotFoundException(`Nota de ajuste con ID '${id}' no existe.`);
+    }
+
+    if (nota.estado === 'ANULADA') {
+      throw new BadRequestException('Esta nota de ajuste ya se encuentra anulada.');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Revertir impacto físico en SaldoBodega, Articulo y Kardex
+      for (const lin of nota.lineas) {
+        const cantidad = Number(lin.cantidad);
+        const articulo = await queryRunner.manager.findOne(Articulo, { where: { id: lin.articulo_id } });
+        if (!articulo) continue;
+
+        let saldoBodega = await queryRunner.manager.findOne(SaldoBodega, {
+          where: {
+            empresa_id: nota.empresa_id,
+            bodega_id: nota.bodega_id,
+            articulo_id: articulo.id,
+          },
+        });
+
+        const stockPrevioBodega = saldoBodega ? Number(saldoBodega.stock_actual) : 0;
+        const stockPrevioGlobal = Number(articulo.stock_actual);
+
+        let nuevoStockBodega = stockPrevioBodega;
+        let nuevoStockGlobal = stockPrevioGlobal;
+
+        // Invertir el movimiento original
+        if (lin.tipo_movimiento === 'ENTRADA') {
+          // El ajuste original sumó, la anulación resta
+          nuevoStockBodega = Math.max(0, stockPrevioBodega - cantidad);
+          nuevoStockGlobal = Math.max(0, stockPrevioGlobal - cantidad);
+        } else {
+          // El ajuste original restó, la anulación suma
+          nuevoStockBodega = stockPrevioBodega + cantidad;
+          nuevoStockGlobal = stockPrevioGlobal + cantidad;
+        }
+
+        if (saldoBodega) {
+          saldoBodega.stock_actual = nuevoStockBodega;
+          await queryRunner.manager.save(saldoBodega);
+        }
+
+        articulo.stock_actual = nuevoStockGlobal;
+        await queryRunner.manager.save(articulo);
+
+        // Registrar movimiento de reversión en Kardex
+        const kardex = queryRunner.manager.create(KardexMovimiento, {
+          empresa_id: nota.empresa_id,
+          articulo_id: articulo.id,
+          bodega_id: nota.bodega_id,
+          tipo_movimiento_id: null,
+          naturaleza: 'AJUSTE',
+          fecha_movimiento: new Date().toISOString().slice(0, 10),
+          documento_referencia: `REV-${nota.numero_nota}`,
+          cantidad_entrada: lin.tipo_movimiento === 'SALIDA' ? cantidad : 0,
+          costo_unitario_entrada: lin.tipo_movimiento === 'SALIDA' ? Number(lin.costo_unitario) : 0,
+          costo_total_entrada: lin.tipo_movimiento === 'SALIDA' ? Number(lin.costo_total) : 0,
+          cantidad_salida: lin.tipo_movimiento === 'ENTRADA' ? cantidad : 0,
+          costo_unitario_salida: lin.tipo_movimiento === 'ENTRADA' ? Number(lin.costo_unitario) : 0,
+          costo_total_salida: lin.tipo_movimiento === 'ENTRADA' ? Number(lin.costo_total) : 0,
+          saldo_cantidad_resultante: nuevoStockBodega,
+          costo_unitario_promedio_resultante: Number(articulo.costo_promedio),
+          saldo_costo_total_resultante: Number((nuevoStockBodega * Number(articulo.costo_promedio)).toFixed(2)),
+          observaciones: `ANULACIÓN de ${nota.numero_nota}: ${motivo}`,
+        });
+        await queryRunner.manager.save(kardex);
+      }
+
+      nota.estado = 'ANULADA';
+      await queryRunner.manager.save(nota);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+
+    // 2. Anular el Asiento Contable asociado (generando asiento de reversión)
+    if (nota.asiento_id) {
+      try {
+        await this.asientosService.anular(
+          nota.asiento_id,
+          `Anulación de Nota de Ajuste ${nota.numero_nota}: ${motivo}`,
+          usuarioId,
+        );
+      } catch (asientoErr: any) {
+        console.error(`Error anulando asiento contable ${nota.asiento_id}:`, asientoErr.message);
+      }
+    }
+
+    // 3. Pista de Auditoría Obligatoria
+    await this.auditoriaService.registrarLog({
+      empresa_id: nota.empresa_id,
+      usuario_id: usuarioId || null,
+      usuario_email: 'sistema@pacyolo.com',
+      modulo: 'INVENTARIOS',
+      accion: 'ANULAR_NOTA_AJUSTE',
+      entidad_id: nota.id,
+      metodo_http: 'POST',
+      ruta: `/api/v1/inventarios/ajustes/${id}/anular`,
+      datos_nuevos: {
+        numero_nota: nota.numero_nota,
+        motivo,
+        asiento_anulado_id: nota.asiento_id,
+      },
+    });
+
+    return nota;
   }
 
   // =========================================================================
