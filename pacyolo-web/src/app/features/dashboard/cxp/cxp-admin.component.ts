@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
+import { TerceroLookupModalComponent } from '../../../shared/components/tercero-lookup-modal.component';
 
 interface ProveedorItem {
   id: string;
@@ -110,7 +111,7 @@ interface PagoHistorial {
 @Component({
   selector: 'app-cxp-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, TablePaginationComponent],
+  imports: [CommonModule, FormsModule, TablePaginationComponent, TerceroLookupModalComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado -->
@@ -354,16 +355,30 @@ interface PagoHistorial {
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3 flex-1">
               <label class="text-xs font-semibold text-slate-300 whitespace-nowrap">Proveedor:</label>
-              <select
-                [(ngModel)]="proveedorSeleccionadoEstado"
-                (change)="cargarEstadoCuenta()"
-                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 flex-1 max-w-md"
-              >
-                <option value="">-- Seleccionar Proveedor para Estado de Cuenta --</option>
-                @for (p of proveedores(); track p.id) {
-                  <option [value]="p.id">{{ p.numero_identificacion }} - {{ p.nombre_completo }}</option>
-                }
-              </select>
+              @if (proveedorEstadoObj(); as prov) {
+                <div class="flex items-center justify-between p-2 bg-slate-950 border border-indigo-500/50 rounded-xl flex-1 max-w-md">
+                  <div class="truncate text-xs">
+                    <span class="font-mono font-bold text-indigo-400 mr-1">[{{ prov.numero_identificacion }}]</span>
+                    <span class="text-white">{{ prov.nombre_completo }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="abrirLookupProveedorEstado()"
+                    class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-[11px] font-semibold transition cursor-pointer ml-2"
+                  >
+                    Cambiar 🔍
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="abrirLookupProveedorEstado()"
+                  class="flex items-center justify-between px-3.5 py-2 bg-slate-950 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs transition cursor-pointer flex-1 max-w-md"
+                >
+                  <span>🔍 Buscar Proveedor en Catálogo...</span>
+                  <span class="text-[10px] text-indigo-400 font-bold">Catálogo</span>
+                </button>
+              }
             </div>
 
             <button
@@ -486,16 +501,30 @@ interface PagoHistorial {
           <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div class="flex items-center gap-3 flex-1 min-w-[280px]">
               <label class="font-semibold text-slate-300 whitespace-nowrap">Proveedor:</label>
-              <select
-                [(ngModel)]="proveedorSeleccionadoExtracto"
-                (change)="cargarExtracto()"
-                class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 w-full"
-              >
-                <option value="">-- Seleccionar Proveedor --</option>
-                @for (p of proveedores(); track p.id) {
-                  <option [value]="p.id">{{ p.numero_identificacion }} - {{ p.nombre_completo }}</option>
-                }
-              </select>
+              @if (proveedorExtractoObj(); as prov) {
+                <div class="flex items-center justify-between p-2 bg-slate-950 border border-indigo-500/50 rounded-xl flex-1 max-w-md">
+                  <div class="truncate text-xs">
+                    <span class="font-mono font-bold text-indigo-400 mr-1">[{{ prov.numero_identificacion }}]</span>
+                    <span class="text-white">{{ prov.nombre_completo }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="abrirLookupProveedorExtracto()"
+                    class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-[11px] font-semibold transition cursor-pointer ml-2"
+                  >
+                    Cambiar 🔍
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="abrirLookupProveedorExtracto()"
+                  class="flex items-center justify-between px-3.5 py-2 bg-slate-950 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs transition cursor-pointer flex-1 max-w-md"
+                >
+                  <span>🔍 Buscar Proveedor en Catálogo...</span>
+                  <span class="text-[10px] text-indigo-400 font-bold">Catálogo</span>
+                </button>
+              }
             </div>
 
             <div class="flex items-center gap-2">
@@ -769,15 +798,30 @@ interface PagoHistorial {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-slate-300 mb-1">Proveedor (Tercero) *</label>
-              <select
-                [(ngModel)]="nuevaFactura.tercero_id"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                <option value="">-- Seleccionar Proveedor --</option>
-                <option *ngFor="let p of proveedores()" [value]="p.id">
-                  {{ p.numero_identificacion }} - {{ p.nombre_completo }}
-                </option>
-              </select>
+              @if (proveedorFacturaObj(); as prov) {
+                <div class="flex items-center justify-between p-2 bg-slate-950 border border-indigo-500/50 rounded-xl">
+                  <div class="truncate text-xs">
+                    <span class="font-mono font-bold text-indigo-400 mr-1">[{{ prov.numero_identificacion }}]</span>
+                    <span class="text-white">{{ prov.nombre_completo }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="abrirLookupProveedorFactura()"
+                    class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-[11px] font-semibold transition cursor-pointer ml-2"
+                  >
+                    Cambiar 🔍
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="abrirLookupProveedorFactura()"
+                  class="w-full flex items-center justify-between px-3.5 py-2 bg-slate-950 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs transition cursor-pointer"
+                >
+                  <span>🔍 Buscar Proveedor en Catálogo...</span>
+                  <span class="text-[10px] text-indigo-400 font-bold">Catálogo</span>
+                </button>
+              }
             </div>
 
             <div>
@@ -1524,6 +1568,14 @@ interface PagoHistorial {
           </div>
         </div>
       }
+
+      <!-- Modal Lookup Proveedor Enterprise -->
+      <app-tercero-lookup-modal
+        [(visible)]="mostrarLookupProveedor"
+        titulo="Catálogo Central de Proveedores"
+        [terceros]="proveedores()"
+        (seleccionado)="alSeleccionarProveedorLookup($event)"
+      />
     </div>
   `,
 })
@@ -1558,6 +1610,51 @@ export class CxpAdminComponent implements OnInit {
   // Búsqueda y Visor Documental
   busquedaFactura = '';
   readonly documentoCxpParaImprimir = signal<any | null>(null);
+
+  // Estados de Modales Lookup Enterprise
+  readonly mostrarLookupProveedor = signal(false);
+  readonly destinoLookupProveedor = signal<'ESTADO' | 'EXTRACTO' | 'FACTURA'>('ESTADO');
+
+  proveedorEstadoObj(): any {
+    return this.proveedores().find((p) => p.id === this.proveedorSeleccionadoEstado);
+  }
+
+  proveedorExtractoObj(): any {
+    return this.proveedores().find((p) => p.id === this.proveedorSeleccionadoExtracto);
+  }
+
+  proveedorFacturaObj(): any {
+    return this.proveedores().find((p) => p.id === this.nuevaFactura.tercero_id);
+  }
+
+  abrirLookupProveedorEstado(): void {
+    this.destinoLookupProveedor.set('ESTADO');
+    this.mostrarLookupProveedor.set(true);
+  }
+
+  abrirLookupProveedorExtracto(): void {
+    this.destinoLookupProveedor.set('EXTRACTO');
+    this.mostrarLookupProveedor.set(true);
+  }
+
+  abrirLookupProveedorFactura(): void {
+    this.destinoLookupProveedor.set('FACTURA');
+    this.mostrarLookupProveedor.set(true);
+  }
+
+  alSeleccionarProveedorLookup(tercero: any): void {
+    const dest = this.destinoLookupProveedor();
+    if (dest === 'ESTADO') {
+      this.proveedorSeleccionadoEstado = tercero.id;
+      this.cargarEstadoCuenta();
+    } else if (dest === 'EXTRACTO') {
+      this.proveedorSeleccionadoExtracto = tercero.id;
+      this.cargarExtracto();
+    } else if (dest === 'FACTURA') {
+      this.nuevaFactura.tercero_id = tercero.id;
+    }
+    this.mostrarLookupProveedor.set(false);
+  }
 
   // Señales de Reportes Analíticos
   proveedorSeleccionadoEstado = '';
