@@ -14,6 +14,7 @@ import { Tercero } from '../../terceros/entities/tercero.entity.js';
 import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../../parametros/entities/tipo-movimiento.entity.js';
 import { Articulo } from './articulo.entity.js';
+import { OrdenCompra } from '../../compras/entities/orden-compra.entity.js';
 
 export type EstadoEntradaAlmacen = 'CONFIRMADA' | 'ANULADA';
 
@@ -33,6 +34,10 @@ export class EntradaAlmacen {
   @Column({ type: 'uuid', nullable: true })
   @Index()
   orden_compra_id: string | null;
+
+  @ManyToOne(() => OrdenCompra, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'orden_compra_id' })
+  orden_compra: OrdenCompra | null;
 
   @Column({ type: 'uuid' })
   @Index()
@@ -74,7 +79,22 @@ export class EntradaAlmacen {
   estado: EstadoEntradaAlmacen;
 
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  subtotal: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  total_iva: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  total_con_iva: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   total_valorado: number;
+
+  @Column({ type: 'int', default: 1 })
+  numero_entrega: number;
+
+  @Column({ type: 'boolean', default: false })
+  es_entrega_final: boolean;
 
   @Column({ type: 'text', nullable: true })
   observaciones: string | null;
@@ -121,4 +141,13 @@ export class EntradaAlmacenLinea {
 
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   costo_total: number;
+
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 19 })
+  porcentaje_iva: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  valor_iva: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  total_con_iva: number;
 }

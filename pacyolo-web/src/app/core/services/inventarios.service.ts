@@ -45,6 +45,12 @@ export interface EntradaAlmacenItem {
   id: string;
   numero_entrada: string;
   orden_compra_id?: string;
+  orden_compra?: {
+    id: string;
+    numero_orden: string;
+    estado?: string;
+    total?: number;
+  };
   proveedor?: {
     id: string;
     numero_identificacion: string;
@@ -65,7 +71,12 @@ export interface EntradaAlmacenItem {
   cxp_id?: string;
   fecha_entrada: string;
   estado: 'CONFIRMADA' | 'ANULADA';
+  subtotal?: number;
+  total_iva?: number;
+  total_con_iva?: number;
   total_valorado: number;
+  numero_entrega?: number;
+  es_entrega_final?: boolean;
   observaciones?: string;
   lineas: {
     id: string;
@@ -77,6 +88,9 @@ export interface EntradaAlmacenItem {
     cantidad: number;
     costo_unitario: number;
     costo_total: number;
+    porcentaje_iva?: number;
+    valor_iva?: number;
+    total_con_iva?: number;
   }[];
   created_at: string;
 }

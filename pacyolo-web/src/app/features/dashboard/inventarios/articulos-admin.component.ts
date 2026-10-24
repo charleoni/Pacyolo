@@ -317,7 +317,16 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
                   @for (ent of entradasPaginadas(); track ent.id) {
                     <tr class="hover:bg-slate-800/30 transition">
-                      <td class="p-3.5 font-mono font-bold text-white">{{ ent.numero_entrada }}</td>
+                      <td class="p-3.5 font-mono">
+                        <div class="font-bold text-white">{{ ent.numero_entrada }}</div>
+                        @if (ent.orden_compra || ent.orden_compra_id) {
+                          <div class="text-[10px] text-indigo-400 font-sans font-medium flex items-center gap-1">
+                            <span>OC: {{ ent.orden_compra?.numero_orden || 'Vinculada' }}</span>
+                            <span class="text-slate-500">•</span>
+                            <span class="text-emerald-400 font-bold">Entr #{{ ent.numero_entrega || 1 }}</span>
+                          </div>
+                        }
+                      </td>
                       <td class="p-3.5 text-slate-400 font-mono">{{ ent.fecha_entrada }}</td>
                       <td class="p-3.5 font-medium text-white">{{ ent.proveedor?.nombre_completo || 'Proveedor Varios' }}</td>
                       <td class="p-3.5 text-slate-300">{{ ent.bodega?.nombre || 'Bodega Principal' }}</td>
@@ -1256,7 +1265,8 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                         <p class="text-[11px] text-blue-300 leading-relaxed">
                           Esta orden cuenta con <strong class="text-white">{{ entradasPreviasPendientesCausar().length }} entrega(s) previa(s)</strong> recibida(s) con remisión pendiente(s) de facturar por
                           <strong class="text-emerald-400 font-mono">\${{ totalEntradasPreviasPendientesCausar().toLocaleString('es-CO') }}</strong>
-                          ({{ entradasPreviasPendientesCausarNumeros() }}).
+                          ({{ entradasPreviasPendientesCausarNumeros() }
+}).
                         </p>
                         <p class="text-[11px] text-blue-300">
                           Al causar con esta factura, el backend consolidará el valor de las remisiones anteriores más la entrega actual en el comprobante y pasivo de CxP.
@@ -1295,7 +1305,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
               <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-3 space-y-3">
                 @for (lin of entradaForm.lineas; track $index) {
                   <div class="grid grid-cols-12 gap-2 items-center text-xs">
-                    <div class="col-span-6">
+                    <div class="col-span-5">
                       @if (obtenerArticulo(lin.articulo_id); as art) {
                         <div class="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-lg px-2 py-1 transition group">
                           <div class="truncate text-xs">
@@ -1332,13 +1342,27 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                       />
                     </div>
 
-                    <div class="col-span-3">
+                    <div class="col-span-2">
                       <input
                         type="number"
                         [(ngModel)]="lin.costo_unitario"
                         placeholder="Costo Unit."
                         class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white font-mono text-right"
                       />
+                    </div>
+
+                    <div class="col-span-1">
+                      <input
+                        type="number"
+                        [(ngModel)]="lin.porcentaje_iva"
+                        placeholder="IVA %"
+                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white font-mono text-right"
+                        title="Tarifa IVA %"
+                      />
+                    </div>
+
+                    <div class="col-span-1 text-right font-mono font-bold text-slate-300 truncate" title="Subtotal">
+                      \${{ (Number(lin.cantidad || 0) * Number(lin.costo_unitario || 0)).toLocaleString('es-CO') }}
                     </div>
 
                     <div class="col-span-1 text-center">
@@ -1351,6 +1375,36 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     </div>
                   </div>
                 }
+              </div>
+
+              <!-- Resumen Financiero y Desglose de IVA de la Entrada -->
+              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+                <div class="flex justify-between text-slate-400">
+                  <span>Subtotal Mercancías (Valor Kardex):</span>
+                  <span class="font-mono font-bold text-slate-200">\${{ totalSubtotalEntrada().toLocaleString('es-CO') }}</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                  <span>Impuestos (IVA Descontable Estimado):</span>
+                  <span class="font-mono font-bold text-slate-200">\${{ totalIvaEntrada().toLocaleString('es-CO') }}</span>
+                </div>
+                <div class="flex justify-between pt-1 border-t border-slate-800 font-bold text-sm">
+                  <span class="text-white">Total con Impuestos de la Recepción:</span>
+                  <span class="text-emerald-400 font-mono">\${{ totalConIvaEntrada().toLocaleString('es-CO') }}</span>
+                </div>
+              </div>
+
+              <!-- Observaciones / Propuesta Editable por el Usuario -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block font-semibold text-slate-300 text-xs">Observaciones / Trazabilidad de la Entrega</label>
+                  <span class="text-[10px] text-emerald-400 font-mono font-semibold">Propuesta del sistema (editable)</span>
+                </div>
+                <textarea
+                  [(ngModel)]="entradaForm.observaciones"
+                  rows="2"
+                  placeholder="Detalles de la entrega parcial, soporte o estado de la mercancía..."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                ></textarea>
               </div>
             </div>
 
@@ -1791,7 +1845,10 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                         <th class="p-2.5">Descripción del Artículo</th>
                         <th class="p-2.5 text-right">Cant. Recibida</th>
                         <th class="p-2.5 text-right">Costo Unitario</th>
-                        <th class="p-2.5 text-right">Total Valorado</th>
+                        <th class="p-2.5 text-right">Subtotal</th>
+                        <th class="p-2.5 text-center">IVA %</th>
+                        <th class="p-2.5 text-right">Valor IVA</th>
+                        <th class="p-2.5 text-right">Total con IVA</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
@@ -1802,17 +1859,84 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                           <td class="p-2.5 text-right font-bold">{{ Number(l.cantidad).toLocaleString('es-CO') }}</td>
                           <td class="p-2.5 text-right">\${{ Number(l.costo_unitario).toLocaleString('es-CO') }}</td>
                           <td class="p-2.5 text-right font-bold text-slate-900">\${{ (Number(l.cantidad) * Number(l.costo_unitario)).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-center">{{ Number(l.porcentaje_iva ?? 19) }}%</td>
+                          <td class="p-2.5 text-right text-slate-600">\${{ Number(l.valor_iva || (Number(l.cantidad) * Number(l.costo_unitario) * Number(l.porcentaje_iva ?? 19) / 100)).toLocaleString('es-CO') }}</td>
+                          <td class="p-2.5 text-right font-bold text-indigo-700">\${{ Number(l.total_con_iva || (Number(l.cantidad) * Number(l.costo_unitario) * (1 + Number(l.porcentaje_iva ?? 19) / 100))).toLocaleString('es-CO') }}</td>
                         </tr>
                       }
                     </tbody>
                     <tfoot class="bg-slate-50 border-t-2 border-slate-900 font-mono font-bold text-xs">
                       <tr>
-                        <td colspan="4" class="p-2.5 text-right uppercase">Total Valorado Entrada:</td>
-                        <td class="p-2.5 text-right text-sm text-slate-900">\${{ Number(doc.datos.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                        <td colspan="4" class="p-2.5 text-right uppercase">Subtotal Mercancías:</td>
+                        <td class="p-2.5 text-right text-slate-900">\${{ Number(doc.datos.subtotal || doc.datos.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                        <td colspan="2" class="p-2.5 text-right uppercase">Total IVA:</td>
+                        <td class="p-2.5 text-right text-indigo-700">\${{ Number(doc.datos.total_con_iva ? (doc.datos.total_con_iva - (doc.datos.subtotal || doc.datos.total_valorado)) : (doc.datos.total_iva || 0)).toLocaleString('es-CO') }}</td>
+                      </tr>
+                      <tr class="bg-slate-100 text-sm">
+                        <td colspan="7" class="p-2.5 text-right uppercase">TOTAL GENERAL RECEPCIÓN:</td>
+                        <td class="p-2.5 text-right font-black text-slate-950">\${{ Number(doc.datos.total_con_iva || doc.datos.total_valorado || 0).toLocaleString('es-CO') }}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
+
+                @if (doc.datos.observaciones) {
+                  <div class="mt-3 p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                    <span class="block text-[10px] font-bold uppercase text-slate-500 mb-0.5">Observaciones & Trazabilidad de la Entrega:</span>
+                    <p class="text-slate-800 italic">{{ doc.datos.observaciones }}</p>
+                  </div>
+                }
+
+                <!-- Historial Completo de Entregas Parciales de esta Orden de Compra -->
+                @if (doc.datos.orden_compra_id && historialEntradasDeOrden(doc.datos.orden_compra_id).length > 1) {
+                  <div class="mt-3 border border-indigo-200 rounded-xl overflow-hidden bg-indigo-50/20 text-xs">
+                    <div class="bg-indigo-100/60 p-2.5 font-bold text-indigo-950 uppercase tracking-wider flex items-center justify-between text-[11px]">
+                      <span>📦 Historial Completo de Entregas de esta Orden ({{ doc.datos.orden_compra?.numero_orden || 'OC' }})</span>
+                      <span class="font-mono text-indigo-800">{{ historialEntradasDeOrden(doc.datos.orden_compra_id).length }} entregas</span>
+                    </div>
+                    <table class="w-full text-left border-collapse font-mono text-[11px]">
+                      <thead class="bg-white/80 text-slate-600 border-b border-indigo-100 text-[10px] uppercase">
+                        <tr>
+                          <th class="p-2">N° Entrada</th>
+                          <th class="p-2">Fecha</th>
+                          <th class="p-2">Doc. Soporte</th>
+                          <th class="p-2 text-right">Subtotal</th>
+                          <th class="p-2 text-right">IVA</th>
+                          <th class="p-2 text-right">Total</th>
+                          <th class="p-2 text-center">Estado CxP</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-indigo-100/60">
+                        @for (he of historialEntradasDeOrden(doc.datos.orden_compra_id); track he.id) {
+                          <tr [class]="he.id === doc.datos.id ? 'bg-indigo-50 font-bold' : ''">
+                            <td class="p-2">
+                              {{ he.numero_entrada }} (Entr #{{ he.numero_entrega || ($index + 1) }})
+                              @if (he.id === doc.datos.id) {
+                                <span class="text-[9px] text-indigo-600 font-sans ml-1">(Actual)</span>
+                              }
+                            </td>
+                            <td class="p-2 text-slate-600">{{ he.fecha_entrada }}</td>
+                            <td class="p-2">{{ he.numero_remision_proveedor ? 'Rem: ' + he.numero_remision_proveedor : (he.numero_factura_proveedor ? 'Fac: ' + he.numero_factura_proveedor : 'Directa') }}</td>
+                            <td class="p-2 text-right">\${{ Number(he.subtotal || he.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                            <td class="p-2 text-right text-slate-600">\${{ Number(he.total_iva || 0).toLocaleString('es-CO') }}</td>
+                            <td class="p-2 text-right text-indigo-900">\${{ Number(he.total_con_iva || he.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                            <td class="p-2 text-center">
+                              @if (he.cxp_id || he.numero_factura_proveedor) {
+                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-800">
+                                  Factura: {{ he.numero_factura_proveedor || 'Causada' }}
+                                </span>
+                              } @else {
+                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800">
+                                  Remisión
+                                </span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
 
                 <!-- Resumen Contable Oficial (Partida Doble NIIF) -->
                 @if (doc.datos.asiento) {
@@ -2176,6 +2300,34 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
   `,
 })
 export class ArticulosAdminComponent implements OnInit {
+
+  historialEntradasDeOrden(ordenId: string): EntradaAlmacenItem[] {
+    if (!ordenId) return [];
+    return this.entradas().filter((e: any) => e.orden_compra_id === ordenId);
+  }
+
+  totalSubtotalEntrada(): number {
+    return (this.entradaForm.lineas || []).reduce(
+      (sum: number, l: any) => sum + (Number(l.cantidad || 0) * Number(l.costo_unitario || 0)),
+      0
+    );
+  }
+
+  totalIvaEntrada(): number {
+    return (this.entradaForm.lineas || []).reduce(
+      (sum: number, l: any) => {
+        const sub = Number(l.cantidad || 0) * Number(l.costo_unitario || 0);
+        const iva = Number(l.porcentaje_iva !== undefined ? l.porcentaje_iva : 19);
+        return sum + (sub * iva / 100);
+      },
+      0
+    );
+  }
+
+  totalConIvaEntrada(): number {
+    return this.totalSubtotalEntrada() + this.totalIvaEntrada();
+  }
+
   private readonly inventariosService = inject(InventariosService);
   private readonly parametrosService = inject(ParametrosService);
   private readonly comprasService = inject(ComprasService);
@@ -2899,6 +3051,7 @@ export class ArticulosAdminComponent implements OnInit {
         articulo_id: l.articulo_id,
         cantidad: Number(l.cantidad) > 0 ? Number(l.cantidad) : 1,
         costo_unitario: Number(l.costo_unitario) >= 0 ? Number(l.costo_unitario) : 0,
+        porcentaje_iva: Number(l.porcentaje_iva !== undefined ? l.porcentaje_iva : 19),
       }));
 
     if (lineasSanitizadas.length === 0) {
@@ -2911,6 +3064,7 @@ export class ArticulosAdminComponent implements OnInit {
       bodega_id: this.entradaForm.bodega_id,
       fecha_entrada: this.entradaForm.fecha_entrada || new Date().toISOString().slice(0, 10),
       causar_cxp: !!this.entradaForm.causar_cxp,
+      observaciones: this.entradaForm.observaciones?.trim() || undefined,
       lineas: lineasSanitizadas,
     };
 
@@ -3070,9 +3224,25 @@ export class ArticulosAdminComponent implements OnInit {
           articulo_id: l.articulo?.id || '',
           cantidad: Math.max(1, Number(l.cantidad_solicitada) - Number(l.cantidad_recibida || 0)),
           costo_unitario: Number(l.costo_unitario) || 0,
+          porcentaje_iva: Number(l.porcentaje_iva ?? 19),
         }));
       }
     }
+
+    // Proponer observación descriptiva de entrega parcial
+    const previas = this.entradas().filter((e: any) => e.orden_compra_id === oc.id);
+    const numEntrega = previas.length + 1;
+    const resumenItems = this.entradaForm.lineas.map((l: any) => {
+      const art = this.obtenerArticulo(l.articulo_id);
+      return `${l.cantidad}x ${art ? art.nombre : 'Ítem'}`;
+    }).join(', ');
+
+    let textoPropuesto = `Recepción de entrega parcial #${numEntrega} vinculada a la orden ${oc.numero_orden}. Ítems a recibir: ${resumenItems}.`;
+    if (previas.length > 0) {
+      const listaPrevias = previas.map((p: any) => `${p.numero_entrada} (${p.numero_remision_proveedor ? 'Rem ' + p.numero_remision_proveedor : 'Directa'})`).join(', ');
+      textoPropuesto += ` Entregas previas de esta orden: [${listaPrevias}].`;
+    }
+    this.entradaForm.observaciones = textoPropuesto;
 
     this.notificationService.success(`Orden ${oc.numero_orden} vinculada. Ítems pendientes precargados exitosamente.`);
   }

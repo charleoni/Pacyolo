@@ -33,7 +33,10 @@ export class ComprasService {
       .leftJoinAndSelect('o.proveedor', 'p')
       .leftJoinAndSelect('o.bodega_destino', 'b')
       .leftJoinAndSelect('o.lineas', 'l')
-      .leftJoinAndSelect('l.articulo', 'art');
+      .leftJoinAndSelect('l.articulo', 'art')
+      .leftJoinAndSelect('o.entradas', 'ent')
+      .leftJoinAndSelect('ent.lineas', 'ent_lineas')
+      .leftJoinAndSelect('ent_lineas.articulo', 'ent_art');
 
     if (empresaId) {
       qb.where('o.empresa_id = :empresaId', { empresaId });
@@ -54,6 +57,11 @@ export class ComprasService {
         bodega_destino: true,
         lineas: {
           articulo: true,
+        },
+        entradas: {
+          lineas: {
+            articulo: true,
+          },
         },
       },
     });

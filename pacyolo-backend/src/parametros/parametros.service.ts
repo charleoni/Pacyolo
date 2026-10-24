@@ -367,6 +367,8 @@ export class ParametrosService {
       { codigo: 'SAL_CONSUMO', nombre: 'Salida por Consumo Interno / Muestras', naturaleza: 'SALIDA', afecta_costo_promedio: false },
       { codigo: 'SAL_MERMA', nombre: 'Salida por Avería / Merma / Vencimiento', naturaleza: 'SALIDA', afecta_costo_promedio: false },
       { codigo: 'TRASLADO', nombre: 'Traslado entre Bodegas', naturaleza: 'TRASLADO', afecta_costo_promedio: false },
+      { codigo: 'DEV_PROVEEDOR', nombre: 'Devolución a Proveedor (Devolución en Compra)', naturaleza: 'SALIDA', afecta_costo_promedio: false },
+      { codigo: 'DEV_CLIENTE', nombre: 'Devolución de Cliente (Devolución en Venta)', naturaleza: 'ENTRADA', afecta_costo_promedio: true },
     ];
 
     for (const m of movimientosSemilla) {

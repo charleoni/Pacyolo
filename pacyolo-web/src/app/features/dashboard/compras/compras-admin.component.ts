@@ -814,8 +814,69 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 </div>
               </div>
 
+              <!-- Historial de Recepciones Físicas (Entregas Parciales y Facturación) -->
+              @if (orden.entradas && orden.entradas.length > 0) {
+                <div class="border border-slate-300 rounded-lg overflow-hidden text-xs">
+                  <div class="bg-slate-100 p-2.5 font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-300 text-[11px]">
+                    <span class="flex items-center gap-1.5">
+                      <span>📥</span>
+                      <span>Historial de Recepciones Físicas (Entregas Parciales & Facturación)</span>
+                    </span>
+                    <span class="font-mono text-indigo-700 font-bold">
+                      {{ orden.entradas.length }} entrega(s) registrada(s)
+                    </span>
+                  </div>
+                  <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-700 font-mono text-[10px] uppercase border-b border-slate-200">
+                      <tr>
+                        <th class="p-2 border-r border-slate-200">Entrega</th>
+                        <th class="p-2 border-r border-slate-200">Fecha</th>
+                        <th class="p-2 border-r border-slate-200">Doc. Soporte</th>
+                        <th class="p-2 border-r border-slate-200">Ítems Recibidos</th>
+                        <th class="p-2 border-r border-slate-200 text-right">Subtotal</th>
+                        <th class="p-2 border-r border-slate-200 text-right">IVA</th>
+                        <th class="p-2 border-r border-slate-200 text-right">Total con IVA</th>
+                        <th class="p-2 text-center">Estado CxP</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-[11px]">
+                      @for (e of orden.entradas; track e.id) {
+                        <tr>
+                          <td class="p-2 border-r border-slate-200 font-bold text-slate-900">
+                            {{ e.numero_entrada }} (Entr #{{ e.numero_entrega || ($index + 1) }})
+                          </td>
+                          <td class="p-2 border-r border-slate-200 text-slate-600">{{ e.fecha_entrada }}</td>
+                          <td class="p-2 border-r border-slate-200 text-slate-700">
+                            {{ e.numero_remision_proveedor ? 'Rem: ' + e.numero_remision_proveedor : (e.numero_factura_proveedor ? 'Fac: ' + e.numero_factura_proveedor : 'Directa') }}
+                          </td>
+                          <td class="p-2 border-r border-slate-200 font-sans text-slate-800">
+                            @for (l of e.lineas; track l.id) {
+                              <div>{{ Number(l.cantidad).toLocaleString('es-CO') }}x {{ l.articulo?.nombre || 'Ítem' }}</div>
+                            }
+                          </td>
+                          <td class="p-2 border-r border-slate-200 text-right font-bold">\${{ Number(e.subtotal || e.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                          <td class="p-2 border-r border-slate-200 text-right text-slate-600">\${{ Number(e.total_iva || 0).toLocaleString('es-CO') }}</td>
+                          <td class="p-2 border-r border-slate-200 text-right font-bold text-indigo-700">\${{ Number(e.total_con_iva || e.total_valorado || 0).toLocaleString('es-CO') }}</td>
+                          <td class="p-2 text-center">
+                            @if (e.cxp_id || e.numero_factura_proveedor) {
+                              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                💳 Factura: {{ e.numero_factura_proveedor || 'Causada' }}
+                              </span>
+                            } @else {
+                              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                📦 Remisión (Pendiente CxP)
+                              </span>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+
               <!-- Firmas y Aprobaciones Formales -->
-              <div class="grid grid-cols-3 gap-6 pt-12 text-center text-xs text-slate-700">
+              <div class="grid grid-cols-3 gap-6 pt-8 text-center text-xs text-slate-700">
                 <div class="border-t border-slate-400 pt-2">
                   <div class="font-bold">Elaborado Por</div>
                   <div class="text-[11px] text-slate-500 font-mono">{{ usuario()?.nombres }} {{ usuario()?.apellidos }}</div>

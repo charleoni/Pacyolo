@@ -151,6 +151,7 @@ export class InventariosService {
       .leftJoinAndSelect('e.proveedor', 'p')
       .leftJoinAndSelect('e.bodega', 'b')
       .leftJoinAndSelect('e.tipo_movimiento', 'tm')
+      .leftJoinAndSelect('e.orden_compra', 'oc')
       .leftJoinAndSelect('e.lineas', 'l')
       .leftJoinAndSelect('l.articulo', 'art');
 
@@ -194,6 +195,8 @@ export class InventariosService {
 
     try {
       let totalValorado = 0;
+      let totalIva = 0;
+      let totalConIva = 0;
       const lineasEntrada: EntradaAlmacenLinea[] = [];
 
       for (const lin of dto.lineas) {
@@ -205,7 +208,13 @@ export class InventariosService {
         const cantidad = Number(lin.cantidad);
         const costoUnitario = Number(lin.costo_unitario);
         const costoTotal = Number((cantidad * costoUnitario).toFixed(2));
+        const porcentajeIva = lin.porcentaje_iva !== undefined ? Number(lin.porcentaje_iva) : Number(articulo.tarifa_iva ?? 19);
+        const valorIva = Number((costoTotal * (porcentajeIva / 100)).toFixed(2));
+        const totalLineaConIva = Number((costoTotal + valorIva).toFixed(2));
+
         totalValorado += costoTotal;
+        totalIva += valorIva;
+        totalConIva += totalLineaConIva;
 
         // 1. Crear línea de entrada
         const nuevaLinea = queryRunner.manager.create(EntradaAlmacenLinea, {
@@ -213,6 +222,9 @@ export class InventariosService {
           cantidad,
           costo_unitario: costoUnitario,
           costo_total: costoTotal,
+          porcentaje_iva: porcentajeIva,
+          valor_iva: valorIva,
+          total_con_iva: totalLineaConIva,
         });
         lineasEntrada.push(nuevaLinea);
 
@@ -286,27 +298,19 @@ export class InventariosService {
         await queryRunner.manager.save(kardex);
       }
 
-      // 5. Crear cabecera EntradaAlmacen
-      const entrada = queryRunner.manager.create(EntradaAlmacen, {
-        empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
-        numero_entrada: numeroEntrada,
-        orden_compra_id: dto.orden_compra_id || null,
-        proveedor_id: dto.proveedor_id,
-        bodega_id: dto.bodega_id,
-        tipo_movimiento_id: tipoMovId,
-        numero_remision_proveedor: dto.numero_remision_proveedor || null,
-        numero_factura_proveedor: dto.numero_factura_proveedor || null,
-        fecha_entrada: dto.fecha_entrada,
-        estado: 'CONFIRMADA',
-        total_valorado: totalValorado,
-        observaciones: dto.observaciones || null,
-        lineas: lineasEntrada,
-      });
+      // 5. Determinar número secuencial de entrega y actualizar orden de compra
+      let numeroEntrega = 1;
+      let esEntregaFinal = false;
 
-      const guardada = await queryRunner.manager.save(entrada);
-
-      // 6. Actualizar recepción en Orden de Compra si está vinculada
       if (dto.orden_compra_id) {
+        const conteoPrevias = await queryRunner.manager.count(EntradaAlmacen, {
+          where: {
+            orden_compra_id: dto.orden_compra_id,
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+          },
+        });
+        numeroEntrega = conteoPrevias + 1;
+
         const orden = await queryRunner.manager.findOne(OrdenCompra, {
           where: { id: dto.orden_compra_id },
           relations: { lineas: true },
@@ -332,6 +336,7 @@ export class InventariosService {
 
           if (todasCompletas) {
             orden.estado = 'RECIBIDA_TOTAL';
+            esEntregaFinal = true;
           } else if (algunaRecibida) {
             orden.estado = 'RECIBIDA_PARCIAL';
           }
@@ -339,6 +344,33 @@ export class InventariosService {
         }
       }
 
+      totalValorado = Number(totalValorado.toFixed(2));
+      totalIva = Number(totalIva.toFixed(2));
+      totalConIva = Number((totalValorado + totalIva).toFixed(2));
+
+      // 6. Crear cabecera EntradaAlmacen
+      const entrada = queryRunner.manager.create(EntradaAlmacen, {
+        empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+        numero_entrada: numeroEntrada,
+        orden_compra_id: dto.orden_compra_id || null,
+        proveedor_id: dto.proveedor_id,
+        bodega_id: dto.bodega_id,
+        tipo_movimiento_id: tipoMovId,
+        numero_remision_proveedor: dto.numero_remision_proveedor || null,
+        numero_factura_proveedor: dto.numero_factura_proveedor || null,
+        fecha_entrada: dto.fecha_entrada,
+        estado: 'CONFIRMADA',
+        subtotal: totalValorado,
+        total_iva: totalIva,
+        total_con_iva: totalConIva,
+        total_valorado: totalValorado,
+        numero_entrega: numeroEntrega,
+        es_entrega_final: esEntregaFinal,
+        observaciones: dto.observaciones || null,
+        lineas: lineasEntrada,
+      });
+
+      const guardada = await queryRunner.manager.save(entrada);
       await queryRunner.commitTransaction();
 
       // 7. Si se solicitó causación inmediata con factura de proveedor
@@ -370,8 +402,8 @@ export class InventariosService {
               subtotalCausar = Number((subtotalCausar + sumaPrevias).toFixed(2));
 
               const listaNumeros = [
-                ...entradasPrevias.map((e) => e.numero_entrada),
-                guardada.numero_entrada,
+                ...entradasPrevias.map((e) => `${e.numero_entrada} (Entr #${e.numero_entrega || 1})`),
+                `${guardada.numero_entrada} (Entr #${numeroEntrega})`,
               ].join(', ');
               glosa = `Consolidación entregas [${listaNumeros}] - Factura ${dto.numero_factura_proveedor}`;
             }

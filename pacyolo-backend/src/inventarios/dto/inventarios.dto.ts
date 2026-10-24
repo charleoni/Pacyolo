@@ -147,6 +147,13 @@ export class EntradaLineaDto {
   @IsNumber()
   @Min(0)
   costo_unitario: number;
+
+  @ApiPropertyOptional({ example: 19 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  porcentaje_iva?: number;
 }
 
 export class CreateEntradaAlmacenDto {

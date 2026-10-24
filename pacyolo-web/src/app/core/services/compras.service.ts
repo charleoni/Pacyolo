@@ -48,6 +48,7 @@ export interface OrdenCompraItem {
     subtotal: number;
     total: number;
   }[];
+  entradas?: any[];
   created_at: string;
 }
 
