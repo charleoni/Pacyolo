@@ -142,7 +142,7 @@ export interface Tercero {
 
       <!-- Tabla de Terceros -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
+        <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="sticky top-0 z-10 bg-slate-950 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>

@@ -63,7 +63,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
       </header>
 
       <!-- Sub-Barra de Navegación de Features -->
-      <nav class="px-6 flex items-center gap-2 overflow-x-auto">
+      <nav class="px-6 flex items-center gap-2">
         <a
           routerLink="/dashboard"
           routerLinkActive="border-indigo-500 text-white font-medium"
@@ -96,7 +96,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuAbierto() === 'contabilidad') {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute top-full left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Módulo Contable</span>
@@ -168,7 +168,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuAbierto() === 'abastecimiento') {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute top-full left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gestión de Stock & Compras</span>
@@ -238,7 +238,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuAbierto() === 'seguridad') {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute top-full left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Control & Auditoría</span>
