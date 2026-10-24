@@ -9,6 +9,7 @@ import { OrdenCompra, EstadoOrdenCompra } from './entities/orden-compra.entity.j
 import { OrdenCompraLinea } from './entities/orden-compra-linea.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
 import { Articulo } from '../inventarios/entities/articulo.entity.js';
+import { EntradaAlmacen } from '../inventarios/entities/entrada-almacen.entity.js';
 import { CreateOrdenCompraDto, CausarOrdenCompraDto } from './dto/compras.dto.js';
 import { CxpService } from '../cxp/cxp.service.js';
 
@@ -219,6 +220,17 @@ export class ComprasService {
       orden.estado = 'APROBADA';
     }
     const ordenActualizada = await this.ordenRepo.save(orden);
+
+    // Actualizar entradas de almacén asociadas que no estuviesen causadas
+    try {
+      const entradaRepo = this.dataSource.getRepository(EntradaAlmacen);
+      await entradaRepo.update(
+        { orden_compra_id: orden.id, cxp_id: IsNull() },
+        { cxp_id: cxp.id, numero_factura_proveedor: numeroFactura },
+      );
+    } catch (e: any) {
+      console.warn(`[ComprasService] No se pudo actualizar cxp_id en entradas de almacén: ${e.message}`);
+    }
 
     return { orden: ordenActualizada, cxp };
   }

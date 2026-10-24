@@ -307,6 +307,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     <th class="p-3.5">Proveedor</th>
                     <th class="p-3.5">Bodega Destino</th>
                     <th class="p-3.5">Remisión</th>
+                    <th class="p-3.5 text-center">Factura / CxP</th>
                     <th class="p-3.5 text-center">Ítems</th>
                     <th class="p-3.5 text-right">Total Valorado</th>
                     <th class="p-3.5 text-center">Estado</th>
@@ -321,6 +322,17 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                       <td class="p-3.5 font-medium text-white">{{ ent.proveedor?.nombre_completo || 'Proveedor Varios' }}</td>
                       <td class="p-3.5 text-slate-300">{{ ent.bodega?.nombre || 'Bodega Principal' }}</td>
                       <td class="p-3.5 font-mono text-slate-400">{{ ent.numero_remision_proveedor || 'N/A' }}</td>
+                      <td class="p-3.5 text-center">
+                        @if (ent.numero_factura_proveedor || ent.cxp_id) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono" title="Causada en Cuentas por Pagar">
+                            💳 {{ ent.numero_factura_proveedor || 'Facturada' }}
+                          </span>
+                        } @else {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Pendiente de facturar / Solo remisión">
+                            📦 Remisión
+                          </span>
+                        }
+                      </td>
                       <td class="p-3.5 text-center font-mono">{{ ent.lineas?.length || 0 }}</td>
                       <td class="p-3.5 text-right font-mono font-bold text-emerald-400">
                         \${{ Number(ent.total_valorado).toLocaleString('es-CO') }}
@@ -344,7 +356,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="9" class="p-8 text-center text-slate-500">
+                      <td colspan="10" class="p-8 text-center text-slate-500">
                         No se encontraron entradas de almacén coincidentes.
                       </td>
                     </tr>
@@ -1233,6 +1245,25 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                       class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500"
                     />
                   </div>
+
+                  @if (entradasPreviasPendientesCausar().length > 0) {
+                    <div class="col-span-1 sm:col-span-2 p-2.5 bg-blue-950/40 border border-blue-500/30 rounded-lg flex items-start gap-2.5 text-xs text-blue-200">
+                      <span class="text-base text-blue-400">ℹ️</span>
+                      <div class="space-y-1">
+                        <p class="font-semibold text-blue-100">
+                          Consolidación Automática de Entregas Parciales con Remisión
+                        </p>
+                        <p class="text-[11px] text-blue-300 leading-relaxed">
+                          Esta orden cuenta con <strong class="text-white">{{ entradasPreviasPendientesCausar().length }} entrega(s) previa(s)</strong> recibida(s) con remisión pendiente(s) de facturar por
+                          <strong class="text-emerald-400 font-mono">\${{ totalEntradasPreviasPendientesCausar().toLocaleString('es-CO') }}</strong>
+                          ({{ entradasPreviasPendientesCausarNumeros() }}).
+                        </p>
+                        <p class="text-[11px] text-blue-300">
+                          Al causar con esta factura, el backend consolidará el valor de las remisiones anteriores más la entrega actual en el comprobante y pasivo de CxP.
+                        </p>
+                      </div>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -2251,6 +2282,25 @@ export class ArticulosAdminComponent implements OnInit {
 
   ordenCompraSeleccionada(): OrdenCompraItem | undefined {
     return this.ordenesCompra().find((oc) => oc.id === this.entradaForm.orden_compra_id);
+  }
+
+  entradasPreviasPendientesCausar(): EntradaAlmacenItem[] {
+    const ocId = this.entradaForm.orden_compra_id;
+    if (!ocId) return [];
+    return this.entradas().filter(
+      (e) => e.orden_compra_id === ocId && (!e.cxp_id || e.cxp_id === null)
+    );
+  }
+
+  totalEntradasPreviasPendientesCausar(): number {
+    return this.entradasPreviasPendientesCausar().reduce(
+      (acc, e) => acc + Number(e.total_valorado || 0),
+      0
+    );
+  }
+
+  entradasPreviasPendientesCausarNumeros(): string {
+    return this.entradasPreviasPendientesCausar().map((e) => e.numero_entrada).join(', ');
   }
   readonly mostrarLookupArticulo = signal(false);
   readonly destinoLookupArticulo = signal<'ENTRADA' | 'AJUSTE' | 'TRASLADO' | 'KARDEX'>('ENTRADA');

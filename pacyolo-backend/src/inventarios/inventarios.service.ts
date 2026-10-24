@@ -295,6 +295,7 @@ export class InventariosService {
         bodega_id: dto.bodega_id,
         tipo_movimiento_id: tipoMovId,
         numero_remision_proveedor: dto.numero_remision_proveedor || null,
+        numero_factura_proveedor: dto.numero_factura_proveedor || null,
         fecha_entrada: dto.fecha_entrada,
         estado: 'CONFIRMADA',
         total_valorado: totalValorado,
@@ -343,16 +344,73 @@ export class InventariosService {
       // 7. Si se solicitó causación inmediata con factura de proveedor
       if (dto.causar_cxp && dto.numero_factura_proveedor) {
         try {
-          await this.cxpService.causarFactura({
+          let subtotalCausar = Number(totalValorado);
+          let glosa = `Recepción entrada ${guardada.numero_entrada} - Factura ${dto.numero_factura_proveedor}`;
+          let entradasPrevias: EntradaAlmacen[] = [];
+
+          if (dto.orden_compra_id) {
+            // Barrer todas las entradas confirmadas previas vinculadas a esta OC que no hayan sido causadas aún
+            entradasPrevias = await this.entradaRepo.find({
+              where: {
+                orden_compra_id: dto.orden_compra_id,
+                empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+                estado: 'CONFIRMADA',
+              },
+            });
+
+            entradasPrevias = entradasPrevias.filter(
+              (e) => e.id !== guardada.id && !e.cxp_id,
+            );
+
+            if (entradasPrevias.length > 0) {
+              const sumaPrevias = entradasPrevias.reduce(
+                (sum, e) => sum + Number(e.total_valorado || 0),
+                0,
+              );
+              subtotalCausar = Number((subtotalCausar + sumaPrevias).toFixed(2));
+
+              const listaNumeros = [
+                ...entradasPrevias.map((e) => e.numero_entrada),
+                guardada.numero_entrada,
+              ].join(', ');
+              glosa = `Consolidación entregas [${listaNumeros}] - Factura ${dto.numero_factura_proveedor}`;
+            }
+          }
+
+          const cxp = await this.cxpService.causarFactura({
             empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
             tercero_id: dto.proveedor_id,
             codigo_concepto: 'COMPRA_INVENTARIO',
             numero_factura_proveedor: dto.numero_factura_proveedor,
             fecha_emision: dto.fecha_factura || dto.fecha_entrada,
             fecha_vencimiento: dto.fecha_vencimiento || dto.fecha_entrada,
-            subtotal: totalValorado,
-            glosa: `Recepción entrada ${guardada.numero_entrada} - Factura ${dto.numero_factura_proveedor}`,
+            subtotal: subtotalCausar,
+            glosa,
           });
+
+          // Vincular cxp_id y factura a la entrada actual
+          guardada.cxp_id = cxp.id;
+          guardada.numero_factura_proveedor = dto.numero_factura_proveedor;
+          await this.entradaRepo.save(guardada);
+
+          // Vincular cxp_id y factura a las entradas previas consolidadas
+          for (const prev of entradasPrevias) {
+            prev.cxp_id = cxp.id;
+            prev.numero_factura_proveedor = dto.numero_factura_proveedor;
+            await this.entradaRepo.save(prev);
+          }
+
+          // Vincular a la Orden de Compra si aplica
+          if (dto.orden_compra_id) {
+            const ordenRepo = this.dataSource.getRepository(OrdenCompra);
+            const orden = await ordenRepo.findOne({ where: { id: dto.orden_compra_id } });
+            if (orden) {
+              orden.cxp_id = cxp.id;
+              orden.asiento_id = cxp.asiento_id;
+              orden.numero_factura_proveedor = dto.numero_factura_proveedor;
+              await ordenRepo.save(orden);
+            }
+          }
         } catch (e: any) {
           console.warn(`[InventariosService] No se pudo generar la causación CxP automática: ${e.message}`);
         }

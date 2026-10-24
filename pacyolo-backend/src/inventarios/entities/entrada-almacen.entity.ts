@@ -60,6 +60,13 @@ export class EntradaAlmacen {
   @Column({ type: 'varchar', length: 60, nullable: true })
   numero_remision_proveedor: string | null;
 
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  numero_factura_proveedor: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  cxp_id: string | null;
+
   @Column({ type: 'date' })
   fecha_entrada: string;
 

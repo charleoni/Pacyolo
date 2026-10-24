@@ -61,6 +61,8 @@ export interface EntradaAlmacenItem {
     nombre: string;
   };
   numero_remision_proveedor?: string;
+  numero_factura_proveedor?: string;
+  cxp_id?: string;
   fecha_entrada: string;
   estado: 'CONFIRMADA' | 'ANULADA';
   total_valorado: number;
