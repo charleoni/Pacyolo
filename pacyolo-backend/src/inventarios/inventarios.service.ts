@@ -194,6 +194,64 @@ export class InventariosService {
     await queryRunner.startTransaction();
 
     try {
+      // 1. Validaciones estrictas: no permitir negativos ni cantidades en cero
+      for (const lin of dto.lineas) {
+        const cantidad = Number(lin.cantidad);
+        const costoUnitario = Number(lin.costo_unitario);
+        if (isNaN(cantidad) || cantidad <= 0) {
+          throw new BadRequestException('La cantidad a ingresar debe ser un número positivo mayor a cero.');
+        }
+        if (isNaN(costoUnitario) || costoUnitario < 0) {
+          throw new BadRequestException('El costo unitario no puede ser negativo.');
+        }
+        if (lin.porcentaje_iva !== undefined && (isNaN(Number(lin.porcentaje_iva)) || Number(lin.porcentaje_iva) < 0)) {
+          throw new BadRequestException('El porcentaje de IVA no puede ser un valor negativo.');
+        }
+      }
+
+      // 2. Control estricto de Orden de Compra: no permitir sobrerecepciones
+      let ordenVinculada: OrdenCompra | null = null;
+      if (dto.orden_compra_id) {
+        ordenVinculada = await queryRunner.manager.findOne(OrdenCompra, {
+          where: { id: dto.orden_compra_id },
+          relations: { lineas: { articulo: true } },
+        });
+
+        if (!ordenVinculada) {
+          throw new NotFoundException(`La orden de compra vinculada con ID '${dto.orden_compra_id}' no existe.`);
+        }
+        if (ordenVinculada.estado === 'RECIBIDA_TOTAL') {
+          throw new BadRequestException(
+            `La orden de compra '${ordenVinculada.numero_orden}' ya fue recibida en su totalidad y no admite más recepciones.`
+          );
+        }
+        if (ordenVinculada.estado === 'CANCELADA') {
+          throw new BadRequestException(
+            `La orden de compra '${ordenVinculada.numero_orden}' se encuentra cancelada y no admite recepciones.`
+          );
+        }
+
+        for (const entLinea of dto.lineas) {
+          const oLinea = ordenVinculada.lineas.find((ol) => ol.articulo_id === entLinea.articulo_id);
+          if (!oLinea) {
+            throw new BadRequestException(
+              `El artículo '${entLinea.articulo_id}' no forma parte de la Orden de Compra '${ordenVinculada.numero_orden}'.`
+            );
+          }
+          const solicitada = Number(oLinea.cantidad_solicitada);
+          const yaRecibida = Number(oLinea.cantidad_recibida || 0);
+          const pendiente = Number((solicitada - yaRecibida).toFixed(2));
+          const aRecibir = Number(entLinea.cantidad);
+
+          if (aRecibir > pendiente) {
+            const nombreArt = oLinea.articulo?.nombre || entLinea.articulo_id;
+            throw new BadRequestException(
+              `No es posible ingresar ${aRecibir} unidades de '${nombreArt}'. La Orden de Compra '${ordenVinculada.numero_orden}' solo tiene pendiente ${pendiente} unidad(es) (Solicitado: ${solicitada}, Ya recibido: ${yaRecibida}). No se permiten recepciones en exceso.`
+            );
+          }
+        }
+      }
+
       let totalValorado = 0;
       let totalIva = 0;
       let totalConIva = 0;
@@ -302,46 +360,39 @@ export class InventariosService {
       let numeroEntrega = 1;
       let esEntregaFinal = false;
 
-      if (dto.orden_compra_id) {
+      if (ordenVinculada) {
         const conteoPrevias = await queryRunner.manager.count(EntradaAlmacen, {
           where: {
-            orden_compra_id: dto.orden_compra_id,
+            orden_compra_id: ordenVinculada.id,
             empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
           },
         });
         numeroEntrega = conteoPrevias + 1;
 
-        const orden = await queryRunner.manager.findOne(OrdenCompra, {
-          where: { id: dto.orden_compra_id },
-          relations: { lineas: true },
-        });
+        let todasCompletas = true;
+        let algunaRecibida = false;
 
-        if (orden && orden.lineas) {
-          let todasCompletas = true;
-          let algunaRecibida = false;
-
-          for (const oLinea of orden.lineas) {
-            const entLinea = dto.lineas.find((l) => l.articulo_id === oLinea.articulo_id);
-            if (entLinea) {
-              oLinea.cantidad_recibida = Number(
-                (Number(oLinea.cantidad_recibida || 0) + Number(entLinea.cantidad)).toFixed(2),
-              );
-              await queryRunner.manager.save(oLinea);
-            }
-            if (Number(oLinea.cantidad_recibida) > 0) algunaRecibida = true;
-            if (Number(oLinea.cantidad_recibida) < Number(oLinea.cantidad_solicitada)) {
-              todasCompletas = false;
-            }
+        for (const oLinea of ordenVinculada.lineas) {
+          const entLinea = dto.lineas.find((l) => l.articulo_id === oLinea.articulo_id);
+          if (entLinea) {
+            oLinea.cantidad_recibida = Number(
+              (Number(oLinea.cantidad_recibida || 0) + Number(entLinea.cantidad)).toFixed(2),
+            );
+            await queryRunner.manager.save(oLinea);
           }
-
-          if (todasCompletas) {
-            orden.estado = 'RECIBIDA_TOTAL';
-            esEntregaFinal = true;
-          } else if (algunaRecibida) {
-            orden.estado = 'RECIBIDA_PARCIAL';
+          if (Number(oLinea.cantidad_recibida) > 0) algunaRecibida = true;
+          if (Number(oLinea.cantidad_recibida) < Number(oLinea.cantidad_solicitada)) {
+            todasCompletas = false;
           }
-          await queryRunner.manager.save(orden);
         }
+
+        if (todasCompletas) {
+          ordenVinculada.estado = 'RECIBIDA_TOTAL';
+          esEntregaFinal = true;
+        } else if (algunaRecibida) {
+          ordenVinculada.estado = 'RECIBIDA_PARCIAL';
+        }
+        await queryRunner.manager.save(ordenVinculada);
       }
 
       totalValorado = Number(totalValorado.toFixed(2));
@@ -550,7 +601,40 @@ export class InventariosService {
         lin.tipo_movimiento = tipoMovimiento;
 
         const cantidad = Number(lin.cantidad);
+        if (isNaN(cantidad) || cantidad <= 0) {
+          throw new BadRequestException(`La cantidad para el artículo '${articulo.nombre}' debe ser un número positivo mayor a cero.`);
+        }
         const costoUnitario = Number(lin.costo_unitario || articulo.costo_promedio || 0);
+        if (isNaN(costoUnitario) || costoUnitario < 0) {
+          throw new BadRequestException(`El costo unitario para '${articulo.nombre}' no puede ser negativo.`);
+        }
+
+        // Consultar saldo por bodega antes de mutar
+        let saldoBodega = await queryRunner.manager.findOne(SaldoBodega, {
+          where: {
+            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
+            bodega_id: dto.bodega_id,
+            articulo_id: articulo.id,
+          },
+        });
+
+        const stockPrevio = saldoBodega ? Number(saldoBodega.stock_actual) : 0;
+        const stockGlobalPrevio = Number(articulo.stock_actual);
+
+        // Control estricto de Stock Negativo en Salidas por Ajuste
+        if (tipoMovimiento === 'SALIDA') {
+          if (stockPrevio < cantidad) {
+            throw new BadRequestException(
+              `No es posible registrar salida de ${cantidad} unidades de '${articulo.nombre}'. El stock disponible en bodega es de solo ${stockPrevio} unidades. No se permite inventario negativo.`
+            );
+          }
+          if (stockGlobalPrevio < cantidad) {
+            throw new BadRequestException(
+              `No es posible registrar salida de ${cantidad} unidades de '${articulo.nombre}'. El stock global de la empresa es de solo ${stockGlobalPrevio} unidades.`
+            );
+          }
+        }
+
         const costoTotal = Number((cantidad * costoUnitario).toFixed(2));
         totalAjuste += costoTotal;
 
@@ -563,27 +647,15 @@ export class InventariosService {
         });
         lineasAjuste.push(nuevaLinea);
 
-        // Actualizar saldo por bodega
-        let saldoBodega = await queryRunner.manager.findOne(SaldoBodega, {
-          where: {
-            empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
-            bodega_id: dto.bodega_id,
-            articulo_id: articulo.id,
-          },
-        });
-
-        const stockPrevio = saldoBodega ? Number(saldoBodega.stock_actual) : 0;
-        const stockGlobalPrevio = Number(articulo.stock_actual);
-
         let nuevoStockBodega = stockPrevio;
         let nuevoStockGlobal = stockGlobalPrevio;
 
         if (tipoMovimiento === 'ENTRADA') {
-          nuevoStockBodega = stockPrevio + cantidad;
-          nuevoStockGlobal = stockGlobalPrevio + cantidad;
+          nuevoStockBodega = Number((stockPrevio + cantidad).toFixed(2));
+          nuevoStockGlobal = Number((stockGlobalPrevio + cantidad).toFixed(2));
         } else {
-          nuevoStockBodega = Math.max(0, stockPrevio - cantidad);
-          nuevoStockGlobal = Math.max(0, stockGlobalPrevio - cantidad);
+          nuevoStockBodega = Number((stockPrevio - cantidad).toFixed(2));
+          nuevoStockGlobal = Number((stockGlobalPrevio - cantidad).toFixed(2));
         }
 
         if (!saldoBodega) {
@@ -805,13 +877,18 @@ export class InventariosService {
 
         // Invertir el movimiento original
         if (lin.tipo_movimiento === 'ENTRADA') {
-          // El ajuste original sumó, la anulación resta
-          nuevoStockBodega = Math.max(0, stockPrevioBodega - cantidad);
-          nuevoStockGlobal = Math.max(0, stockPrevioGlobal - cantidad);
+          // El ajuste original sumó, la anulación resta: VALIDAR QUE NO DEJE STOCK NEGATIVO
+          if (stockPrevioBodega < cantidad) {
+            throw new BadRequestException(
+              `No es posible anular la nota de ajuste ${nota.numero_nota}: el stock actual en bodega para '${articulo.nombre}' (${stockPrevioBodega} unidades) es inferior a la cantidad a revertir (${cantidad} unidades).`
+            );
+          }
+          nuevoStockBodega = Number((stockPrevioBodega - cantidad).toFixed(2));
+          nuevoStockGlobal = Number((stockPrevioGlobal - cantidad).toFixed(2));
         } else {
           // El ajuste original restó, la anulación suma
-          nuevoStockBodega = stockPrevioBodega + cantidad;
-          nuevoStockGlobal = stockPrevioGlobal + cantidad;
+          nuevoStockBodega = Number((stockPrevioBodega + cantidad).toFixed(2));
+          nuevoStockGlobal = Number((stockPrevioGlobal + cantidad).toFixed(2));
         }
 
         if (saldoBodega) {

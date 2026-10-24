@@ -1336,10 +1336,23 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     <div class="col-span-2">
                       <input
                         type="number"
+                        min="0.01"
+                        step="any"
                         [(ngModel)]="lin.cantidad"
                         placeholder="Cant"
-                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white font-mono text-right"
+                        class="w-full bg-slate-900 border rounded-lg px-2 py-1.5 text-white font-mono text-right text-xs"
+                        [class.border-rose-500]="entradaForm.orden_compra_id && obtenerPendienteEnOrden(lin.articulo_id) !== null && Number(lin.cantidad) > (obtenerPendienteEnOrden(lin.articulo_id) || 0)"
+                        [class.border-slate-800]="!entradaForm.orden_compra_id || obtenerPendienteEnOrden(lin.articulo_id) === null || Number(lin.cantidad) <= (obtenerPendienteEnOrden(lin.articulo_id) || 0)"
                       />
+                      @if (entradaForm.orden_compra_id && obtenerPendienteEnOrden(lin.articulo_id) !== null) {
+                        <div class="text-[10px] text-right mt-0.5 leading-tight">
+                          @if (Number(lin.cantidad) > (obtenerPendienteEnOrden(lin.articulo_id) || 0)) {
+                            <span class="text-rose-400 font-bold">⚠️ Excede (Máx: {{ obtenerPendienteEnOrden(lin.articulo_id) }})</span>
+                          } @else {
+                            <span class="text-slate-400">Pend: <span class="text-emerald-400 font-mono font-bold">{{ obtenerPendienteEnOrden(lin.articulo_id) }}</span></span>
+                          }
+                        </div>
+                      }
                     </div>
 
                     <div class="col-span-2">
@@ -1557,10 +1570,21 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     <div class="col-span-3">
                       <input
                         type="number"
+                        min="0.01"
+                        step="any"
                         [(ngModel)]="lin.cantidad"
                         placeholder="Cantidad"
-                        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-white font-mono text-right"
+                        class="w-full bg-slate-900 border rounded-lg px-2 py-1.5 text-white font-mono text-right text-xs"
+                        [class.border-rose-500]="esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)"
+                        [class.border-slate-800]="!esSalidaAjuste(lin) || Number(lin.cantidad) <= obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)"
                       />
+                      <div class="text-[10px] text-right mt-0.5 leading-tight">
+                        @if (esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)) {
+                          <span class="text-rose-400 font-bold">⚠️ Excede stock (Disp: {{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }})</span>
+                        } @else {
+                          <span class="text-slate-400">Disp en bodega: <span class="text-slate-200 font-mono font-bold">{{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }}</span></span>
+                        }
+                      </div>
                     </div>
 
                     <div class="col-span-1 text-center">
@@ -2454,6 +2478,37 @@ export class ArticulosAdminComponent implements OnInit {
   entradasPreviasPendientesCausarNumeros(): string {
     return this.entradasPreviasPendientesCausar().map((e) => e.numero_entrada).join(', ');
   }
+
+  obtenerPendienteEnOrden(articuloId: string): number | null {
+    const oc = this.ordenCompraSeleccionada();
+    if (!oc || !oc.lineas) return null;
+    const lin = oc.lineas.find((l: any) => (l.articulo?.id || l.articulo_id) === articuloId);
+    if (!lin) return null;
+    const solicitada = Number(lin.cantidad_solicitada || 0);
+    const recibida = Number(lin.cantidad_recibida || 0);
+    return Math.max(0, Number((solicitada - recibida).toFixed(2)));
+  }
+
+  obtenerStockBodegaParaAjuste(articuloId: string, bodegaId?: string): number {
+    if (!articuloId) return 0;
+    const bId = bodegaId || this.ajusteForm.bodega_id;
+    if (!bId) {
+      const art = this.articulos().find((a) => a.id === articuloId);
+      return art ? Number(art.stock_actual || 0) : 0;
+    }
+    const saldo = this.existencias().find((e: any) => {
+      const eArtId = e.articulo?.id || e.articulo_id;
+      const eBodId = e.bodega?.id || e.bodega_id;
+      return eArtId === articuloId && eBodId === bId;
+    });
+    return saldo ? Number(saldo.stock_actual || 0) : 0;
+  }
+
+  esSalidaAjuste(lin: any): boolean {
+    if (this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA') return true;
+    if (this.ajusteForm.tipo_ajuste === 'SOBRANTE') return false;
+    return lin.tipo_movimiento === 'SALIDA';
+  }
   readonly mostrarLookupArticulo = signal(false);
   readonly destinoLookupArticulo = signal<'ENTRADA' | 'AJUSTE' | 'TRASLADO' | 'KARDEX'>('ENTRADA');
   readonly lineaSeleccionandoArticulo = signal<number | null>(null);
@@ -2998,6 +3053,7 @@ export class ArticulosAdminComponent implements OnInit {
 
   abrirModalEntrada(): void {
     const primerArticulo = this.articulos()[0];
+    this.comprasService.listarOrdenes().subscribe((ords) => this.ordenesCompra.set(ords));
     this.entradaForm = {
       orden_compra_id: '',
       proveedor_id: this.proveedores()[0]?.id || '',
@@ -3010,7 +3066,7 @@ export class ArticulosAdminComponent implements OnInit {
       lineas: [
         {
           articulo_id: primerArticulo?.id || '',
-          cantidad: 10,
+          cantidad: 1,
           costo_unitario: Number(primerArticulo?.costo_promedio || 0),
         },
       ],
@@ -3045,19 +3101,59 @@ export class ArticulosAdminComponent implements OnInit {
       return;
     }
 
-    const lineasSanitizadas = (this.entradaForm.lineas || [])
-      .filter((l: any) => l.articulo_id && String(l.articulo_id).trim() !== '')
-      .map((l: any) => ({
-        articulo_id: l.articulo_id,
-        cantidad: Number(l.cantidad) > 0 ? Number(l.cantidad) : 1,
-        costo_unitario: Number(l.costo_unitario) >= 0 ? Number(l.costo_unitario) : 0,
-        porcentaje_iva: Number(l.porcentaje_iva !== undefined ? l.porcentaje_iva : 19),
-      }));
-
-    if (lineasSanitizadas.length === 0) {
-      this.notificationService.warning('Debe agregar al menos un artículo válido en la entrada.');
+    const lineas = this.entradaForm.lineas || [];
+    if (lineas.length === 0) {
+      this.notificationService.warning('Debe agregar al menos un artículo en la entrada.');
       return;
     }
+
+    for (let i = 0; i < lineas.length; i++) {
+      const l = lineas[i];
+      if (!l.articulo_id || String(l.articulo_id).trim() === '') {
+        this.notificationService.warning(`La línea #${i + 1} no tiene un artículo seleccionado.`);
+        return;
+      }
+      const cant = Number(l.cantidad);
+      if (isNaN(cant) || cant <= 0) {
+        this.notificationService.warning(`La cantidad en la línea #${i + 1} debe ser un valor positivo mayor a cero.`);
+        return;
+      }
+      const costo = Number(l.costo_unitario);
+      if (isNaN(costo) || costo < 0) {
+        this.notificationService.warning(`El costo unitario en la línea #${i + 1} no puede ser negativo.`);
+        return;
+      }
+      const iva = Number(l.porcentaje_iva !== undefined ? l.porcentaje_iva : 19);
+      if (isNaN(iva) || iva < 0) {
+        this.notificationService.warning(`El porcentaje de IVA en la línea #${i + 1} no puede ser negativo.`);
+        return;
+      }
+
+      if (this.entradaForm.orden_compra_id) {
+        const pend = this.obtenerPendienteEnOrden(l.articulo_id);
+        if (pend === null) {
+          const art = this.obtenerArticulo(l.articulo_id);
+          this.notificationService.error(
+            `El artículo '${art?.nombre || l.articulo_id}' no forma parte de la Orden de Compra vinculada.`
+          );
+          return;
+        }
+        if (cant > pend) {
+          const art = this.obtenerArticulo(l.articulo_id);
+          this.notificationService.error(
+            `No es posible ingresar ${cant} unidades de '${art?.nombre || l.articulo_id}'. La Orden de Compra vinculada solo tiene pendiente ${pend} unidad(es). No se permiten recepciones en exceso.`
+          );
+          return;
+        }
+      }
+    }
+
+    const lineasSanitizadas = lineas.map((l: any) => ({
+      articulo_id: l.articulo_id,
+      cantidad: Number(l.cantidad),
+      costo_unitario: Number(l.costo_unitario),
+      porcentaje_iva: Number(l.porcentaje_iva !== undefined ? l.porcentaje_iva : 19),
+    }));
 
     const payload: any = {
       proveedor_id: this.entradaForm.proveedor_id,
@@ -3090,6 +3186,7 @@ export class ArticulosAdminComponent implements OnInit {
         this.notificationService.success(mensaje, 'Recepción Completada');
         this.cargarEntradas();
         this.cargarArticulos();
+        this.cargarExistencias();
         this.comprasService.listarOrdenes().subscribe((ords) => this.ordenesCompra.set(ords));
         if (this.pestanaActiva() === 'kardex') this.cargarKardex();
       },
@@ -3102,6 +3199,7 @@ export class ArticulosAdminComponent implements OnInit {
 
   abrirModalAjuste(): void {
     const primerArticulo = this.articulos()[0];
+    this.cargarExistencias();
     this.ajusteForm = {
       bodega_id: this.bodegas()[0]?.id || '',
       tipo_ajuste: 'FALTANTE_MERMA',
@@ -3164,6 +3262,44 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   guardarAjuste(): void {
+    if (!this.ajusteForm.bodega_id) {
+      this.notificationService.warning('Debe seleccionar una bodega para el ajuste.');
+      return;
+    }
+    if (!this.ajusteForm.justificacion?.trim()) {
+      this.notificationService.warning('Debe ingresar una justificación detallada para el ajuste.');
+      return;
+    }
+    const lineas = this.ajusteForm.lineas || [];
+    if (lineas.length === 0) {
+      this.notificationService.warning('Debe incluir al menos un artículo para ajustar.');
+      return;
+    }
+
+    for (let i = 0; i < lineas.length; i++) {
+      const lin = lineas[i];
+      if (!lin.articulo_id || String(lin.articulo_id).trim() === '') {
+        this.notificationService.warning(`La línea #${i + 1} no tiene un artículo seleccionado.`);
+        return;
+      }
+      const cant = Number(lin.cantidad);
+      if (isNaN(cant) || cant <= 0) {
+        this.notificationService.warning(`La cantidad en la línea #${i + 1} debe ser mayor a cero.`);
+        return;
+      }
+      if (this.esSalidaAjuste(lin)) {
+        const stockDisp = this.obtenerStockBodegaParaAjuste(lin.articulo_id, this.ajusteForm.bodega_id);
+        if (cant > stockDisp) {
+          const art = this.obtenerArticulo(lin.articulo_id);
+          const nomArt = art?.nombre || `Línea #${i + 1}`;
+          this.notificationService.error(
+            `No es posible registrar salida de ${cant} unidades de '${nomArt}'. El stock disponible en bodega es de ${stockDisp} unidades. No se permite inventario negativo.`
+          );
+          return;
+        }
+      }
+    }
+
     const emp = this.authService.empresaActiva();
     const payload = {
       ...this.ajusteForm,
@@ -3181,6 +3317,7 @@ export class ArticulosAdminComponent implements OnInit {
         );
         this.cargarAjustes();
         this.cargarArticulos();
+        this.cargarExistencias();
         if (this.pestanaActiva() === 'kardex') this.cargarKardex();
       },
       error: (err) => {
