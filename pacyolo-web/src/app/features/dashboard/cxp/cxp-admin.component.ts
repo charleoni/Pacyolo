@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 
 interface ProveedorItem {
   id: string;
@@ -109,7 +110,7 @@ interface PagoHistorial {
 @Component({
   selector: 'app-cxp-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado -->
@@ -249,9 +250,9 @@ interface PagoHistorial {
 
           <!-- Tabla de Facturas CxP -->
           <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                <thead class="sticky top-0 z-10 bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
                   <tr>
                     <th class="py-3 px-4">Factura Proveedor</th>
                     <th class="py-3 px-4">Proveedor</th>
@@ -263,7 +264,7 @@ interface PagoHistorial {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
-                  @for (cxp of facturasFiltradas(); track cxp.id) {
+                  @for (cxp of facturasPaginadas(); track cxp.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="py-3 px-4 font-mono font-bold text-white">
                         {{ cxp.numero_factura_proveedor }}
@@ -334,6 +335,13 @@ interface PagoHistorial {
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="facturasFiltradas().length"
+              [currentPage]="paginaFacturas()"
+              [pageSize]="tamanoFacturas()"
+              (pageChange)="paginaFacturas.set($event)"
+              (pageSizeChange)="tamanoFacturas.set($event); paginaFacturas.set(1)"
+            />
           </div>
         </div>
       }
@@ -1521,6 +1529,15 @@ interface PagoHistorial {
 })
 export class CxpAdminComponent implements OnInit {
   pestanaCxp = signal<'facturas' | 'estado_cuenta' | 'extracto' | 'edades'>('facturas');
+
+  // Paginación Reactiva
+  readonly paginaFacturas = signal(1);
+  readonly tamanoFacturas = signal(25);
+  facturasPaginadas(): CuentaPorPagarItem[] {
+    const p = this.paginaFacturas();
+    const s = this.tamanoFacturas();
+    return this.facturasFiltradas().slice((p - 1) * s, p * s);
+  }
   facturas = signal<CuentaPorPagarItem[]>([]);
   cartera = signal<ResumenCartera | null>(null);
   proveedores = signal<ProveedorItem[]>([]);

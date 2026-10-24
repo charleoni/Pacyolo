@@ -10,8 +10,10 @@ import { EmpresaSesion } from '../../core/models/auth.model';
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      <!-- Navbar Superior -->
-      <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+      <!-- Barra Superior y Navegación Sticky Global -->
+      <div class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 shadow-md">
+        <!-- Navbar Superior -->
+        <header class="border-b border-slate-800/80 px-6 py-3 flex items-center justify-between">
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-2.5">
             <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-500/20">
@@ -61,7 +63,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
       </header>
 
       <!-- Sub-Barra de Navegación de Features -->
-      <nav class="border-b border-slate-800 bg-slate-900/40 px-6 flex items-center gap-2">
+      <nav class="px-6 flex items-center gap-2 overflow-x-auto">
         <a
           routerLink="/dashboard"
           routerLinkActive="border-indigo-500 text-white font-medium"
@@ -265,6 +267,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
       </nav>
+      </div>
 
       <!-- Contenedor Principal -->
       <main class="flex-1 p-6 max-w-7xl w-full mx-auto">

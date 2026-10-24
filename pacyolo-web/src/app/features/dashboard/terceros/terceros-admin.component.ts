@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 import {
   ParametrosService,
   ParametroItem,
@@ -49,7 +50,7 @@ export interface Tercero {
 @Component({
   selector: 'app-terceros-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado con Flujo Dual -->
@@ -141,9 +142,9 @@ export interface Tercero {
 
       <!-- Tabla de Terceros -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
           <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <thead class="sticky top-0 z-10 bg-slate-950 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
                 <th class="py-3 px-4">Documento / NIT</th>
                 <th class="py-3 px-4">Nombre / Razón Social</th>
@@ -154,7 +155,7 @@ export interface Tercero {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60 font-sans">
-              <tr *ngFor="let t of tercerosFiltrados()" class="hover:bg-slate-800/40 transition">
+              <tr *ngFor="let t of tercerosPaginados()" class="hover:bg-slate-800/40 transition">
                 <td class="py-3 px-4">
                   <div class="font-mono text-white font-semibold">
                     {{ t.tipo_identificacion }}: {{ t.numero_identificacion }}
@@ -230,6 +231,13 @@ export interface Tercero {
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="tercerosFiltrados().length"
+          [currentPage]="paginaTerceros()"
+          [pageSize]="tamanoTerceros()"
+          (pageChange)="paginaTerceros.set($event)"
+          (pageSizeChange)="tamanoTerceros.set($event); paginaTerceros.set(1)"
+        />
       </div>
 
       <!-- ======================================================== -->
@@ -847,6 +855,15 @@ export class TercerosAdminComponent implements OnInit {
   errorMsg = signal<string | null>(null);
 
   busqueda = '';
+
+  // Paginación Reactiva
+  readonly paginaTerceros = signal(1);
+  readonly tamanoTerceros = signal(25);
+  tercerosPaginados(): Tercero[] {
+    const p = this.paginaTerceros();
+    const s = this.tamanoTerceros();
+    return this.tercerosFiltrados().slice((p - 1) * s, p * s);
+  }
   filtroTipo = 'TODOS';
   pestanaFichaActiva: 'general' | 'ubicacion' | 'tributaria' | 'bancaria' = 'general';
 

@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CrearAsientoModalComponent } from './crear-asiento-modal.component';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 
 interface AsientoLinea {
   id: string;
@@ -39,7 +40,7 @@ interface Asiento {
 @Component({
   selector: 'app-libro-diario',
   standalone: true,
-  imports: [CommonModule, FormsModule, CrearAsientoModalComponent],
+  imports: [CommonModule, FormsModule, CrearAsientoModalComponent, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado con Botón de Creación -->
@@ -68,9 +69,9 @@ interface Asiento {
 
       <!-- Tabla de Comprobantes -->
       <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
           <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+            <thead class="sticky top-0 z-10 bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
               <tr>
                 <th class="py-3 px-4">Comprobante</th>
                 <th class="py-3 px-4">Tipo</th>
@@ -83,7 +84,7 @@ interface Asiento {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60">
-              @for (asiento of asientos(); track asiento.id) {
+              @for (asiento of asientosPaginados(); track asiento.id) {
                 <tr class="hover:bg-slate-800/30 transition">
                   <td class="py-3 px-4 font-mono font-bold text-white">{{ asiento.numero_comprobante }}</td>
                   <td class="py-3 px-4">
@@ -144,6 +145,13 @@ interface Asiento {
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="asientos().length"
+          [currentPage]="paginaAsientos()"
+          [pageSize]="tamanoAsientos()"
+          (pageChange)="paginaAsientos.set($event)"
+          (pageSizeChange)="tamanoAsientos.set($event); paginaAsientos.set(1)"
+        />
       </div>
 
       <!-- Modal de Creación de Asiento -->
@@ -266,6 +274,15 @@ interface Asiento {
 })
 export class LibroDiarioComponent implements OnInit {
   asientos = signal<Asiento[]>([]);
+
+  // Paginación Reactiva
+  readonly paginaAsientos = signal(1);
+  readonly tamanoAsientos = signal(25);
+  asientosPaginados(): Asiento[] {
+    const p = this.paginaAsientos();
+    const s = this.tamanoAsientos();
+    return this.asientos().slice((p - 1) * s, p * s);
+  }
   mostrarModalCrear = signal<boolean>(false);
   asientoDetalle = signal<Asiento | null>(null);
   asientoAAnular = signal<Asiento | null>(null);

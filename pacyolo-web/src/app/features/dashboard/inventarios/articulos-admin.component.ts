@@ -16,11 +16,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ComprasService, OrdenCompraItem } from '../../../core/services/compras.service';
 import { TerceroLookupModalComponent } from '../../../shared/components/tercero-lookup-modal.component';
 import { ArticuloLookupModalComponent } from '../../../shared/components/articulo-lookup-modal.component';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 
 @Component({
   selector: 'app-articulos-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent],
+  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado Principal -->
@@ -168,9 +169,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
 
           <!-- Tabla de Artículos -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <th class="p-3.5">Código / SKU</th>
                     <th class="p-3.5">Artículo / Descripción</th>
@@ -184,7 +185,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (art of articulosFiltrados(); track art.id) {
+                  @for (art of articulosPaginados(); track art.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-semibold text-white">
                         {{ art.codigo }}
@@ -259,6 +260,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="articulosFiltrados().length"
+              [currentPage]="paginaArticulos()"
+              [pageSize]="tamanoArticulos()"
+              (pageChange)="paginaArticulos.set($event)"
+              (pageSizeChange)="tamanoArticulos.set($event); paginaArticulos.set(1)"
+            />
           </div>
         </div>
       }
@@ -289,9 +297,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
           </div>
 
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <th class="p-3.5">N° Entrada</th>
                     <th class="p-3.5">Fecha</th>
@@ -305,7 +313,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (ent of entradasFiltradas(); track ent.id) {
+                  @for (ent of entradasPaginadas(); track ent.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-bold text-white">{{ ent.numero_entrada }}</td>
                       <td class="p-3.5 text-slate-400 font-mono">{{ ent.fecha_entrada }}</td>
@@ -343,6 +351,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="entradasFiltradas().length"
+              [currentPage]="paginaEntradas()"
+              [pageSize]="tamanoEntradas()"
+              (pageChange)="paginaEntradas.set($event)"
+              (pageSizeChange)="tamanoEntradas.set($event); paginaEntradas.set(1)"
+            />
           </div>
         </div>
       }
@@ -445,9 +460,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
 
           <!-- Tabla de Kardex -->
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/80 text-slate-400 uppercase font-mono text-[9px] tracking-wider text-center">
                     <th class="p-3 text-left" colspan="4">Datos del Movimiento</th>
                     <th class="p-3 bg-blue-950/30 border-x border-slate-800" colspan="3">📥 Entradas</th>
@@ -474,7 +489,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 font-mono text-[11px] text-slate-300">
-                  @for (k of kardexFiltrado(); track k.id) {
+                  @for (k of kardexPaginado(); track k.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-2.5 text-slate-400">{{ k.fecha_movimiento }}</td>
                       <td class="p-2.5 font-bold text-white">{{ k.documento_referencia }}</td>
@@ -524,6 +539,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="kardexFiltrado().length"
+              [currentPage]="paginaKardex()"
+              [pageSize]="tamanoKardex()"
+              (pageChange)="paginaKardex.set($event)"
+              (pageSizeChange)="tamanoKardex.set($event); paginaKardex.set(1)"
+            />
           </div>
         </div>
       }
@@ -566,9 +588,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
           </div>
 
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <th class="p-3.5">N° Nota</th>
                     <th class="p-3.5">Fecha</th>
@@ -582,7 +604,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (aj of ajustesFiltrados(); track aj.id) {
+                  @for (aj of ajustesPaginados(); track aj.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-bold text-white">
                         <div class="flex items-center gap-1.5">
@@ -657,6 +679,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="ajustesFiltrados().length"
+              [currentPage]="paginaAjustes()"
+              [pageSize]="tamanoAjustes()"
+              (pageChange)="paginaAjustes.set($event)"
+              (pageSizeChange)="tamanoAjustes.set($event); paginaAjustes.set(1)"
+            />
           </div>
         </div>
       }
@@ -717,9 +746,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
           </div>
 
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <th class="p-3.5">Bodega</th>
                     <th class="p-3.5">Código SKU</th>
@@ -730,7 +759,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  @for (ex of existenciasFiltradas(); track ex.id) {
+                  @for (ex of existenciasPaginadas(); track ex.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-semibold text-white">{{ ex.bodega?.nombre }} ({{ ex.bodega?.codigo }})</td>
                       <td class="p-3.5 font-mono text-indigo-300">{{ ex.articulo?.codigo }}</td>
@@ -755,6 +784,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="existenciasFiltradas().length"
+              [currentPage]="paginaExistencias()"
+              [pageSize]="tamanoExistencias()"
+              (pageChange)="paginaExistencias.set($event)"
+              (pageSizeChange)="tamanoExistencias.set($event); paginaExistencias.set(1)"
+            />
           </div>
         </div>
       }
@@ -785,9 +821,9 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
           </div>
 
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead class="sticky top-0 z-10 bg-slate-950">
                   <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                     <th class="p-3.5">N° Traslado</th>
                     <th class="p-3.5">Fecha</th>
@@ -801,7 +837,7 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                   </tr>
                 </thead>
                 <tbody class="divide-y border-slate-800/60 text-slate-300">
-                  @for (tr of trasladosFiltrados(); track tr.id) {
+                  @for (tr of trasladosPaginados(); track tr.id) {
                     <tr class="hover:bg-slate-800/30 transition">
                       <td class="p-3.5 font-mono font-bold text-purple-400">{{ tr.documento_referencia }}</td>
                       <td class="p-3.5 font-mono text-slate-400">{{ tr.fecha_movimiento }}</td>
@@ -833,6 +869,13 @@ import { ArticuloLookupModalComponent } from '../../../shared/components/articul
                 </tbody>
               </table>
             </div>
+            <app-table-pagination
+              [totalItems]="trasladosFiltrados().length"
+              [currentPage]="paginaTraslados()"
+              [pageSize]="tamanoTraslados()"
+              (pageChange)="paginaTraslados.set($event)"
+              (pageSizeChange)="tamanoTraslados.set($event); paginaTraslados.set(1)"
+            />
           </div>
         </div>
       }
@@ -2079,6 +2122,55 @@ export class ArticulosAdminComponent implements OnInit {
   readonly guardando = signal(false);
   readonly articuloEnEdicion = signal<ArticuloItem | null>(null);
 
+  // Paginación Reactiva por Listados
+  readonly paginaArticulos = signal(1);
+  readonly tamanoArticulos = signal(25);
+  articulosPaginados(): ArticuloItem[] {
+    const p = this.paginaArticulos();
+    const s = this.tamanoArticulos();
+    return this.articulosFiltrados().slice((p - 1) * s, p * s);
+  }
+
+  readonly paginaEntradas = signal(1);
+  readonly tamanoEntradas = signal(25);
+  entradasPaginadas(): EntradaAlmacenItem[] {
+    const p = this.paginaEntradas();
+    const s = this.tamanoEntradas();
+    return this.entradasFiltradas().slice((p - 1) * s, p * s);
+  }
+
+  readonly paginaKardex = signal(1);
+  readonly tamanoKardex = signal(25);
+  kardexPaginado(): KardexMovimientoItem[] {
+    const p = this.paginaKardex();
+    const s = this.tamanoKardex();
+    return this.kardexFiltrado().slice((p - 1) * s, p * s);
+  }
+
+  readonly paginaAjustes = signal(1);
+  readonly tamanoAjustes = signal(25);
+  ajustesPaginados(): NotaAjusteItem[] {
+    const p = this.paginaAjustes();
+    const s = this.tamanoAjustes();
+    return this.ajustesFiltrados().slice((p - 1) * s, p * s);
+  }
+
+  readonly paginaExistencias = signal(1);
+  readonly tamanoExistencias = signal(25);
+  existenciasPaginadas(): SaldoBodegaItem[] {
+    const p = this.paginaExistencias();
+    const s = this.tamanoExistencias();
+    return this.existenciasFiltradas().slice((p - 1) * s, p * s);
+  }
+
+  readonly paginaTraslados = signal(1);
+  readonly tamanoTraslados = signal(25);
+  trasladosPaginados(): any[] {
+    const p = this.paginaTraslados();
+    const s = this.tamanoTraslados();
+    return this.trasladosFiltrados().slice((p - 1) * s, p * s);
+  }
+
   // Estados de Modales Lookup Enterprise
   readonly mostrarLookupProveedor = signal(false);
   readonly mostrarLookupArticulo = signal(false);
@@ -2461,6 +2553,7 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   filtrarArticulos(): void {
+    this.paginaArticulos.set(1);
     const q = this.busquedaArticulo.toLowerCase().trim();
     const tipo = this.filtroTipoArticulo;
 

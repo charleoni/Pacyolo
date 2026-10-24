@@ -9,11 +9,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/components/tercero-lookup-modal.component';
 import { ArticuloLookupModalComponent, ArticuloLookupItem } from '../../../shared/components/articulo-lookup-modal.component';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 
 @Component({
   selector: 'app-compras-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent],
+  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado Principal -->
@@ -66,9 +67,9 @@ import { ArticuloLookupModalComponent, ArticuloLookupItem } from '../../../share
 
       <!-- Tabla de Órdenes de Compra -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
           <table class="w-full text-left border-collapse text-xs">
-            <thead>
+            <thead class="sticky top-0 z-10 bg-slate-950">
               <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 uppercase font-mono text-[10px] tracking-wider">
                 <th class="p-3.5">N° Orden / Factura</th>
                 <th class="p-3.5">Fecha Compra</th>
@@ -84,7 +85,7 @@ import { ArticuloLookupModalComponent, ArticuloLookupItem } from '../../../share
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60 text-slate-300">
-              @for (orden of ordenesFiltradas(); track orden.id) {
+              @for (orden of ordenesPaginadas(); track orden.id) {
                 <tr class="hover:bg-slate-800/30 transition">
                   <td class="p-3.5 font-mono">
                     <span class="font-bold text-white block">{{ orden.numero_orden }}</span>
@@ -200,6 +201,13 @@ import { ArticuloLookupModalComponent, ArticuloLookupItem } from '../../../share
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="ordenesFiltradas().length"
+          [currentPage]="paginaOrdenes()"
+          [pageSize]="tamanoOrdenes()"
+          (pageChange)="paginaOrdenes.set($event)"
+          (pageSizeChange)="tamanoOrdenes.set($event); paginaOrdenes.set(1)"
+        />
       </div>
 
       <!-- ========================================================================= -->
@@ -862,6 +870,15 @@ export class ComprasAdminComponent implements OnInit {
 
   busquedaOrden = '';
   filtroEstado = '';
+
+  // Paginación Reactiva
+  readonly paginaOrdenes = signal(1);
+  readonly tamanoOrdenes = signal(25);
+  ordenesPaginadas(): OrdenCompraItem[] {
+    const p = this.paginaOrdenes();
+    const s = this.tamanoOrdenes();
+    return this.ordenesFiltradas().slice((p - 1) * s, p * s);
+  }
 
   readonly mostrarModal = signal(false);
   readonly mostrarModalCausar = signal(false);
