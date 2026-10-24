@@ -48,3 +48,21 @@
   3. **Edición o Control de Anulación/Ajuste**: Debe poder consultarse y gestionarse; si está en estado borrador o preliminar se permite edición con campos inmutables protegidos; si ya está causado o aprobado, no puede eliminarse destructivamente, requiriendo anulación auditada o nota de ajuste.
   4. **Pistas de Auditoría Inmutables**: Registro estricto del usuario ejecutor (`usuario_id` / `creado_por`), timestamp inmutable y registro en bitácora de auditoría (`aud_pistas`).
 
+
+## 7. Arquitectura Limpia y Principios de Código (Clean Architecture & SRP)
+- **Principio de Responsabilidad Única (SRP)**:
+  - Servicios de Dominio especializados: Cada servicio encapsula su lógica de negocio (Inventarios, Compras, CxP, Asientos, Parámetros) sin acoplamientos innecesarios.
+  - Componentes Standalone Reactivos: Uso obligatorio de Angular Signals (`signal`, `computed`, `input`, `output`) para un flujo unidireccional de datos limpio, predecible y de alto rendimiento a 60 FPS sin sobrecargar la detección de cambios.
+  - Reutilización Componentizada: Los patrones de interfaz recurrentes (Paginación con `TablePaginationComponent`, Búsquedas con `LookupModalComponent`, Visores de Impresión) deben ser componentes puros desacoplados.
+
+## 8. Ciberseguridad, Aislamiento Multi-Tenant y Protección de Datos
+- **Aislamiento Multi-Tenant Hermético**:
+  - Toda consulta, mutación o filtro en base de datos DEBE estar parametrizada y restringida por el `empresa_id` del tenant activo en sesión. Ningún usuario puede consultar ni alterar datos de otra empresa bajo ninguna circunstancia.
+- **Validación Fuerte de Datos (DTOs & Whitelisting)**:
+  - Todo endpoint en el backend NestJS cuenta con DTOs fuertemente tipados utilizando decoradores de `class-validator` y `class-transformer` con `whitelist: true` y `forbidNonWhitelisted: true`, previniendo inyección de parámetros no autorizados (Mass Assignment).
+- **Protección contra Inyecciones SQL**:
+  - Prohibición estricta de concatenar strings en consultas SQL. Uso exclusivo de TypeORM Repositories con QueryBuilder parametrizado y consultas preparadas.
+- **Control de Acceso Basado en Roles (RBAC)**:
+  - Autenticación robusta con JSON Web Tokens (JWT) firmados, resguardo de contraseñas mediante hashing bcrypt con salt y validación granular mediante Guards (`JwtAuthGuard`, `RolesGuard`).
+- **Inmutabilidad y Auditoría de Seguridad**:
+  - Cada inserción, anulación o modificación sensible queda sellada con timestamp inmutable y el identificador del usuario que ejecutó la acción en la bitácora de auditoría (`aud_pistas`).

@@ -16,12 +16,13 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ComprasService, OrdenCompraItem } from '../../../core/services/compras.service';
 import { TerceroLookupModalComponent } from '../../../shared/components/tercero-lookup-modal.component';
 import { ArticuloLookupModalComponent } from '../../../shared/components/articulo-lookup-modal.component';
+import { OrdenCompraLookupModalComponent } from '../../../shared/components/orden-compra-lookup-modal.component';
 import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 
 @Component({
   selector: 'app-articulos-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent, TablePaginationComponent],
+  imports: [CommonModule, FormsModule, TerceroLookupModalComponent, ArticuloLookupModalComponent, TablePaginationComponent, OrdenCompraLookupModalComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado Principal -->
@@ -1062,20 +1063,86 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
               <button (click)="mostrarModalEntrada.set(false)" class="text-slate-500 hover:text-white cursor-pointer text-sm">✕</button>
             </div>
 
+            <!-- Vinculación a Orden de Compra Enterprise Lookup -->
             <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-2 text-xs mb-3">
-              <label class="block font-bold text-indigo-400 uppercase tracking-wider">Vincular a Orden de Compra (Opcional)</label>
-              <select
-                [(ngModel)]="entradaForm.orden_compra_id"
-                (change)="alSeleccionarOrdenCompra(entradaForm.orden_compra_id)"
-                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 font-mono"
-              >
-                <option value="">Recepción física directa (Sin Orden de Compra)</option>
-                @for (oc of ordenesCompra(); track oc.id) {
-                  <option [value]="oc.id">
-                    [{{ oc.numero_orden }}] {{ oc.proveedor?.nombre_completo }} - Total: \${{ Number(oc.total).toLocaleString('es-CO') }} ({{ oc.estado }})
-                  </option>
+              <div class="flex items-center justify-between">
+                <label class="block font-bold text-indigo-400 uppercase tracking-wider">Vincular a Orden de Compra (Opcional)</label>
+                @if (ordenCompraSeleccionada()) {
+                  <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    Vinculada a {{ ordenCompraSeleccionada()?.numero_orden }}
+                  </span>
                 }
-              </select>
+              </div>
+
+              @if (ordenCompraSeleccionada(); as oc) {
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-900 border border-indigo-500/40 rounded-xl shadow-inner">
+                  <div class="space-y-1 truncate text-xs">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-mono font-bold text-white text-sm">[{{ oc.numero_orden }}]</span>
+                      <span
+                        [class]="
+                          oc.estado === 'APROBADA'
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        "
+                        class="px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                      >
+                        {{ oc.estado }}
+                      </span>
+                      @if (oc.numero_factura_proveedor) {
+                        <span class="text-[10px] text-slate-400 font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">Fac/Rem: {{ oc.numero_factura_proveedor }}</span>
+                      }
+                    </div>
+                    <div class="text-xs text-slate-200 font-medium truncate">
+                      🏢 {{ oc.proveedor?.nombre_completo }} <span class="text-slate-500 font-mono">[NIT: {{ oc.proveedor?.numero_identificacion }}]</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 font-mono flex items-center gap-3 flex-wrap">
+                      <span>Total: <b class="text-emerald-400">\${{ Number(oc.total).toLocaleString('es-CO') }}</b></span>
+                      <span>📍 Bodega: {{ oc.bodega_destino?.nombre || 'Principal' }}</span>
+                      <span>📅 Emisión: {{ oc.fecha_emision }}</span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                      type="button"
+                      (click)="abrirLookupOrdenCompra()"
+                      class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Cambiar</span>
+                      <span>🔍</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="desvincularOrdenCompra()"
+                      class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                      title="Quitar orden y recibir mercancía directamente"
+                    >
+                      <span>✕</span>
+                      <span>Quitar</span>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  (click)="abrirLookupOrdenCompra()"
+                  class="w-full flex items-center justify-between p-3 bg-slate-900 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs transition cursor-pointer group"
+                >
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm group-hover:scale-110 transition">
+                      🔍
+                    </span>
+                    <div class="text-left">
+                      <span class="block font-semibold text-slate-200 group-hover:text-white">Buscar y Vincular Orden de Compra Pendiente...</span>
+                      <span class="block text-[11px] text-slate-500">Filtrar órdenes aprobadas o con recepciones parciales pendientes</span>
+                    </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 group-hover:bg-indigo-600 text-slate-300 group-hover:text-white transition">
+                    Recepción Directa
+                  </span>
+                </button>
+              }
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -2067,6 +2134,13 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
         (articuloSeleccionado)="alSeleccionarArticuloIndividual($event)"
         (articulosSeleccionados)="alSeleccionarArticulosMultiples($event)"
       />
+
+      <app-orden-compra-lookup-modal
+        [(visible)]="mostrarLookupOrdenCompra"
+        titulo="Búsqueda de Órdenes de Compra Pendientes"
+        [ordenes]="ordenesCompra()"
+        (ordenSeleccionada)="alSeleccionarOrdenCompraDesdeLookup($event)"
+      />
     </div>
   `,
 })
@@ -2173,6 +2247,11 @@ export class ArticulosAdminComponent implements OnInit {
 
   // Estados de Modales Lookup Enterprise
   readonly mostrarLookupProveedor = signal(false);
+  readonly mostrarLookupOrdenCompra = signal(false);
+
+  ordenCompraSeleccionada(): OrdenCompraItem | undefined {
+    return this.ordenesCompra().find((oc) => oc.id === this.entradaForm.orden_compra_id);
+  }
   readonly mostrarLookupArticulo = signal(false);
   readonly destinoLookupArticulo = signal<'ENTRADA' | 'AJUSTE' | 'TRASLADO' | 'KARDEX'>('ENTRADA');
   readonly lineaSeleccionandoArticulo = signal<number | null>(null);
@@ -2907,26 +2986,50 @@ export class ArticulosAdminComponent implements OnInit {
     });
   }
 
-  alSeleccionarOrdenCompra(ocId: string): void {
-    if (!ocId) return;
-    const oc = this.ordenesCompra().find((o) => o.id === ocId);
-    if (!oc) return;
+  abrirLookupOrdenCompra(): void {
+    this.comprasService.listarOrdenes().subscribe((ords) => this.ordenesCompra.set(ords));
+    this.mostrarLookupOrdenCompra.set(true);
+  }
 
-    this.entradaForm.proveedor_id = oc.proveedor?.id || this.entradaForm.proveedor_id;
+  alSeleccionarOrdenCompraDesdeLookup(oc: OrdenCompraItem): void {
+    this.entradaForm.orden_compra_id = oc.id;
+
+    // Proveedor automático
+    if (oc.proveedor?.id) {
+      this.entradaForm.proveedor_id = oc.proveedor.id;
+    }
+
+    // Bodega destino automática
     if (oc.bodega_destino?.id) {
       this.entradaForm.bodega_id = oc.bodega_destino.id;
     }
+
+    // Factura o remisión sugerida
     if (oc.numero_factura_proveedor) {
       this.entradaForm.numero_remision_proveedor = oc.numero_factura_proveedor;
     }
 
+    // Precarga inteligente de líneas pendientes (solo cantidades no recibidas aún)
     if (oc.lineas && oc.lineas.length > 0) {
-      this.entradaForm.lineas = oc.lineas.map((l) => ({
-        articulo_id: l.articulo?.id || '',
-        cantidad: Math.max(1, Number(l.cantidad_solicitada) - Number(l.cantidad_recibida || 0)),
-        costo_unitario: Number(l.costo_unitario) || 0,
-      }));
+      const pendientes = oc.lineas.filter((l) => {
+        return Number(l.cantidad_solicitada) - Number(l.cantidad_recibida || 0) > 0;
+      });
+
+      if (pendientes.length > 0) {
+        this.entradaForm.lineas = pendientes.map((l) => ({
+          articulo_id: l.articulo?.id || '',
+          cantidad: Math.max(1, Number(l.cantidad_solicitada) - Number(l.cantidad_recibida || 0)),
+          costo_unitario: Number(l.costo_unitario) || 0,
+        }));
+      }
     }
+
+    this.notificationService.success(`Orden ${oc.numero_orden} vinculada. Ítems pendientes precargados exitosamente.`);
+  }
+
+  desvincularOrdenCompra(): void {
+    this.entradaForm.orden_compra_id = '';
+    this.notificationService.info('Orden de compra desvinculada. Recepción física directa activa.');
   }
 
   cargarTraslados(): void {
