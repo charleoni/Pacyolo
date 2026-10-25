@@ -13,6 +13,8 @@ import {
 import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { Articulo } from './articulo.entity.js';
 import { Asiento } from '../../asientos/entities/asiento.entity.js';
+import { EntradaAlmacen } from './entrada-almacen.entity.js';
+import { Tercero } from '../../terceros/entities/tercero.entity.js';
 
 export type TipoAjusteInventario =
   | 'SOBRANTE'
@@ -56,6 +58,22 @@ export class NotaAjuste {
 
   @Column({ type: 'varchar', length: 20, default: 'APLICADA' })
   estado: 'APLICADA' | 'ANULADA';
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  entrada_almacen_id: string | null;
+
+  @ManyToOne(() => EntradaAlmacen, { nullable: true, eager: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'entrada_almacen_id' })
+  entrada_almacen?: EntradaAlmacen | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  proveedor_id: string | null;
+
+  @ManyToOne(() => Tercero, { nullable: true, eager: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'proveedor_id' })
+  proveedor?: Tercero | null;
 
   @Column({ type: 'uuid', nullable: true })
   asiento_id: string | null;

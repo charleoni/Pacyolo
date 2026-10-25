@@ -137,6 +137,14 @@ export interface NotaAjusteItem {
     | 'CIERRE_INVENTARIO_FISICO'
     | 'DEVOLUCION_PROVEEDOR'
     | 'DEVOLUCION_CLIENTE';
+  entrada_almacen_id?: string | null;
+  entrada_almacen?: EntradaAlmacenItem | null;
+  proveedor_id?: string | null;
+  proveedor?: {
+    id: string;
+    numero_identificacion: string;
+    nombre_completo: string;
+  } | null;
   estado?: 'APLICADA' | 'ANULADA';
   fecha_ajuste: string;
   justificacion: string;

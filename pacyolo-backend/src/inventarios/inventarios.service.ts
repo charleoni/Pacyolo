@@ -547,6 +547,9 @@ export class InventariosService {
   async listarNotasAjuste(empresaId?: string): Promise<NotaAjuste[]> {
     const qb = this.notaAjusteRepo.createQueryBuilder('n')
       .leftJoinAndSelect('n.bodega', 'b')
+      .leftJoinAndSelect('n.proveedor', 'prov')
+      .leftJoinAndSelect('n.entrada_almacen', 'ea')
+      .leftJoinAndSelect('ea.lineas', 'eaLineas')
       .leftJoinAndSelect('n.lineas', 'l')
       .leftJoinAndSelect('l.articulo', 'art')
       .leftJoinAndSelect('n.asiento', 'asiento')
@@ -580,9 +583,53 @@ export class InventariosService {
 
     let totalAjuste = 0;
     let guardada: NotaAjuste;
+    let entradaVinculada: EntradaAlmacen | null = null;
 
     try {
       const lineasAjuste: NotaAjusteLinea[] = [];
+
+      if (dto.entrada_almacen_id) {
+        entradaVinculada = await queryRunner.manager.findOne(EntradaAlmacen, {
+          where: { id: dto.entrada_almacen_id },
+          relations: { lineas: { articulo: true }, proveedor: true, bodega: true },
+        });
+
+        if (!entradaVinculada) {
+          throw new NotFoundException(`La Entrada de Almacén con ID '${dto.entrada_almacen_id}' no existe.`);
+        }
+
+        if (entradaVinculada.estado === 'ANULADA') {
+          throw new BadRequestException(
+            `La Entrada de Almacén '${entradaVinculada.numero_entrada}' se encuentra anulada y no admite devoluciones.`
+          );
+        }
+
+        if (!dto.proveedor_id && entradaVinculada.proveedor_id) {
+          dto.proveedor_id = entradaVinculada.proveedor_id;
+        }
+        if (!dto.bodega_id && entradaVinculada.bodega_id) {
+          dto.bodega_id = entradaVinculada.bodega_id;
+        }
+
+        // Validación estricta de devolución sobre lo efectivamente recibido
+        for (const devLin of dto.lineas) {
+          const entLin = entradaVinculada.lineas.find((el) => el.articulo_id === devLin.articulo_id);
+          if (!entLin) {
+            const art = await queryRunner.manager.findOne(Articulo, { where: { id: devLin.articulo_id } });
+            throw new BadRequestException(
+              `El artículo '${art?.nombre || devLin.articulo_id}' no formó parte de la Entrada de Almacén '${entradaVinculada.numero_entrada}'. Solo es posible devolver artículos que fueron efectivamente recibidos en dicha compra.`
+            );
+          }
+          const cantRecibida = Number(entLin.cantidad);
+          const cantDevolver = Number(devLin.cantidad);
+          if (cantDevolver > cantRecibida) {
+            const nomArt = entLin.articulo?.nombre || devLin.articulo_id;
+            throw new BadRequestException(
+              `No es posible devolver ${cantDevolver} unidades de '${nomArt}'. La Entrada '${entradaVinculada.numero_entrada}' solo recibió ${cantRecibida} unidad(es).`
+            );
+          }
+        }
+      }
 
       for (const lin of dto.lineas) {
         const articulo = await queryRunner.manager.findOne(Articulo, { where: { id: lin.articulo_id } });
@@ -709,6 +756,8 @@ export class InventariosService {
         empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
         numero_nota: numeroNota,
         bodega_id: dto.bodega_id,
+        entrada_almacen_id: dto.entrada_almacen_id || null,
+        proveedor_id: dto.proveedor_id || null,
         tipo_ajuste: dto.tipo_ajuste,
         fecha_ajuste: dto.fecha_ajuste,
         justificacion: dto.justificacion,
@@ -797,20 +846,38 @@ export class InventariosService {
             }
           } else {
             if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
-              // Devolución a Proveedor: Débito Costo/Gasto por Devolución de Compra (6135 / 5315) / Crédito Inventarios (1435)
-              const cuentaDev = await this.buscarCuentaAuxiliar(
-                dto.empresa_id,
-                [articulo?.cuenta_costo_venta, '613505', '6135', '531520', '5315', '519595'],
-                ClaseCuenta.COSTO,
-              );
+              if (dto.proveedor_id) {
+                // Devolución a Proveedor: Débito a Proveedores Nacionales (Disminuye pasivo / deuda con el proveedor)
+                const cuentaProveedor = await this.buscarCuentaAuxiliar(
+                  dto.empresa_id,
+                  ['220505', '2205', '22'],
+                  ClaseCuenta.PASIVO,
+                );
 
-              lineasContables.push({
-                cuenta_id: cuentaDev.id,
-                debito: costoTotal,
-                credito: 0,
-                glosa_detalle: `Devolución a Proveedor ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
-                documento_referencia: numeroNota,
-              });
+                lineasContables.push({
+                  cuenta_id: cuentaProveedor.id,
+                  tercero_id: dto.proveedor_id,
+                  debito: costoTotal,
+                  credito: 0,
+                  glosa_detalle: `Devolución a Proveedor ${numeroNota}${entradaVinculada ? ' s/Entrada ' + entradaVinculada.numero_entrada : ''}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                  documento_referencia: numeroNota,
+                });
+              } else {
+                // Fallback si no tiene proveedor específico: Débito Costo/Gasto por Devolución de Compra
+                const cuentaDev = await this.buscarCuentaAuxiliar(
+                  dto.empresa_id,
+                  [articulo?.cuenta_costo_venta, '613505', '6135', '531520', '5315', '519595'],
+                  ClaseCuenta.COSTO,
+                );
+
+                lineasContables.push({
+                  cuenta_id: cuentaDev.id,
+                  debito: costoTotal,
+                  credito: 0,
+                  glosa_detalle: `Devolución a Proveedor ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                  documento_referencia: numeroNota,
+                });
+              }
 
               lineasContables.push({
                 cuenta_id: cuentaInventario.id,

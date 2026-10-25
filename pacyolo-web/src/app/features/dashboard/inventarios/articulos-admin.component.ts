@@ -351,7 +351,18 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                           {{ ent.estado }}
                         </span>
                       </td>
-                      <td class="p-3.5 text-right whitespace-nowrap">
+                      <td class="p-3.5 text-right whitespace-nowrap space-x-1">
+                        @if (ent.estado === 'CONFIRMADA') {
+                          <button
+                            type="button"
+                            (click)="abrirModalDevolucionDesdeEntrada(ent)"
+                            class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                            title="Registrar devolución de compra a proveedor sobre esta entrada"
+                          >
+                            <span>↩️</span>
+                            <span>Devolver</span>
+                          </button>
+                        }
                         <button
                           type="button"
                           (click)="abrirModalImprimirEntrada(ent)"
@@ -1496,15 +1507,70 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
               </div>
 
               <div class="sm:col-span-2">
-                <label class="block font-semibold text-slate-300 mb-1">Justificación del Ajuste *</label>
+                <label class="block font-semibold text-slate-300 mb-1">Justificación / Motivo de la Operación *</label>
                 <textarea
                   [(ngModel)]="ajusteForm.justificacion"
                   rows="2"
-                  placeholder="Detalle el motivo, acta de conteo físico o causa de la merma..."
+                  placeholder="Detalle el motivo, acta de conteo físico o causa de la devolución/merma..."
                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
                 ></textarea>
               </div>
             </div>
+
+            <!-- Panel de Entrada de Almacén Vinculada para Devolución a Proveedor -->
+            @if (ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
+              <div class="p-3.5 bg-purple-950/30 border border-purple-500/30 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                    <span>📦</span>
+                    <span>Recepción de Origen (Entrada de Almacén a Devolver)</span>
+                  </span>
+                  @if (entradaSeleccionadaParaDevolucion()) {
+                    <button
+                      type="button"
+                      (click)="desvincularEntradaDevolucion()"
+                      class="text-[11px] text-rose-400 hover:text-rose-300 cursor-pointer font-medium"
+                    >
+                      ✕ Cambiar / Desvincular Entrada
+                    </button>
+                  }
+                </div>
+
+                @if (entradaSeleccionadaParaDevolucion(); as ent) {
+                  <div class="flex items-center justify-between bg-slate-900 border border-purple-500/30 rounded-lg p-2.5 text-xs">
+                    <div class="space-y-0.5">
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold text-purple-400">{{ ent.numero_entrada }}</span>
+                        <span class="text-white font-medium">{{ ent.proveedor?.nombre_completo || 'Proveedor' }}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-400 font-mono">
+                        Fecha: {{ ent.fecha_entrada }} • Bodega: {{ ent.bodega?.nombre }}
+                        @if (ent.numero_factura_proveedor) { • Factura: {{ ent.numero_factura_proveedor }} }
+                        @if (ent.numero_remision_proveedor) { • Remisión: {{ ent.numero_remision_proveedor }} }
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                      {{ ent.lineas?.length || 0 }} ítems recibidos
+                    </span>
+                  </div>
+                } @else {
+                  <div class="space-y-1">
+                    <label class="block text-[11px] text-slate-400">Seleccione la compra/entrada recibida a la cual desea aplicarle devolución:</label>
+                    <select
+                      (change)="alSeleccionarEntradaParaDevolucion($event)"
+                      class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- Seleccionar Entrada de Almacén a devolver --</option>
+                      @for (e of entradas(); track e.id) {
+                        <option [value]="e.id">
+                          {{ e.numero_entrada }} • {{ e.proveedor?.nombre_completo }} ({{ e.fecha_entrada }}) {{ e.numero_factura_proveedor ? '[Fac: ' + e.numero_factura_proveedor + ']' : (e.numero_remision_proveedor ? '[Rem: ' + e.numero_remision_proveedor + ']' : '') }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+                }
+              </div>
+            }
 
             <!-- Líneas de Ajuste -->
             <div class="space-y-2 pt-2">
@@ -1600,12 +1666,23 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                         [class.border-rose-500]="esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)"
                         [class.border-slate-800]="!esSalidaAjuste(lin) || Number(lin.cantidad) <= obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)"
                       />
-                      <div class="text-[10px] text-right mt-0.5 leading-tight">
-                        @if (esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)) {
-                          <span class="text-rose-400 font-bold">⚠️ Excede stock (Disp: {{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }})</span>
-                        } @else {
-                          <span class="text-slate-400">Disp en bodega: <span class="text-slate-200 font-mono font-bold">{{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }}</span></span>
+                      <div class="text-[10px] text-right mt-0.5 leading-tight space-y-0.5">
+                        @if (ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' && obtenerCantIngresadaEnEntrada(lin.articulo_id) !== null) {
+                          <div>
+                            @if (Number(lin.cantidad) > (obtenerCantIngresadaEnEntrada(lin.articulo_id) || 0)) {
+                              <span class="text-rose-400 font-bold">⚠️ Excede lo recibido (Máx: {{ obtenerCantIngresadaEnEntrada(lin.articulo_id) }})</span>
+                            } @else {
+                              <span class="text-slate-400">Ingresaron: <span class="text-purple-400 font-mono font-bold">{{ obtenerCantIngresadaEnEntrada(lin.articulo_id) }}</span></span>
+                            }
+                          </div>
                         }
+                        <div>
+                          @if (esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)) {
+                            <span class="text-rose-400 font-bold">⚠️ Excede stock (Disp: {{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }})</span>
+                          } @else {
+                            <span class="text-slate-400">Disp en bodega: <span class="text-slate-200 font-mono font-bold">{{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }}</span></span>
+                          }
+                        </div>
                       </div>
                     </div>
 
@@ -2031,15 +2108,32 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 }
               }
 
-              <!-- 2. NOTA DE AJUSTE -->
+              <!-- 2. NOTA DE AJUSTE / DEVOLUCIÓN -->
               @if (doc.tipo === 'AJUSTE') {
                 <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div>
-                    <span class="block text-[10px] font-bold uppercase text-slate-500">Bodega Afectada</span>
+                  <div class="space-y-1">
+                    <span class="block text-[10px] font-bold uppercase text-slate-500">Bodega de Despacho / Ajuste</span>
                     <p class="font-bold text-slate-900 text-sm">{{ doc.datos.bodega?.nombre }} ({{ doc.datos.bodega?.codigo }})</p>
-                    <p class="text-[11px] text-slate-700 mt-1">
-                      <span class="font-bold uppercase">Tipo:</span> {{ doc.datos.tipo_ajuste }}
+                    <p class="text-[11px] text-slate-700">
+                      <span class="font-bold uppercase">Tipo:</span>
+                      <span class="font-bold ml-1 text-slate-900">
+                        {{
+                          doc.datos.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' ? '📦 Devolución a Proveedor en Compra' :
+                          doc.datos.tipo_ajuste === 'DEVOLUCION_CLIENTE' ? '↩️ Devolución de Cliente en Venta' :
+                          doc.datos.tipo_ajuste
+                        }}
+                      </span>
                     </p>
+                    @if (doc.datos.entrada_almacen || doc.datos.entrada_almacen_id) {
+                      <p class="text-[11px] text-purple-700 font-mono font-bold">
+                        <span class="uppercase font-semibold">Entrada de Origen:</span> {{ doc.datos.entrada_almacen?.numero_entrada || doc.datos.entrada_almacen_id }}
+                      </p>
+                    }
+                    @if (doc.datos.proveedor || doc.datos.entrada_almacen?.proveedor) {
+                      <p class="text-[11px] text-slate-800">
+                        <span class="font-bold uppercase">Proveedor Destino:</span> {{ doc.datos.proveedor?.nombre_completo || doc.datos.entrada_almacen?.proveedor?.nombre_completo }}
+                      </p>
+                    }
                   </div>
                   <div>
                     <span class="block text-[10px] font-bold uppercase text-slate-500">Justificación Técnica / Auditoría</span>
@@ -2394,6 +2488,7 @@ export class ArticulosAdminComponent implements OnInit {
   readonly ajustes = signal<NotaAjusteItem[]>([]);
   readonly existencias = signal<SaldoBodegaItem[]>([]);
   readonly ordenesCompra = signal<OrdenCompraItem[]>([]);
+  readonly entradaSeleccionadaParaDevolucion = signal<EntradaAlmacenItem | null>(null);
 
   readonly categorias = signal<ParametroItem[]>([]);
   readonly unidades = signal<ParametroItem[]>([]);
@@ -2509,6 +2604,13 @@ export class ArticulosAdminComponent implements OnInit {
     const solicitada = Number(lin.cantidad_solicitada || 0);
     const recibida = Number(lin.cantidad_recibida || 0);
     return Math.max(0, Number((solicitada - recibida).toFixed(2)));
+  }
+
+  obtenerCantIngresadaEnEntrada(articuloId: string): number | null {
+    const ent = this.entradaSeleccionadaParaDevolucion();
+    if (!ent || !ent.lineas) return null;
+    const lin = ent.lineas.find((l: any) => (l.articulo?.id || l.articulo_id) === articuloId);
+    return lin ? Number(lin.cantidad) : null;
   }
 
   obtenerStockBodegaParaAjuste(articuloId: string, bodegaId?: string): number {
@@ -3222,6 +3324,7 @@ export class ArticulosAdminComponent implements OnInit {
   abrirModalAjuste(): void {
     const primerArticulo = this.articulos()[0];
     this.cargarExistencias();
+    this.entradaSeleccionadaParaDevolucion.set(null);
     this.ajusteForm = {
       bodega_id: this.bodegas()[0]?.id || '',
       tipo_ajuste: 'FALTANTE_MERMA',
@@ -3230,6 +3333,49 @@ export class ArticulosAdminComponent implements OnInit {
       lineas: [{ articulo_id: primerArticulo?.id || '', tipo_movimiento: 'SALIDA', cantidad: 1 }],
     };
     this.mostrarModalAjuste.set(true);
+  }
+
+  abrirModalDevolucionDesdeEntrada(ent: EntradaAlmacenItem): void {
+    this.cargarExistencias();
+    this.entradaSeleccionadaParaDevolucion.set(ent);
+    const lineasPrecargadas = (ent.lineas || []).map((l: any) => ({
+      articulo_id: l.articulo?.id || l.articulo_id,
+      tipo_movimiento: 'SALIDA',
+      cantidad: Number(l.cantidad),
+      costo_unitario: Number(l.costo_unitario || 0),
+    }));
+
+    this.ajusteForm = {
+      bodega_id: ent.bodega?.id || (ent as any).bodega_id || this.bodegas()[0]?.id || '',
+      tipo_ajuste: 'DEVOLUCION_PROVEEDOR',
+      entrada_almacen_id: ent.id,
+      proveedor_id: ent.proveedor?.id || (ent as any).proveedor_id || undefined,
+      fecha_ajuste: new Date().toISOString().slice(0, 10),
+      justificacion: `Devolución de compra a proveedor correspondiente a la Entrada ${ent.numero_entrada} (${ent.proveedor?.nombre_completo || 'Proveedor'})${ent.numero_factura_proveedor ? ' - Fac ' + ent.numero_factura_proveedor : (ent.numero_remision_proveedor ? ' - Rem ' + ent.numero_remision_proveedor : '')}`,
+      lineas: lineasPrecargadas.length > 0 ? lineasPrecargadas : [{ articulo_id: this.articulos()[0]?.id || '', tipo_movimiento: 'SALIDA', cantidad: 1 }],
+    };
+    this.mostrarModalAjuste.set(true);
+    this.notificationService.info(`Formulario de Devolución precargado con los artículos de la Entrada ${ent.numero_entrada}.`);
+  }
+
+  desvincularEntradaDevolucion(): void {
+    this.entradaSeleccionadaParaDevolucion.set(null);
+    if (this.ajusteForm) {
+      delete this.ajusteForm.entrada_almacen_id;
+      delete this.ajusteForm.proveedor_id;
+    }
+  }
+
+  alSeleccionarEntradaParaDevolucion(event: Event): void {
+    const entId = (event.target as HTMLSelectElement).value;
+    if (!entId) {
+      this.desvincularEntradaDevolucion();
+      return;
+    }
+    const ent = this.entradas().find((e) => e.id === entId);
+    if (ent) {
+      this.abrirModalDevolucionDesdeEntrada(ent);
+    }
   }
 
   alCambiarTipoAjuste(): void {
@@ -3310,6 +3456,7 @@ export class ArticulosAdminComponent implements OnInit {
         return;
       }
       if (this.esSalidaAjuste(lin)) {
+        // Validación contra stock disponible en bodega
         const stockDisp = this.obtenerStockBodegaParaAjuste(lin.articulo_id, this.ajusteForm.bodega_id);
         if (cant > stockDisp) {
           const art = this.obtenerArticulo(lin.articulo_id);
@@ -3318,6 +3465,19 @@ export class ArticulosAdminComponent implements OnInit {
             `No es posible registrar salida de ${cant} unidades de '${nomArt}'. El stock disponible en bodega es de ${stockDisp} unidades. No se permite inventario negativo.`
           );
           return;
+        }
+
+        // Validación estricta contra cantidad recibida en la entrada vinculada
+        if (this.ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' && this.entradaSeleccionadaParaDevolucion()) {
+          const cantIngresada = this.obtenerCantIngresadaEnEntrada(lin.articulo_id);
+          if (cantIngresada !== null && cant > cantIngresada) {
+            const art = this.obtenerArticulo(lin.articulo_id);
+            const nomArt = art?.nombre || `Línea #${i + 1}`;
+            this.notificationService.error(
+              `No es posible devolver ${cant} unidades de '${nomArt}'. La Entrada vinculada solo recibió ${cantIngresada} unidad(es).`
+            );
+            return;
+          }
         }
       }
     }

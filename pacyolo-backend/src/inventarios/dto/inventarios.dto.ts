@@ -276,6 +276,16 @@ export class CreateNotaAjusteDto {
   @IsEnum(['SOBRANTE', 'FALTANTE_MERMA', 'CIERRE_INVENTARIO_FISICO', 'DEVOLUCION_PROVEEDOR', 'DEVOLUCION_CLIENTE'])
   tipo_ajuste: 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO' | 'DEVOLUCION_PROVEEDOR' | 'DEVOLUCION_CLIENTE';
 
+  @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+  @IsOptional()
+  @IsUUID()
+  entrada_almacen_id?: string;
+
+  @ApiPropertyOptional({ example: 'a1b2c3d4-...' })
+  @IsOptional()
+  @IsUUID()
+  proveedor_id?: string;
+
   @ApiProperty({ example: '2026-10-19' })
   @IsString()
   @IsNotEmpty()
