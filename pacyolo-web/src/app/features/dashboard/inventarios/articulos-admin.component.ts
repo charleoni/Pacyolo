@@ -1590,19 +1590,99 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                     }
                   </div>
                 } @else {
-                  <div class="space-y-1">
-                    <label class="block text-[11px] text-slate-400">Seleccione la compra/entrada recibida a la cual desea aplicarle devolución:</label>
-                    <select
-                      (change)="alSeleccionarEntradaParaDevolucion($event)"
-                      class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">-- Seleccionar Entrada de Almacén a devolver --</option>
-                      @for (e of entradas(); track e.id) {
-                        <option [value]="e.id">
-                          {{ e.numero_entrada }} • {{ e.proveedor?.nombre_completo }} ({{ e.fecha_entrada }}) {{ e.numero_factura_proveedor ? '[Fac: ' + e.numero_factura_proveedor + ']' : (e.numero_remision_proveedor ? '[Rem: ' + e.numero_remision_proveedor + ']' : '') }}
-                        </option>
-                      }
-                    </select>
+                  <!-- PASO 1: Selección y Filtro por Proveedor (Enterprise Lookup) -->
+                  <div class="space-y-2.5">
+                    @if (proveedorSeleccionadoDevolucion(); as prov) {
+                      <div class="flex items-center justify-between p-2.5 bg-slate-900 border border-purple-500/40 rounded-lg text-xs">
+                        <div class="flex items-center gap-2">
+                          <span class="text-base">🏢</span>
+                          <div>
+                            <span class="text-purple-400 font-mono font-bold">[{{ prov.numero_identificacion }}]</span>
+                            <span class="text-white font-medium ml-1.5">{{ prov.nombre_completo }}</span>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            (click)="abrirLookupProveedorDevolucion()"
+                            class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-purple-300 rounded text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            🔍 Cambiar
+                          </button>
+                          <button
+                            type="button"
+                            (click)="limpiarProveedorDevolucion()"
+                            class="text-rose-400 hover:text-rose-300 text-[11px] font-semibold cursor-pointer"
+                          >
+                            ✕ Quitar Filtro
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="flex items-center justify-between p-2.5 bg-slate-900/80 border border-dashed border-purple-500/40 rounded-lg">
+                        <div class="text-xs text-slate-300">
+                          <span class="font-bold text-purple-300">Paso 1:</span> Seleccione el Proveedor para listar únicamente sus recepciones aptas para devolución
+                        </div>
+                        <button
+                          type="button"
+                          (click)="abrirLookupProveedorDevolucion()"
+                          class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold shadow transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>🔍</span>
+                          <span>Buscar Proveedor</span>
+                        </button>
+                      </div>
+                    }
+
+                    <!-- PASO 2: Listado de Entradas Filtradas Aptas para Devolución -->
+                    @if (entradasElegiblesParaDevolucion().length > 0) {
+                      <div class="space-y-1.5">
+                        <label class="block text-[11px] font-semibold text-purple-300">
+                          Paso 2: Seleccione la Entrada de Almacén a devolver ({{ entradasElegiblesParaDevolucion().length }} disponible{{ entradasElegiblesParaDevolucion().length > 1 ? 's' : '' }} con saldo disponible y sin pagos):
+                        </label>
+                        <div class="max-h-48 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                          @for (e of entradasElegiblesParaDevolucion(); track e.id) {
+                            <div
+                              (click)="seleccionarEntradaParaDevolucionItem(e)"
+                              class="flex items-center justify-between p-2.5 bg-slate-900 hover:bg-purple-950/50 border border-slate-800 hover:border-purple-500/50 rounded-lg cursor-pointer transition text-xs group"
+                            >
+                              <div>
+                                <div class="flex items-center gap-2">
+                                  <span class="font-mono font-bold text-purple-400 group-hover:text-purple-300">{{ e.numero_entrada }}</span>
+                                  <span class="text-white font-medium">{{ e.proveedor?.nombre_completo }}</span>
+                                  @if (e.numero_factura_proveedor) {
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
+                                      Fac: {{ e.numero_factura_proveedor }}
+                                    </span>
+                                  } @else if (e.numero_remision_proveedor) {
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                                      Rem: {{ e.numero_remision_proveedor }}
+                                    </span>
+                                  }
+                                </div>
+                                <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                                  Fecha: {{ e.fecha_entrada }} • Bodega: {{ e.bodega?.nombre }} • {{ e.lineas?.length || 0 }} ítems recibidos
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                class="px-2.5 py-1 bg-purple-600/20 group-hover:bg-purple-600 text-purple-300 group-hover:text-white border border-purple-500/30 rounded-lg text-xs font-semibold transition shrink-0"
+                              >
+                                Seleccionar ↩️
+                              </button>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="p-3 bg-slate-900/60 border border-slate-800 rounded-lg text-center text-xs text-slate-400">
+                        @if (proveedorSeleccionadoDevolucion()) {
+                          ⚠️ Este proveedor no tiene entradas aptas para devolución (las existentes tienen facturas con pagos o sus inventarios están en saldo 0).
+                        } @else {
+                          ℹ️ Seleccione un proveedor o no hay entradas registradas aptas para devolución.
+                        }
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -2610,6 +2690,8 @@ export class ArticulosAdminComponent implements OnInit {
   // Estados de Modales Lookup Enterprise
   readonly mostrarLookupProveedor = signal(false);
   readonly mostrarLookupOrdenCompra = signal(false);
+  readonly destinoLookupProveedor = signal<'ENTRADA' | 'DEVOLUCION'>('ENTRADA');
+  readonly proveedorSeleccionadoDevolucion = signal<any | null>(null);
 
   ordenCompraSeleccionada(): OrdenCompraItem | undefined {
     return this.ordenesCompra().find((oc) => oc.id === this.entradaForm.orden_compra_id);
@@ -2795,11 +2877,52 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   abrirLookupProveedor(): void {
+    this.destinoLookupProveedor.set('ENTRADA');
     this.mostrarLookupProveedor.set(true);
   }
 
+  abrirLookupProveedorDevolucion(): void {
+    this.destinoLookupProveedor.set('DEVOLUCION');
+    this.mostrarLookupProveedor.set(true);
+  }
+
+  limpiarProveedorDevolucion(): void {
+    this.proveedorSeleccionadoDevolucion.set(null);
+    if (this.ajusteForm) {
+      delete this.ajusteForm.proveedor_id;
+    }
+    this.desvincularEntradaDevolucion();
+  }
+
   alSeleccionarProveedorLookup(tercero: any): void {
-    this.entradaForm.proveedor_id = tercero.id;
+    if (this.destinoLookupProveedor() === 'DEVOLUCION') {
+      this.proveedorSeleccionadoDevolucion.set(tercero);
+      if (this.ajusteForm) {
+        this.ajusteForm.proveedor_id = tercero.id;
+      }
+      this.desvincularEntradaDevolucion();
+    } else {
+      this.entradaForm.proveedor_id = tercero.id;
+    }
+  }
+
+  entradasElegiblesParaDevolucion(): EntradaAlmacenItem[] {
+    const provId = this.proveedorSeleccionadoDevolucion()?.id || this.ajusteForm?.proveedor_id;
+    return this.entradas().filter((e) => {
+      if (e.estado !== 'CONFIRMADA') return false;
+      if (provId) {
+        const eProvId = e.proveedor?.id || (e as any).proveedor_id;
+        if (eProvId !== provId) return false;
+      }
+      if (this.entradaTienePagosOAbonos(e)) return false;
+      if (this.entradaTieneSaldoCero(e)) return false;
+      return true;
+    });
+  }
+
+  seleccionarEntradaParaDevolucionItem(ent: EntradaAlmacenItem): void {
+    this.proveedorSeleccionadoDevolucion.set(ent.proveedor || null);
+    this.abrirModalDevolucionDesdeEntrada(ent);
   }
 
   abrirLookupArticuloParaEntrada(index: number): void {
@@ -3395,6 +3518,7 @@ export class ArticulosAdminComponent implements OnInit {
     const primerArticulo = this.articulos()[0];
     this.cargarExistencias();
     this.entradaSeleccionadaParaDevolucion.set(null);
+    this.proveedorSeleccionadoDevolucion.set(null);
     this.ajusteForm = {
       bodega_id: this.bodegas()[0]?.id || '',
       tipo_ajuste: 'FALTANTE_MERMA',
@@ -3425,6 +3549,7 @@ export class ArticulosAdminComponent implements OnInit {
     }
 
     this.cargarExistencias();
+    this.proveedorSeleccionadoDevolucion.set(ent.proveedor || null);
     this.entradaSeleccionadaParaDevolucion.set(ent);
     const bId = ent.bodega?.id || (ent as any).bodega_id || this.bodegas()[0]?.id || '';
     const lineasPrecargadas = (ent.lineas || []).map((l: any) => {

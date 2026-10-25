@@ -572,12 +572,17 @@ export class InventariosService {
       throw new BadRequestException('La nota de ajuste debe contener al menos una línea.');
     }
 
+    const empresaIdVal = dto.empresa_id || '00000000-0000-0000-0000-000000000000';
     let numeroNota = dto.numero_nota;
     if (!numeroNota) {
-      const conteo = await this.notaAjusteRepo.count({
-        where: { empresa_id: dto.empresa_id ? dto.empresa_id : IsNull() },
+      let conteo = await this.notaAjusteRepo.count({
+        where: { empresa_id: empresaIdVal },
       });
       numeroNota = `AJ-${String(conteo + 1).padStart(4, '0')}`;
+      while (await this.notaAjusteRepo.findOne({ where: { empresa_id: empresaIdVal, numero_nota: numeroNota } })) {
+        conteo++;
+        numeroNota = `AJ-${String(conteo + 1).padStart(4, '0')}`;
+      }
     }
 
     const articulosMap = new Map<string, Articulo>();
@@ -588,6 +593,7 @@ export class InventariosService {
     let totalAjuste = 0;
     let guardada: NotaAjuste;
     let entradaVinculada: EntradaAlmacen | null = null;
+    let cxpAsociada: CuentaPorPagar | null = null;
 
     try {
       const lineasAjuste: NotaAjusteLinea[] = [];
@@ -610,7 +616,6 @@ export class InventariosService {
 
         // Validación de Factura y Pagos/Abonos:
         // No se puede realizar devolución si la entrada causó una factura y esta ya tiene pagos o abonos.
-        let cxpAsociada: CuentaPorPagar | null = null;
         if (entradaVinculada.cxp_id) {
           cxpAsociada = await queryRunner.manager.findOne(CuentaPorPagar, {
             where: { id: entradaVinculada.cxp_id },
@@ -809,6 +814,65 @@ export class InventariosService {
         await queryRunner.manager.save(kardex);
       }
 
+      // Reversión operativa en Orden de Compra: Deja la orden nuevamente PENDIENTE para permitir el reingreso
+      if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' && entradaVinculada && entradaVinculada.orden_compra_id) {
+        const ordenRepo = queryRunner.manager.getRepository(OrdenCompra);
+        const orden = await ordenRepo.findOne({
+          where: { id: entradaVinculada.orden_compra_id },
+          relations: { lineas: true },
+        });
+
+        if (orden && orden.lineas) {
+          for (const devLin of dto.lineas) {
+            const oLin = orden.lineas.find((ol) => ol.articulo_id === devLin.articulo_id);
+            if (oLin) {
+              const cantDevolver = Number(devLin.cantidad || 0);
+              const recibidaActual = Number(oLin.cantidad_recibida || 0);
+              oLin.cantidad_recibida = Math.max(0, Number((recibidaActual - cantDevolver).toFixed(2)));
+              await queryRunner.manager.save(oLin);
+            }
+          }
+
+          let todasCompletas = true;
+          let algunaRecibida = false;
+          for (const ol of orden.lineas) {
+            const rec = Number(ol.cantidad_recibida || 0);
+            const sol = Number(ol.cantidad_solicitada || 0);
+            if (rec > 0) algunaRecibida = true;
+            if (rec < sol) todasCompletas = false;
+          }
+
+          if (todasCompletas) {
+            orden.estado = 'RECIBIDA_TOTAL';
+          } else if (algunaRecibida) {
+            orden.estado = 'RECIBIDA_PARCIAL';
+          } else {
+            orden.estado = 'APROBADA'; // Queda 100% pendiente para reingresar mercancía
+          }
+          await ordenRepo.save(orden);
+        }
+      }
+
+      // Reversión de la Cuenta por Pagar asociada si no registraba abonos
+      if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' && cxpAsociada) {
+        let totalDevueltoConIva = 0;
+        for (const devLin of dto.lineas) {
+          const entLin = entradaVinculada?.lineas?.find((el) => el.articulo_id === devLin.articulo_id);
+          const pct = entLin ? Number(entLin.porcentaje_iva || 0) : 0;
+          const sub = Number(devLin.cantidad) * Number(devLin.costo_unitario || 0);
+          const iva = Number((sub * (pct / 100)).toFixed(2));
+          totalDevueltoConIva += (sub + iva);
+        }
+        totalDevueltoConIva = Number(totalDevueltoConIva.toFixed(2));
+
+        cxpAsociada.saldo_pendiente = Math.max(0, Number((Number(cxpAsociada.saldo_pendiente) - totalDevueltoConIva).toFixed(2)));
+        cxpAsociada.monto_total = Math.max(0, Number((Number(cxpAsociada.monto_total) - totalDevueltoConIva).toFixed(2)));
+        if (cxpAsociada.saldo_pendiente <= 0.01) {
+          cxpAsociada.estado = EstadoCuentaPorPagar.ANULADA;
+        }
+        await queryRunner.manager.save(cxpAsociada);
+      }
+
       const nota = queryRunner.manager.create(NotaAjuste, {
         empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
         numero_nota: numeroNota,
@@ -835,7 +899,8 @@ export class InventariosService {
     // CONTABILIZACIÓN AUTOMÁTICA OBLIGATORIA (ERP & NIIF NIC 2)
     // Generar Comprobante Contable de Ajuste (Tipo AJU) con estricta partida doble
     // =========================================================================
-    if (dto.empresa_id && totalAjuste > 0) {
+    const empresaIdContable = dto.empresa_id || entradaVinculada?.empresa_id || '00000000-0000-0000-0000-000000000000';
+    if (empresaIdContable && totalAjuste > 0) {
       try {
         const lineasContables: CreateAsientoLineaDto[] = [];
 
@@ -847,8 +912,7 @@ export class InventariosService {
           if (costoTotal <= 0) continue;
 
           // Cuenta de Inventario (Activo)
-          const cuentaInventario = await this.buscarCuentaAuxiliar(
-            dto.empresa_id,
+          const cuentaInventario = await this.buscarCuentaAuxiliar(empresaIdContable,
             [articulo?.cuenta_inventario, '143505', '1435', '14'],
             ClaseCuenta.ACTIVO,
           );
@@ -856,8 +920,7 @@ export class InventariosService {
           if (lin.tipo_movimiento === 'ENTRADA') {
             if (dto.tipo_ajuste === 'DEVOLUCION_CLIENTE') {
               // Devolución de Cliente: Débito Inventarios (Aumenta Activo) / Crédito Costo de Ventas (Disminuye Costo)
-              const cuentaCosto = await this.buscarCuentaAuxiliar(
-                dto.empresa_id,
+              const cuentaCosto = await this.buscarCuentaAuxiliar(empresaIdContable,
                 [articulo?.cuenta_costo_venta, '613505', '6135', '61'],
                 ClaseCuenta.COSTO,
               );
@@ -879,8 +942,7 @@ export class InventariosService {
               });
             } else {
               // Sobrante: Débito Inventarios (Aumenta Activo) / Crédito Aprovechamientos (Ingreso Extraordinario)
-              const cuentaIngreso = await this.buscarCuentaAuxiliar(
-                dto.empresa_id,
+              const cuentaIngreso = await this.buscarCuentaAuxiliar(empresaIdContable,
                 ['429553', '4295', '4210', '42'],
                 ClaseCuenta.INGRESO,
               );
@@ -903,10 +965,15 @@ export class InventariosService {
             }
           } else {
             if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
+              // Obtener IVA aplicado a la línea en la entrada si existía
+              const entLinea = entradaVinculada?.lineas?.find((el) => el.articulo_id === lin.articulo_id);
+              const pctIva = entLinea ? Number(entLinea.porcentaje_iva || 0) : 0;
+              const valorIvaReversar = Number((costoTotal * (pctIva / 100)).toFixed(2));
+              const totalDebitarProveedor = Number((costoTotal + valorIvaReversar).toFixed(2));
+
               if (dto.proveedor_id) {
-                // Devolución a Proveedor: Débito a Proveedores Nacionales (Disminuye pasivo / deuda con el proveedor)
-                const cuentaProveedor = await this.buscarCuentaAuxiliar(
-                  dto.empresa_id,
+                // Débito a Proveedores Nacionales (Disminuye pasivo / deuda con el proveedor por el valor con IVA)
+                const cuentaProveedor = await this.buscarCuentaAuxiliar(empresaIdContable,
                   ['220505', '2205', '22'],
                   ClaseCuenta.PASIVO,
                 );
@@ -914,28 +981,27 @@ export class InventariosService {
                 lineasContables.push({
                   cuenta_id: cuentaProveedor.id,
                   tercero_id: dto.proveedor_id,
-                  debito: costoTotal,
+                  debito: totalDebitarProveedor,
                   credito: 0,
                   glosa_detalle: `Devolución a Proveedor ${numeroNota}${entradaVinculada ? ' s/Entrada ' + entradaVinculada.numero_entrada : ''}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
                   documento_referencia: numeroNota,
                 });
               } else {
-                // Fallback si no tiene proveedor específico: Débito Costo/Gasto por Devolución de Compra
-                const cuentaDev = await this.buscarCuentaAuxiliar(
-                  dto.empresa_id,
+                const cuentaDev = await this.buscarCuentaAuxiliar(empresaIdContable,
                   [articulo?.cuenta_costo_venta, '613505', '6135', '531520', '5315', '519595'],
                   ClaseCuenta.COSTO,
                 );
 
                 lineasContables.push({
                   cuenta_id: cuentaDev.id,
-                  debito: costoTotal,
+                  debito: totalDebitarProveedor,
                   credito: 0,
                   glosa_detalle: `Devolución a Proveedor ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
                   documento_referencia: numeroNota,
                 });
               }
 
+              // Crédito a Inventarios (Disminuye Activo por el costo neto sin IVA)
               lineasContables.push({
                 cuenta_id: cuentaInventario.id,
                 debito: 0,
@@ -943,10 +1009,26 @@ export class InventariosService {
                 glosa_detalle: `Salida Devolución Proveedor ${numeroNota}: ${articulo?.codigo || ''}`,
                 documento_referencia: numeroNota,
               });
+
+              // Crédito a IVA Descontable Reversado (si la compra original causó IVA)
+              if (valorIvaReversar > 0) {
+                const cuentaIva = await this.buscarCuentaAuxiliar(empresaIdContable,
+                  ['240801', '240805', '2408', '24'],
+                  ClaseCuenta.PASIVO,
+                );
+
+                lineasContables.push({
+                  cuenta_id: cuentaIva.id,
+                  tercero_id: dto.proveedor_id || undefined,
+                  debito: 0,
+                  credito: valorIvaReversar,
+                  glosa_detalle: `Reversión IVA Descontable ${numeroNota} (${pctIva}%): ${articulo?.codigo || ''}`,
+                  documento_referencia: numeroNota,
+                });
+              }
             } else {
               // Salida / Merma: Débito Pérdidas/Gastos (Aumenta Gasto) / Crédito Inventarios (Disminuye Activo)
-              const cuentaGasto = await this.buscarCuentaAuxiliar(
-                dto.empresa_id,
+              const cuentaGasto = await this.buscarCuentaAuxiliar(empresaIdContable,
                 [articulo?.cuenta_gasto, '531520', '5315', '519595', '5195', '51'],
                 ClaseCuenta.GASTO,
               );
@@ -972,7 +1054,7 @@ export class InventariosService {
 
         if (lineasContables.length > 0) {
           const asientoCreado = await this.asientosService.create({
-            empresa_id: dto.empresa_id,
+            empresa_id: empresaIdContable,
             tipo_comprobante: TipoComprobante.AJU,
             fecha_contable: dto.fecha_ajuste,
             glosa_general: `Comprobante de Ajuste ${numeroNota} (${dto.tipo_ajuste}): ${dto.justificacion.slice(0, 150)}`,
@@ -990,7 +1072,7 @@ export class InventariosService {
 
           // Pista de Auditoría Obligatoria
           await this.auditoriaService.registrarLog({
-            empresa_id: dto.empresa_id,
+            empresa_id: empresaIdContable,
             usuario_id: dto.usuario_id || null,
             usuario_email: dto.creado_por || 'sistema@pacyolo.com',
             modulo: 'INVENTARIOS',
