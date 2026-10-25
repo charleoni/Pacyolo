@@ -234,9 +234,10 @@ export class NotaAjusteLineaDto {
   @IsUUID()
   articulo_id: string;
 
-  @ApiProperty({ enum: ['ENTRADA', 'SALIDA'] })
+  @ApiPropertyOptional({ enum: ['ENTRADA', 'SALIDA'] })
+  @IsOptional()
   @IsEnum(['ENTRADA', 'SALIDA'])
-  tipo_movimiento: 'ENTRADA' | 'SALIDA';
+  tipo_movimiento?: 'ENTRADA' | 'SALIDA';
 
   @ApiProperty({ example: 2 })
   @Type(() => Number)
@@ -268,9 +269,12 @@ export class CreateNotaAjusteDto {
   @IsNotEmpty()
   bodega_id: string;
 
-  @ApiProperty({ enum: ['SOBRANTE', 'FALTANTE_MERMA', 'CIERRE_INVENTARIO_FISICO'] })
-  @IsEnum(['SOBRANTE', 'FALTANTE_MERMA', 'CIERRE_INVENTARIO_FISICO'])
-  tipo_ajuste: 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO';
+  @ApiProperty({
+    enum: ['SOBRANTE', 'FALTANTE_MERMA', 'CIERRE_INVENTARIO_FISICO', 'DEVOLUCION_PROVEEDOR', 'DEVOLUCION_CLIENTE'],
+    example: 'SOBRANTE',
+  })
+  @IsEnum(['SOBRANTE', 'FALTANTE_MERMA', 'CIERRE_INVENTARIO_FISICO', 'DEVOLUCION_PROVEEDOR', 'DEVOLUCION_CLIENTE'])
+  tipo_ajuste: 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO' | 'DEVOLUCION_PROVEEDOR' | 'DEVOLUCION_CLIENTE';
 
   @ApiProperty({ example: '2026-10-19' })
   @IsString()

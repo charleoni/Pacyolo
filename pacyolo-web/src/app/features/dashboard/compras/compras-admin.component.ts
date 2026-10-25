@@ -646,10 +646,10 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
       <!-- MODAL: VISTA PREVIA E IMPRESIÓN FORMAL DE ORDEN DE COMPRA                -->
       <!-- ========================================================================= -->
       @if (mostrarModalImprimir(); as orden) {
-        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden print:border-none print:shadow-none print:max-h-none print:w-full print:bg-white">
-            <!-- Barra de Herramientas Superior (No se imprime) -->
-            <div class="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between print:hidden">
+        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex justify-center items-start p-4 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0" (click)="mostrarModalImprimir.set(null)">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col my-4 sm:my-8 overflow-hidden print:border-none print:shadow-none print:max-h-none print:w-full print:bg-white relative" (click)="$event.stopPropagation()">
+            <!-- Barra de Herramientas Superior (fijada arriba para nunca perderse) -->
+            <div class="sticky top-0 z-30 px-6 py-3.5 bg-slate-950/95 backdrop-blur border-b border-slate-800 flex items-center justify-between print:hidden shadow-md">
               <div class="flex items-center gap-2 text-white font-bold text-sm">
                 <span>🖨️</span>
                 <span>Vista Previa de Documento Oficial — {{ orden.numero_orden }}</span>

@@ -60,7 +60,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
               (click)="abrirModalAjuste()"
               class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-amber-600/20 transition flex items-center gap-2 cursor-pointer"
             >
-              <span>+ Nueva Nota de Ajuste</span>
+              <span>+ Registrar Ajuste o Devolución</span>
             </button>
           } @else if (pestanaActiva() === 'traslados') {
             <button
@@ -121,7 +121,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
           [class]="pestanaActiva() === 'ajustes' ? 'border-indigo-500 text-white font-bold bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'"
           class="px-4 py-2.5 border-b-2 transition flex items-center gap-2 whitespace-nowrap cursor-pointer rounded-t-lg"
         >
-          <span>📝 Notas de Ajuste</span>
+          <span>📝 Notas de Ajuste & Devoluciones</span>
           <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
             {{ ajustes().length }}
           </span>
@@ -597,9 +597,11 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 [(ngModel)]="filtroTipoAjuste"
                 class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
               >
-                <option value="">Todos los tipos de ajuste</option>
-                <option value="SOBRANTE">📥 Sobrante de Inventario</option>
-                <option value="FALTANTE_MERMA">📤 Faltante / Merma</option>
+                <option value="">Todos los tipos (Sobrante, Merma, Devoluciones, Cierre)</option>
+                <option value="SOBRANTE">📥 Sobrantes de Inventario (+)</option>
+                <option value="FALTANTE_MERMA">📤 Faltantes / Mermas (-)</option>
+                <option value="DEVOLUCION_PROVEEDOR">📦 Devolución a Proveedor en Compra (-)</option>
+                <option value="DEVOLUCION_CLIENTE">↩️ Devolución de Cliente en Venta (+)</option>
                 <option value="CIERRE_INVENTARIO_FISICO">⚖️ Cierre Conteo Físico</option>
               </select>
             </div>
@@ -647,11 +649,21 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                               ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                               : aj.tipo_ajuste === 'FALTANTE_MERMA'
                               ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                              : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                              : aj.tipo_ajuste === 'DEVOLUCION_PROVEEDOR'
+                              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                              : aj.tipo_ajuste === 'DEVOLUCION_CLIENTE'
+                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           "
                           class="px-2 py-0.5 rounded-full text-[10px] font-semibold border"
                         >
-                          {{ aj.tipo_ajuste }}
+                          {{
+                            aj.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' ? '📦 Dev. Proveedor' :
+                            aj.tipo_ajuste === 'DEVOLUCION_CLIENTE' ? '↩️ Dev. Cliente' :
+                            aj.tipo_ajuste === 'SOBRANTE' ? '📥 Sobrante' :
+                            aj.tipo_ajuste === 'FALTANTE_MERMA' ? '📤 Faltante/Merma' :
+                            '⚖️ Cierre Físico'
+                          }}
                         </span>
                       </td>
                       <td class="p-3.5 text-slate-300 max-w-xs truncate">{{ aj.justificacion }}</td>
@@ -1469,7 +1481,7 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
               </div>
 
               <div>
-                <label class="block font-semibold text-slate-300 mb-1">Tipo de Ajuste *</label>
+                <label class="block font-semibold text-slate-300 mb-1">Tipo de Operación / Devolución *</label>
                 <select
                   [(ngModel)]="ajusteForm.tipo_ajuste"
                   (change)="alCambiarTipoAjuste()"
@@ -1477,6 +1489,8 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 >
                   <option value="SOBRANTE">📥 SOBRANTE (Aumenta Stock)</option>
                   <option value="FALTANTE_MERMA">📤 FALTANTE / MERMA (Disminuye Stock)</option>
+                  <option value="DEVOLUCION_PROVEEDOR">📦 DEVOLUCIÓN A PROVEEDOR EN COMPRA (Disminuye Stock)</option>
+                  <option value="DEVOLUCION_CLIENTE">↩️ DEVOLUCIÓN DE CLIENTE EN VENTA (Aumenta Stock)</option>
                   <option value="CIERRE_INVENTARIO_FISICO">⚖️ CIERRE POR CONTEO FÍSICO</option>
                 </select>
               </div>
@@ -1551,6 +1565,14 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                       @if (ajusteForm.tipo_ajuste === 'FALTANTE_MERMA') {
                         <div class="w-full bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
                           📤 Resta (- Stock)
+                        </div>
+                      } @else if (ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
+                        <div class="w-full bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
+                          📦 Dev. Proveedor (- Stock)
+                        </div>
+                      } @else if (ajusteForm.tipo_ajuste === 'DEVOLUCION_CLIENTE') {
+                        <div class="w-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
+                          ↩️ Dev. Cliente (+ Stock)
                         </div>
                       } @else if (ajusteForm.tipo_ajuste === 'SOBRANTE') {
                         <div class="w-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold rounded-lg px-2 py-1.5 text-center text-xs">
@@ -1770,10 +1792,10 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
       <!-- MODAL FORMAL: VISOR E IMPRESIÓN DOCUMENTAL (AUDITORÍA & DIAN)            -->
       <!-- ========================================================================= -->
       @if (documentoParaImprimir(); as doc) {
-        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-200 my-8">
-            <!-- Barra superior de acciones (no se imprime) -->
-            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800">
+        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex justify-center items-start p-4 sm:p-6 overflow-y-auto" (click)="cerrarModalImprimir()">
+          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-200 my-4 sm:my-8 relative" (click)="$event.stopPropagation()">
+            <!-- Barra superior de acciones (fijada arriba para nunca perderse en pantallas de cualquier tamaño) -->
+            <div class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800 shadow-md">
               <div class="flex items-center gap-3">
                 <span class="text-xl">🖨️</span>
                 <div>
@@ -2505,8 +2527,8 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   esSalidaAjuste(lin: any): boolean {
-    if (this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA') return true;
-    if (this.ajusteForm.tipo_ajuste === 'SOBRANTE') return false;
+    if (this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA' || this.ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') return true;
+    if (this.ajusteForm.tipo_ajuste === 'SOBRANTE' || this.ajusteForm.tipo_ajuste === 'DEVOLUCION_CLIENTE') return false;
     return lin.tipo_movimiento === 'SALIDA';
   }
   readonly mostrarLookupArticulo = signal(false);
@@ -3212,15 +3234,15 @@ export class ArticulosAdminComponent implements OnInit {
 
   alCambiarTipoAjuste(): void {
     const tipo = this.ajusteForm.tipo_ajuste;
-    if (tipo === 'FALTANTE_MERMA') {
+    if (tipo === 'FALTANTE_MERMA' || tipo === 'DEVOLUCION_PROVEEDOR') {
       this.ajusteForm.lineas.forEach((l: any) => (l.tipo_movimiento = 'SALIDA'));
-    } else if (tipo === 'SOBRANTE') {
+    } else if (tipo === 'SOBRANTE' || tipo === 'DEVOLUCION_CLIENTE') {
       this.ajusteForm.lineas.forEach((l: any) => (l.tipo_movimiento = 'ENTRADA'));
     }
   }
 
   agregarLineaAjuste(): void {
-    const mov = this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA' ? 'SALIDA' : 'ENTRADA';
+    const mov = (this.ajusteForm.tipo_ajuste === 'FALTANTE_MERMA' || this.ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') ? 'SALIDA' : 'ENTRADA';
     this.ajusteForm.lineas.push({
       articulo_id: this.articulos()[0]?.id || '',
       tipo_movimiento: mov,

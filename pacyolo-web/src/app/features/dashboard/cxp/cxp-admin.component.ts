@@ -1145,10 +1145,10 @@ interface PagoHistorial {
 
       <!-- Modal Imprimible Formal para Documentos CxP (CAU / EGR) -->
       @if (documentoCxpParaImprimir(); as doc) {
-        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-200 my-8">
-            <!-- Barra superior no imprimible -->
-            <div class="bg-slate-900 px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800">
+        <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex justify-center items-start p-4 sm:p-6 overflow-y-auto" (click)="documentoCxpParaImprimir.set(null)">
+          <div class="bg-white text-slate-900 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-200 my-4 sm:my-8 relative" (click)="$event.stopPropagation()">
+            <!-- Barra superior no imprimible (fijada arriba para nunca perderse en pantallas de cualquier tamaño) -->
+            <div class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur px-6 py-4 flex items-center justify-between print:hidden border-b border-slate-800 shadow-md">
               <div class="flex items-center gap-3">
                 <span class="text-xl">🖨️</span>
                 <div>

@@ -14,7 +14,12 @@ import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { Articulo } from './articulo.entity.js';
 import { Asiento } from '../../asientos/entities/asiento.entity.js';
 
-export type TipoAjusteInventario = 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO';
+export type TipoAjusteInventario =
+  | 'SOBRANTE'
+  | 'FALTANTE_MERMA'
+  | 'CIERRE_INVENTARIO_FISICO'
+  | 'DEVOLUCION_PROVEEDOR'
+  | 'DEVOLUCION_CLIENTE';
 
 @Entity({ name: 'inv_notas_ajuste', schema: 'core' })
 @Unique(['empresa_id', 'numero_nota'])

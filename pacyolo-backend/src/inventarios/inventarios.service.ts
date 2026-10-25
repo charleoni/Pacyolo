@@ -591,11 +591,11 @@ export class InventariosService {
         }
         articulosMap.set(articulo.id, articulo);
 
-        // FORZAR NATURALEZA SEGÚN EL TIPO DE AJUSTE (Regla Estricta: FALTANTE siempre resta stock, SOBRANTE siempre suma)
-        let tipoMovimiento = lin.tipo_movimiento;
-        if (dto.tipo_ajuste === 'FALTANTE_MERMA') {
+        // FORZAR NATURALEZA SEGÚN EL TIPO DE AJUSTE (Reglas Estrictas: FALTANTE y DEV_PROVEEDOR siempre restan stock, SOBRANTE y DEV_CLIENTE siempre suman)
+        let tipoMovimiento = lin.tipo_movimiento || 'ENTRADA';
+        if (dto.tipo_ajuste === 'FALTANTE_MERMA' || dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
           tipoMovimiento = 'SALIDA';
-        } else if (dto.tipo_ajuste === 'SOBRANTE') {
+        } else if (dto.tipo_ajuste === 'SOBRANTE' || dto.tipo_ajuste === 'DEVOLUCION_CLIENTE') {
           tipoMovimiento = 'ENTRADA';
         }
         lin.tipo_movimiento = tipoMovimiento;
@@ -675,11 +675,19 @@ export class InventariosService {
         await queryRunner.manager.save(articulo);
 
         // Movimiento Kardex
+        let codMov = 'ENT_AJUSTE';
+        if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') codMov = 'DEV_PROVEEDOR';
+        else if (dto.tipo_ajuste === 'DEVOLUCION_CLIENTE') codMov = 'DEV_CLIENTE';
+        else if (tipoMovimiento === 'SALIDA') codMov = 'SAL_MERMA';
+        else codMov = 'ENT_AJUSTE';
+
+        const tm = await queryRunner.manager.findOne(TipoMovimiento, { where: { codigo: codMov } });
+
         const kardex = queryRunner.manager.create(KardexMovimiento, {
           empresa_id: dto.empresa_id || '00000000-0000-0000-0000-000000000000',
           articulo_id: articulo.id,
           bodega_id: dto.bodega_id,
-          tipo_movimiento_id: null,
+          tipo_movimiento_id: tm ? tm.id : null,
           naturaleza: 'AJUSTE',
           fecha_movimiento: dto.fecha_ajuste,
           documento_referencia: numeroNota,
@@ -740,51 +748,101 @@ export class InventariosService {
           );
 
           if (lin.tipo_movimiento === 'ENTRADA') {
-            // Sobrante: Débito Inventarios (Aumenta Activo) / Crédito Aprovechamientos (Ingreso Extraordinario)
-            const cuentaIngreso = await this.buscarCuentaAuxiliar(
-              dto.empresa_id,
-              ['429553', '4295', '4210', '42'],
-              ClaseCuenta.INGRESO,
-            );
+            if (dto.tipo_ajuste === 'DEVOLUCION_CLIENTE') {
+              // Devolución de Cliente: Débito Inventarios (Aumenta Activo) / Crédito Costo de Ventas (Disminuye Costo)
+              const cuentaCosto = await this.buscarCuentaAuxiliar(
+                dto.empresa_id,
+                [articulo?.cuenta_costo_venta, '613505', '6135', '61'],
+                ClaseCuenta.COSTO,
+              );
 
-            lineasContables.push({
-              cuenta_id: cuentaInventario.id,
-              debito: costoTotal,
-              credito: 0,
-              glosa_detalle: `Ajuste Sobrante ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
-              documento_referencia: numeroNota,
-            });
+              lineasContables.push({
+                cuenta_id: cuentaInventario.id,
+                debito: costoTotal,
+                credito: 0,
+                glosa_detalle: `Devolución de Cliente ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                documento_referencia: numeroNota,
+              });
 
-            lineasContables.push({
-              cuenta_id: cuentaIngreso.id,
-              debito: 0,
-              credito: costoTotal,
-              glosa_detalle: `Sobrante Inventario ${numeroNota}: ${articulo?.codigo || ''}`,
-              documento_referencia: numeroNota,
-            });
+              lineasContables.push({
+                cuenta_id: cuentaCosto.id,
+                debito: 0,
+                credito: costoTotal,
+                glosa_detalle: `Reversión Costo Venta ${numeroNota}: ${articulo?.codigo || ''}`,
+                documento_referencia: numeroNota,
+              });
+            } else {
+              // Sobrante: Débito Inventarios (Aumenta Activo) / Crédito Aprovechamientos (Ingreso Extraordinario)
+              const cuentaIngreso = await this.buscarCuentaAuxiliar(
+                dto.empresa_id,
+                ['429553', '4295', '4210', '42'],
+                ClaseCuenta.INGRESO,
+              );
+
+              lineasContables.push({
+                cuenta_id: cuentaInventario.id,
+                debito: costoTotal,
+                credito: 0,
+                glosa_detalle: `Ajuste Sobrante ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                documento_referencia: numeroNota,
+              });
+
+              lineasContables.push({
+                cuenta_id: cuentaIngreso.id,
+                debito: 0,
+                credito: costoTotal,
+                glosa_detalle: `Sobrante Inventario ${numeroNota}: ${articulo?.codigo || ''}`,
+                documento_referencia: numeroNota,
+              });
+            }
           } else {
-            // Salida: Débito Pérdidas/Gastos (Aumenta Gasto) / Crédito Inventarios (Disminuye Activo)
-            const cuentaGasto = await this.buscarCuentaAuxiliar(
-              dto.empresa_id,
-              [articulo?.cuenta_gasto, '531520', '5315', '519595', '5195', '51'],
-              ClaseCuenta.GASTO,
-            );
+            if (dto.tipo_ajuste === 'DEVOLUCION_PROVEEDOR') {
+              // Devolución a Proveedor: Débito Costo/Gasto por Devolución de Compra (6135 / 5315) / Crédito Inventarios (1435)
+              const cuentaDev = await this.buscarCuentaAuxiliar(
+                dto.empresa_id,
+                [articulo?.cuenta_costo_venta, '613505', '6135', '531520', '5315', '519595'],
+                ClaseCuenta.COSTO,
+              );
 
-            lineasContables.push({
-              cuenta_id: cuentaGasto.id,
-              debito: costoTotal,
-              credito: 0,
-              glosa_detalle: `Baja/Merma Inventario ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
-              documento_referencia: numeroNota,
-            });
+              lineasContables.push({
+                cuenta_id: cuentaDev.id,
+                debito: costoTotal,
+                credito: 0,
+                glosa_detalle: `Devolución a Proveedor ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                documento_referencia: numeroNota,
+              });
 
-            lineasContables.push({
-              cuenta_id: cuentaInventario.id,
-              debito: 0,
-              credito: costoTotal,
-              glosa_detalle: `Salida Ajuste ${numeroNota}: ${articulo?.codigo || ''}`,
-              documento_referencia: numeroNota,
-            });
+              lineasContables.push({
+                cuenta_id: cuentaInventario.id,
+                debito: 0,
+                credito: costoTotal,
+                glosa_detalle: `Salida Devolución Proveedor ${numeroNota}: ${articulo?.codigo || ''}`,
+                documento_referencia: numeroNota,
+              });
+            } else {
+              // Salida / Merma: Débito Pérdidas/Gastos (Aumenta Gasto) / Crédito Inventarios (Disminuye Activo)
+              const cuentaGasto = await this.buscarCuentaAuxiliar(
+                dto.empresa_id,
+                [articulo?.cuenta_gasto, '531520', '5315', '519595', '5195', '51'],
+                ClaseCuenta.GASTO,
+              );
+
+              lineasContables.push({
+                cuenta_id: cuentaGasto.id,
+                debito: costoTotal,
+                credito: 0,
+                glosa_detalle: `Baja/Merma Inventario ${numeroNota}: ${articulo?.codigo || ''} ${articulo?.nombre || ''}`,
+                documento_referencia: numeroNota,
+              });
+
+              lineasContables.push({
+                cuenta_id: cuentaInventario.id,
+                debito: 0,
+                credito: costoTotal,
+                glosa_detalle: `Salida Ajuste ${numeroNota}: ${articulo?.codigo || ''}`,
+                documento_referencia: numeroNota,
+              });
+            }
           }
         }
 

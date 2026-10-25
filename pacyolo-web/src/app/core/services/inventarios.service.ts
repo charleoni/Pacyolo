@@ -131,7 +131,12 @@ export interface NotaAjusteItem {
     codigo: string;
     nombre: string;
   };
-  tipo_ajuste: 'SOBRANTE' | 'FALTANTE_MERMA' | 'CIERRE_INVENTARIO_FISICO';
+  tipo_ajuste:
+    | 'SOBRANTE'
+    | 'FALTANTE_MERMA'
+    | 'CIERRE_INVENTARIO_FISICO'
+    | 'DEVOLUCION_PROVEEDOR'
+    | 'DEVOLUCION_CLIENTE';
   estado?: 'APLICADA' | 'ANULADA';
   fecha_ajuste: string;
   justificacion: string;
