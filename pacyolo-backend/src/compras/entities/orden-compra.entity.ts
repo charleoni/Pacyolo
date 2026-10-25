@@ -14,6 +14,7 @@ import { Tercero } from '../../terceros/entities/tercero.entity.js';
 import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { Articulo } from '../../inventarios/entities/articulo.entity.js';
 import { EntradaAlmacen } from '../../inventarios/entities/entrada-almacen.entity.js';
+import { CuentaPorPagar } from '../../cxp/entities/cuenta-por-pagar.entity.js';
 
 export type EstadoOrdenCompra =
   | 'BORRADOR'
@@ -76,6 +77,10 @@ export class OrdenCompra {
 
   @Column({ type: 'uuid', nullable: true })
   cxp_id: string | null;
+
+  @ManyToOne(() => CuentaPorPagar, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cxp_id' })
+  cxp: CuentaPorPagar | null;
 
   @Column({
     type: 'varchar',

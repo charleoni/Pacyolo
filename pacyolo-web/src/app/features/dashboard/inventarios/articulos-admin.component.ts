@@ -353,15 +353,33 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                       </td>
                       <td class="p-3.5 text-right whitespace-nowrap space-x-1">
                         @if (ent.estado === 'CONFIRMADA') {
-                          <button
-                            type="button"
-                            (click)="abrirModalDevolucionDesdeEntrada(ent)"
-                            class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
-                            title="Registrar devolución de compra a proveedor sobre esta entrada"
-                          >
-                            <span>↩️</span>
-                            <span>Devolver</span>
-                          </button>
+                          @if (entradaTienePagosOAbonos(ent)) {
+                            <span
+                              class="px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-[10.5px] font-semibold inline-flex items-center gap-1 cursor-help"
+                              [title]="'Factura ' + (obtenerFacturaEntrada(ent)?.numero_factura_proveedor || '') + ' con pagos aplicados (' + (obtenerFacturaEntrada(ent)?.estado || '') + ') - No admite devolución'"
+                            >
+                              <span>🔒</span>
+                              <span>Con pagos</span>
+                            </span>
+                          } @else if (entradaTieneSaldoCero(ent)) {
+                            <span
+                              class="px-2 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-[10.5px] font-semibold inline-flex items-center gap-1 cursor-help"
+                              title="Saldo en bodega es cero (0) - No hay unidades disponibles para devolver"
+                            >
+                              <span>⚠️</span>
+                              <span>Saldo 0</span>
+                            </span>
+                          } @else {
+                            <button
+                              type="button"
+                              (click)="abrirModalDevolucionDesdeEntrada(ent)"
+                              class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-lg text-[11px] font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                              title="Registrar devolución de compra a proveedor sobre esta entrada"
+                            >
+                              <span>↩️</span>
+                              <span>Devolver</span>
+                            </button>
+                          }
                         }
                         <button
                           type="button"
@@ -1537,21 +1555,39 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                 </div>
 
                 @if (entradaSeleccionadaParaDevolucion(); as ent) {
-                  <div class="flex items-center justify-between bg-slate-900 border border-purple-500/30 rounded-lg p-2.5 text-xs">
-                    <div class="space-y-0.5">
-                      <div class="flex items-center gap-2">
-                        <span class="font-mono font-bold text-purple-400">{{ ent.numero_entrada }}</span>
-                        <span class="text-white font-medium">{{ ent.proveedor?.nombre_completo || 'Proveedor' }}</span>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between bg-slate-900 border border-purple-500/30 rounded-lg p-2.5 text-xs">
+                      <div class="space-y-0.5">
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono font-bold text-purple-400">{{ ent.numero_entrada }}</span>
+                          <span class="text-white font-medium">{{ ent.proveedor?.nombre_completo || 'Proveedor' }}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 font-mono">
+                          Fecha: {{ ent.fecha_entrada }} • Bodega: {{ ent.bodega?.nombre }}
+                          @if (ent.numero_factura_proveedor) { • Factura: {{ ent.numero_factura_proveedor }} }
+                          @if (ent.numero_remision_proveedor) { • Remisión: {{ ent.numero_remision_proveedor }} }
+                        </div>
                       </div>
-                      <div class="text-[11px] text-slate-400 font-mono">
-                        Fecha: {{ ent.fecha_entrada }} • Bodega: {{ ent.bodega?.nombre }}
-                        @if (ent.numero_factura_proveedor) { • Factura: {{ ent.numero_factura_proveedor }} }
-                        @if (ent.numero_remision_proveedor) { • Remisión: {{ ent.numero_remision_proveedor }} }
-                      </div>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                        {{ ent.lineas?.length || 0 }} ítems recibidos
+                      </span>
                     </div>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-                      {{ ent.lineas?.length || 0 }} ítems recibidos
-                    </span>
+
+                    @if (entradaTienePagosOAbonos(ent)) {
+                      <div class="p-2.5 bg-rose-950/60 border border-rose-500/50 rounded-lg text-rose-300 text-xs flex items-center gap-2">
+                        <span class="text-base shrink-0">🚫</span>
+                        <div>
+                          <span class="font-bold">Devolución Bloqueada:</span> La factura de proveedor asociada ({{ obtenerFacturaEntrada(ent)?.numero_factura_proveedor || 'N/A' }}) ya cuenta con pagos o abonos aplicados (Estado: {{ obtenerFacturaEntrada(ent)?.estado }}, Pagado: \${{ obtenerMontoPagadoFactura(ent).toLocaleString('es-CO') }}). No es posible realizar la devolución.
+                        </div>
+                      </div>
+                    } @else if (entradaTieneSaldoCero(ent)) {
+                      <div class="p-2.5 bg-rose-950/60 border border-rose-500/50 rounded-lg text-rose-300 text-xs flex items-center gap-2">
+                        <span class="text-base shrink-0">⚠️</span>
+                        <div>
+                          <span class="font-bold">Sin existencias:</span> Todos los artículos recibidos en esta entrada presentan saldo cero (0) en bodega. No hay unidades para devolver al proveedor.
+                        </div>
+                      </div>
+                    }
                   </div>
                 } @else {
                   <div class="space-y-1">
@@ -1677,7 +1713,9 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
                           </div>
                         }
                         <div>
-                          @if (esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)) {
+                          @if (esSalidaAjuste(lin) && obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) <= 0) {
+                            <span class="text-rose-400 font-bold">❌ Saldo en bodega: 0 (Agotado)</span>
+                          } @else if (esSalidaAjuste(lin) && Number(lin.cantidad) > obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id)) {
                             <span class="text-rose-400 font-bold">⚠️ Excede stock (Disp: {{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }})</span>
                           } @else {
                             <span class="text-slate-400">Disp en bodega: <span class="text-slate-200 font-mono font-bold">{{ obtenerStockBodegaParaAjuste(lin.articulo_id, ajusteForm.bodega_id) }}</span></span>
@@ -2633,6 +2671,38 @@ export class ArticulosAdminComponent implements OnInit {
     if (this.ajusteForm.tipo_ajuste === 'SOBRANTE' || this.ajusteForm.tipo_ajuste === 'DEVOLUCION_CLIENTE') return false;
     return lin.tipo_movimiento === 'SALIDA';
   }
+
+  obtenerFacturaEntrada(ent: EntradaAlmacenItem | null | undefined): any {
+    if (!ent) return null;
+    return ent.cxp || ent.orden_compra?.cxp || null;
+  }
+
+  entradaTienePagosOAbonos(ent: EntradaAlmacenItem | null | undefined): boolean {
+    const cxp = this.obtenerFacturaEntrada(ent);
+    if (!cxp) return false;
+    const montoTotal = Number(cxp.monto_total || 0);
+    const saldoPendiente = Number(cxp.saldo_pendiente || 0);
+    const pagado = Number((montoTotal - saldoPendiente).toFixed(2));
+    return pagado > 0.01 || cxp.estado === 'PAGADA_PARCIAL' || cxp.estado === 'PAGADA_TOTAL';
+  }
+
+  obtenerMontoPagadoFactura(ent: EntradaAlmacenItem | null | undefined): number {
+    const cxp = this.obtenerFacturaEntrada(ent);
+    if (!cxp) return 0;
+    const montoTotal = Number(cxp.monto_total || 0);
+    const saldoPendiente = Number(cxp.saldo_pendiente || 0);
+    return Math.max(0, Number((montoTotal - saldoPendiente).toFixed(2)));
+  }
+
+  entradaTieneSaldoCero(ent: EntradaAlmacenItem | null | undefined): boolean {
+    if (!ent || !ent.lineas || ent.lineas.length === 0) return true;
+    const bId = ent.bodega?.id;
+    return ent.lineas.every((l: any) => {
+      const artId = l.articulo?.id || l.articulo_id;
+      const stock = this.obtenerStockBodegaParaAjuste(artId, bId);
+      return stock <= 0;
+    });
+  }
   readonly mostrarLookupArticulo = signal(false);
   readonly destinoLookupArticulo = signal<'ENTRADA' | 'AJUSTE' | 'TRASLADO' | 'KARDEX'>('ENTRADA');
   readonly lineaSeleccionandoArticulo = signal<number | null>(null);
@@ -3336,14 +3406,39 @@ export class ArticulosAdminComponent implements OnInit {
   }
 
   abrirModalDevolucionDesdeEntrada(ent: EntradaAlmacenItem): void {
+    if (this.entradaTienePagosOAbonos(ent)) {
+      const cxp = this.obtenerFacturaEntrada(ent);
+      const pagado = this.obtenerMontoPagadoFactura(ent);
+      this.notificationService.error(
+        `No es posible realizar una devolución sobre la Entrada ${ent.numero_entrada}. La factura de proveedor asociada '${cxp?.numero_factura_proveedor || 'N/A'}' ya cuenta con pagos o abonos aplicados (Estado: ${cxp?.estado}, Pagado: ${pagado.toLocaleString('es-CO')}).`,
+        'Devolución Rechazada'
+      );
+      return;
+    }
+
+    if (this.entradaTieneSaldoCero(ent)) {
+      this.notificationService.error(
+        `No es posible realizar una devolución sobre la Entrada ${ent.numero_entrada}. El saldo en inventario de todos sus artículos es cero (0 unidades disponibles en bodega).`,
+        'Sin Existencias para Devolver'
+      );
+      return;
+    }
+
     this.cargarExistencias();
     this.entradaSeleccionadaParaDevolucion.set(ent);
-    const lineasPrecargadas = (ent.lineas || []).map((l: any) => ({
-      articulo_id: l.articulo?.id || l.articulo_id,
-      tipo_movimiento: 'SALIDA',
-      cantidad: Number(l.cantidad),
-      costo_unitario: Number(l.costo_unitario || 0),
-    }));
+    const bId = ent.bodega?.id || (ent as any).bodega_id || this.bodegas()[0]?.id || '';
+    const lineasPrecargadas = (ent.lineas || []).map((l: any) => {
+      const artId = l.articulo?.id || l.articulo_id;
+      const stockDisp = this.obtenerStockBodegaParaAjuste(artId, bId);
+      const cantRecibida = Number(l.cantidad || 0);
+      const cantSugerida = Math.max(0, Math.min(cantRecibida, stockDisp));
+      return {
+        articulo_id: artId,
+        tipo_movimiento: 'SALIDA',
+        cantidad: cantSugerida > 0 ? cantSugerida : 0,
+        costo_unitario: Number(l.costo_unitario || 0),
+      };
+    });
 
     this.ajusteForm = {
       bodega_id: ent.bodega?.id || (ent as any).bodega_id || this.bodegas()[0]?.id || '',
@@ -3444,6 +3539,19 @@ export class ArticulosAdminComponent implements OnInit {
       return;
     }
 
+    if (this.ajusteForm.tipo_ajuste === 'DEVOLUCION_PROVEEDOR' && this.entradaSeleccionadaParaDevolucion()) {
+      const ent = this.entradaSeleccionadaParaDevolucion()!;
+      if (this.entradaTienePagosOAbonos(ent)) {
+        const cxp = this.obtenerFacturaEntrada(ent);
+        const pagado = this.obtenerMontoPagadoFactura(ent);
+        this.notificationService.error(
+          `No es posible registrar la devolución sobre la Entrada ${ent.numero_entrada}. La factura asociada '${cxp?.numero_factura_proveedor || 'N/A'}' ya registra pagos o abonos (Pagado: ${pagado.toLocaleString('es-CO')}).`,
+          'Devolución Bloqueada'
+        );
+        return;
+      }
+    }
+
     for (let i = 0; i < lineas.length; i++) {
       const lin = lineas[i];
       if (!lin.articulo_id || String(lin.articulo_id).trim() === '') {
@@ -3458,9 +3566,18 @@ export class ArticulosAdminComponent implements OnInit {
       if (this.esSalidaAjuste(lin)) {
         // Validación contra stock disponible en bodega
         const stockDisp = this.obtenerStockBodegaParaAjuste(lin.articulo_id, this.ajusteForm.bodega_id);
+        const art = this.obtenerArticulo(lin.articulo_id);
+        const nomArt = art?.nombre || `Línea #${i + 1}`;
+
+        if (stockDisp <= 0) {
+          this.notificationService.error(
+            `No es posible realizar la devolución o salida de '${nomArt}'. El saldo actual en inventario es cero (0 unidades en bodega). No hay existencias para devolver.`,
+            'Saldo Cero en Inventario'
+          );
+          return;
+        }
+
         if (cant > stockDisp) {
-          const art = this.obtenerArticulo(lin.articulo_id);
-          const nomArt = art?.nombre || `Línea #${i + 1}`;
           this.notificationService.error(
             `No es posible registrar salida de ${cant} unidades de '${nomArt}'. El stock disponible en bodega es de ${stockDisp} unidades. No se permite inventario negativo.`
           );

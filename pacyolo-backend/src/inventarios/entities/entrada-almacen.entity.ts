@@ -15,6 +15,7 @@ import { Bodega } from '../../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../../parametros/entities/tipo-movimiento.entity.js';
 import { Articulo } from './articulo.entity.js';
 import { OrdenCompra } from '../../compras/entities/orden-compra.entity.js';
+import { CuentaPorPagar } from '../../cxp/entities/cuenta-por-pagar.entity.js';
 
 export type EstadoEntradaAlmacen = 'CONFIRMADA' | 'ANULADA';
 
@@ -71,6 +72,10 @@ export class EntradaAlmacen {
   @Column({ type: 'uuid', nullable: true })
   @Index()
   cxp_id: string | null;
+
+  @ManyToOne(() => CuentaPorPagar, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cxp_id' })
+  cxp: CuentaPorPagar | null;
 
   @Column({ type: 'date' })
   fecha_entrada: string;

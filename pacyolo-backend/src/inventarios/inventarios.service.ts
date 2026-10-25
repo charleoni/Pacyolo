@@ -17,6 +17,8 @@ import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
 import { OrdenCompra, OrdenCompraLinea } from '../compras/entities/orden-compra.entity.js';
 import { CxpService } from '../cxp/cxp.service.js';
+import { CuentaPorPagar, EstadoCuentaPorPagar } from '../cxp/entities/cuenta-por-pagar.entity.js';
+import { PagoCxp } from '../cxp/entities/pago-cxp.entity.js';
 import { PucCuenta, ClaseCuenta } from '../puc/entities/puc.entity.js';
 import { AsientosService } from '../asientos/asientos.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
@@ -152,6 +154,8 @@ export class InventariosService {
       .leftJoinAndSelect('e.bodega', 'b')
       .leftJoinAndSelect('e.tipo_movimiento', 'tm')
       .leftJoinAndSelect('e.orden_compra', 'oc')
+      .leftJoinAndSelect('oc.cxp', 'oc_cxp')
+      .leftJoinAndSelect('e.cxp', 'cxp')
       .leftJoinAndSelect('e.lineas', 'l')
       .leftJoinAndSelect('l.articulo', 'art');
 
@@ -604,6 +608,45 @@ export class InventariosService {
           );
         }
 
+        // Validación de Factura y Pagos/Abonos:
+        // No se puede realizar devolución si la entrada causó una factura y esta ya tiene pagos o abonos.
+        let cxpAsociada: CuentaPorPagar | null = null;
+        if (entradaVinculada.cxp_id) {
+          cxpAsociada = await queryRunner.manager.findOne(CuentaPorPagar, {
+            where: { id: entradaVinculada.cxp_id },
+          });
+        } else if (entradaVinculada.orden_compra_id) {
+          const orden = await queryRunner.manager.findOne(OrdenCompra, {
+            where: { id: entradaVinculada.orden_compra_id },
+          });
+          if (orden?.cxp_id) {
+            cxpAsociada = await queryRunner.manager.findOne(CuentaPorPagar, {
+              where: { id: orden.cxp_id },
+            });
+          }
+        }
+
+        if (cxpAsociada) {
+          const montoTotal = Number(cxpAsociada.monto_total || 0);
+          const saldoPendiente = Number(cxpAsociada.saldo_pendiente || 0);
+          const pagado = Number((montoTotal - saldoPendiente).toFixed(2));
+
+          const countPagos = await queryRunner.manager.count(PagoCxp, {
+            where: { cuenta_por_pagar_id: cxpAsociada.id, estado: 'APLICADO' },
+          });
+
+          if (
+            pagado > 0.01 ||
+            countPagos > 0 ||
+            cxpAsociada.estado === EstadoCuentaPorPagar.PAGADA_PARCIAL ||
+            cxpAsociada.estado === EstadoCuentaPorPagar.PAGADA_TOTAL
+          ) {
+            throw new BadRequestException(
+              `No es posible realizar una devolución sobre la Entrada '${entradaVinculada.numero_entrada}'. La factura de proveedor asociada '${cxpAsociada.numero_factura_proveedor}' ya cuenta con pagos o abonos aplicados (Estado: ${cxpAsociada.estado}, Total facturado: $${montoTotal.toLocaleString('es-CO')}, Pagado: $${pagado.toLocaleString('es-CO')}, Saldo pendiente: $${saldoPendiente.toLocaleString('es-CO')}). No se permite devolver compras cuya factura ya tenga pagos registrados.`
+            );
+          }
+        }
+
         if (!dto.proveedor_id && entradaVinculada.proveedor_id) {
           dto.proveedor_id = entradaVinculada.proveedor_id;
         }
@@ -630,6 +673,10 @@ export class InventariosService {
           }
         }
       }
+
+      const bodegaAjuste = dto.bodega_id
+        ? await queryRunner.manager.findOne(Bodega, { where: { id: dto.bodega_id } })
+        : null;
 
       for (const lin of dto.lineas) {
         const articulo = await queryRunner.manager.findOne(Articulo, { where: { id: lin.articulo_id } });
@@ -668,11 +715,21 @@ export class InventariosService {
         const stockPrevio = saldoBodega ? Number(saldoBodega.stock_actual) : 0;
         const stockGlobalPrevio = Number(articulo.stock_actual);
 
-        // Control estricto de Stock Negativo en Salidas por Ajuste
+        // Control estricto de Saldo Cero y Stock Negativo en Salidas por Ajuste / Devolución
         if (tipoMovimiento === 'SALIDA') {
+          if (stockPrevio <= 0) {
+            throw new BadRequestException(
+              `No es posible realizar la devolución o salida del artículo '${articulo.nombre}'. El saldo en la bodega '${bodegaAjuste?.nombre || 'seleccionada'}' es cero (0 unidades disponibles). No hay existencia física para devolver.`
+            );
+          }
           if (stockPrevio < cantidad) {
             throw new BadRequestException(
               `No es posible registrar salida de ${cantidad} unidades de '${articulo.nombre}'. El stock disponible en bodega es de solo ${stockPrevio} unidades. No se permite inventario negativo.`
+            );
+          }
+          if (stockGlobalPrevio <= 0) {
+            throw new BadRequestException(
+              `No es posible realizar la devolución o salida del artículo '${articulo.nombre}'. El saldo global en inventario es cero (0 unidades disponibles).`
             );
           }
           if (stockGlobalPrevio < cantidad) {

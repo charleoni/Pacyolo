@@ -50,6 +50,13 @@ export interface EntradaAlmacenItem {
     numero_orden: string;
     estado?: string;
     total?: number;
+    cxp?: {
+      id: string;
+      numero_factura_proveedor: string;
+      monto_total: number;
+      saldo_pendiente: number;
+      estado: string;
+    };
   };
   proveedor?: {
     id: string;
@@ -69,6 +76,15 @@ export interface EntradaAlmacenItem {
   numero_remision_proveedor?: string;
   numero_factura_proveedor?: string;
   cxp_id?: string;
+  cxp?: {
+    id: string;
+    numero_factura_proveedor: string;
+    subtotal?: number;
+    total_iva?: number;
+    monto_total: number;
+    saldo_pendiente: number;
+    estado: string;
+  };
   fecha_entrada: string;
   estado: 'CONFIRMADA' | 'ANULADA';
   subtotal?: number;
