@@ -13,6 +13,8 @@ import { TercerosAdminComponent } from './features/dashboard/terceros/terceros-a
 import { CxpAdminComponent } from './features/dashboard/cxp/cxp-admin.component';
 import { ArticulosAdminComponent } from './features/dashboard/inventarios/articulos-admin.component';
 import { ComprasAdminComponent } from './features/dashboard/compras/compras-admin.component';
+import { VentasAdminComponent } from './features/dashboard/ventas/ventas-admin.component';
+import { CxcAdminComponent } from './features/dashboard/cxc/cxc-admin.component';
 
 export const routes: Routes = [
   {
@@ -35,6 +37,14 @@ export const routes: Routes = [
       {
         path: 'terceros',
         component: TercerosAdminComponent,
+      },
+      {
+        path: 'ventas',
+        component: VentasAdminComponent,
+      },
+      {
+        path: 'cxc',
+        component: CxcAdminComponent,
       },
       {
         path: 'cxp',

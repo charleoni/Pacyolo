@@ -290,9 +290,9 @@ export class DashboardLayoutComponent {
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
 
-  menuAbierto = signal<'contabilidad' | 'abastecimiento' | 'seguridad' | null>(null);
+  menuAbierto = signal<'contabilidad' | 'abastecimiento' | 'ventas' | 'seguridad' | null>(null);
 
-  toggleMenu(menu: 'contabilidad' | 'abastecimiento' | 'seguridad', event: MouseEvent): void {
+  toggleMenu(menu: 'contabilidad' | 'abastecimiento' | 'ventas' | 'seguridad', event: MouseEvent): void {
     event.stopPropagation();
     this.menuAbierto.update((actual) => (actual === menu ? null : menu));
   }
@@ -318,6 +318,11 @@ export class DashboardLayoutComponent {
       url.includes('/dashboard/compras') ||
       url.includes('/dashboard/cxp')
     );
+  }
+
+  esRutaVentasActiva(): boolean {
+    const url = this.router.url;
+    return url.includes('/dashboard/ventas') || url.includes('/dashboard/cxc');
   }
 
   esRutaSeguridadActiva(): boolean {
