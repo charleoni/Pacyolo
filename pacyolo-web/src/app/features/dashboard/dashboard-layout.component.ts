@@ -10,6 +10,15 @@ import { EmpresaSesion } from '../../core/models/auth.model';
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+      <!-- Backdrop invisible para captura global de clics al desplegar menú -->
+      @if (menuAbierto()) {
+        <div
+          (click)="cerrarMenus()"
+          class="fixed inset-0 z-30 bg-transparent cursor-default"
+          aria-hidden="true"
+        ></div>
+      }
+
       <!-- Barra Superior y Navegación Sticky Global -->
       <div class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 shadow-md">
         <!-- Navbar Superior -->
@@ -319,9 +328,16 @@ export class DashboardLayoutComponent {
     );
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.elementRef.nativeElement.contains(event.target)) {
+    @HostListener('document:click')
+  onDocumentClick(): void {
+    if (this.menuAbierto()) {
+      this.cerrarMenus();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.menuAbierto()) {
       this.cerrarMenus();
     }
   }
