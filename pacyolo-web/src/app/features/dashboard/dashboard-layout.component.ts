@@ -216,6 +216,58 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
 
+        <!-- Contenedor / Menú Ventas & Cartera (Sprint 9) -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenu('ventas', $event)"
+            [class]="esRutaVentasActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>🛒 Ventas & Cartera</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuAbierto() === 'ventas'"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuAbierto() === 'ventas') {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute top-full left-0 mt-1 w-60 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ciclo Comercial & Clientes</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/ventas"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>🧾</span>
+                <span>Facturación & POS</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/cxc"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>💰</span>
+                <span>Cuentas por Cobrar (CxC)</span>
+              </a>
+            </div>
+          }
+        </div>
+
         <a
           routerLink="/dashboard/parametros"
           routerLinkActive="border-indigo-500 text-white font-medium"
