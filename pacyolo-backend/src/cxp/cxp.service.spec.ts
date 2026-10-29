@@ -15,6 +15,7 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
   let mockMapeoService: any;
   let mockImpuestosService: any;
   let mockAsientosService: any;
+  let mockAuditoriaService: any;
 
   const mockEmpresaId = '11111111-1111-1111-1111-111111111111';
   const mockProveedorId = '22222222-2222-2222-2222-222222222222';
@@ -63,6 +64,10 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
       create: vi.fn(),
     };
 
+    mockAuditoriaService = {
+      registrarLog: vi.fn().mockResolvedValue(true),
+    };
+
     service = new CxpService(
       mockCxpRepo as any,
       mockPagoRepo as any,
@@ -72,6 +77,7 @@ describe('CxpService — Módulo de Cuentas por Pagar (CxP)', () => {
       mockMapeoService as any,
       mockImpuestosService as any,
       mockAsientosService as any,
+      mockAuditoriaService as any,
     );
   });
 

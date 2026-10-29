@@ -13,6 +13,9 @@ import { NotaAjusteLinea } from './entities/nota-ajuste-linea.entity.js';
 import { Bodega } from '../parametros/entities/bodega.entity.js';
 import { TipoMovimiento } from '../parametros/entities/tipo-movimiento.entity.js';
 import { CxpService } from '../cxp/cxp.service.js';
+import { PucCuenta } from '../puc/entities/puc.entity.js';
+import { AsientosService } from '../asientos/asientos.service.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
 
 describe('InventariosService', () => {
   let service: InventariosService;
@@ -60,7 +63,10 @@ describe('InventariosService', () => {
         { provide: getRepositoryToken(NotaAjusteLinea), useFactory: mockRepo },
         { provide: getRepositoryToken(Bodega), useFactory: mockRepo },
         { provide: getRepositoryToken(TipoMovimiento), useFactory: mockRepo },
+        { provide: getRepositoryToken(PucCuenta), useFactory: mockRepo },
         { provide: CxpService, useValue: { causarFactura: vi.fn() } },
+        { provide: AsientosService, useValue: { create: vi.fn(), anularAsiento: vi.fn() } },
+        { provide: AuditoriaService, useValue: { registrarLog: vi.fn().mockResolvedValue(true) } },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
