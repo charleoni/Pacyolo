@@ -132,6 +132,8 @@ export class AuditInterceptor implements NestInterceptor {
   private deducirModulo(ruta: string): string {
     const r = ruta.toLowerCase();
     if (r.includes('/auth')) return 'AUTH';
+    if (r.includes('/compras')) return 'COMPRAS';
+    if (r.includes('/inventarios')) return 'INVENTARIOS';
     if (r.includes('/asientos')) return 'ASIENTOS';
     if (r.includes('/puc')) return 'PUC';
     if (r.includes('/terceros')) return 'TERCEROS';

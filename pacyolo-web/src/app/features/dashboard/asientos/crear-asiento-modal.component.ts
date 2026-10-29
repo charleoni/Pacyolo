@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { ParametrosService, ParametroItem } from '../../../core/services/parametros.service';
+import { computed } from '@angular/core';
+import { PucLookupModalComponent } from '../../../shared/components/puc-lookup-modal.component';
+import { TerceroLookupModalComponent } from '../../../shared/components/tercero-lookup-modal.component';
 
 interface CuentaAuxiliar {
   id: string;
@@ -33,7 +36,7 @@ interface LineaForm {
 @Component({
   selector: 'app-crear-asiento-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PucLookupModalComponent, TerceroLookupModalComponent],
   template: `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
       <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-5xl w-full p-6 space-y-6 shadow-2xl my-8">
@@ -137,30 +140,72 @@ interface LineaForm {
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
                   <tr *ngFor="let linea of lineas; let i = index" class="hover:bg-slate-800/20">
-                    <!-- Selector de Cuenta PUC -->
+                    <!-- Selector de Cuenta PUC con Enterprise Lookup -->
                     <td class="p-2">
-                      <select
-                        [(ngModel)]="linea.cuenta_id"
-                        class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1.5 text-xs text-emerald-400 focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="">-- Seleccione Cuenta --</option>
-                        <option *ngFor="let c of cuentasAuxiliares()" [value]="c.id">
-                          {{ c.codigo }} - {{ c.nombre }}
-                        </option>
-                      </select>
+                      @if (obtenerCuenta(linea.cuenta_id); as cta) {
+                        <div class="flex items-center justify-between p-1.5 bg-slate-950 border border-emerald-500/40 rounded-lg text-xs">
+                          <div class="truncate">
+                            <span class="font-mono font-bold text-emerald-400 mr-1">{{ cta.codigo }}</span>
+                            <span class="text-white text-[11px]">{{ cta.nombre }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="abrirLookupCuenta(i)"
+                            class="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-300 rounded transition cursor-pointer ml-1 text-[11px]"
+                            title="Cambiar cuenta PUC"
+                          >
+                            🔍
+                          </button>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="abrirLookupCuenta(i)"
+                          class="w-full flex items-center justify-between px-2.5 py-1.5 bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-400 hover:text-emerald-300 rounded-lg text-xs transition cursor-pointer"
+                        >
+                          <span>🔍 Seleccionar Cuenta...</span>
+                          <span class="text-[10px] text-emerald-400 font-mono">PUC</span>
+                        </button>
+                      }
                     </td>
 
-                    <!-- Selector de Tercero -->
+                    <!-- Selector de Tercero con Enterprise Lookup -->
                     <td class="p-2">
-                      <select
-                        [(ngModel)]="linea.tercero_id"
-                        class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="">-- Sin Tercero --</option>
-                        <option *ngFor="let t of terceros()" [value]="t.id">
-                          {{ t.numero_documento }} - {{ t.razon_social || (t.primer_nombre + ' ' + (t.primer_apellido || '')) }}
-                        </option>
-                      </select>
+                      @if (obtenerTercero(linea.tercero_id); as ter) {
+                        <div class="flex items-center justify-between p-1.5 bg-slate-950 border border-indigo-500/40 rounded-lg text-xs">
+                          <div class="truncate">
+                            <span class="font-mono font-bold text-indigo-400 mr-1">{{ ter.numero_documento }}</span>
+                            <span class="text-white text-[11px]">{{ ter.razon_social || (ter.primer_nombre ? (ter.primer_nombre + ' ' + (ter.primer_apellido || '')) : 'Tercero') }}</span>
+                          </div>
+                          <div class="flex items-center gap-0.5 ml-1">
+                            <button
+                              type="button"
+                              (click)="abrirLookupTercero(i)"
+                              class="p-1 hover:bg-slate-800 text-slate-400 hover:text-indigo-300 rounded transition cursor-pointer text-[11px]"
+                              title="Cambiar tercero"
+                            >
+                              🔍
+                            </button>
+                            <button
+                              type="button"
+                              (click)="linea.tercero_id = ''"
+                              class="p-1 hover:bg-slate-800 text-slate-500 hover:text-rose-400 rounded transition cursor-pointer text-[11px]"
+                              title="Quitar tercero"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="abrirLookupTercero(i)"
+                          class="w-full flex items-center justify-between px-2.5 py-1.5 bg-slate-900 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-lg text-xs transition cursor-pointer"
+                        >
+                          <span class="truncate">🔍 Tercero (Opcional)...</span>
+                          <span class="text-[10px] text-slate-500 font-mono">NIT</span>
+                        </button>
+                      }
                     </td>
 
                     <!-- Concepto de la línea -->
@@ -286,6 +331,21 @@ interface LineaForm {
           </button>
         </div>
       </div>
+
+      <!-- Modales de Búsqueda Avanzada (Enterprise Lookup) -->
+      <app-puc-lookup-modal
+        [(visible)]="mostrarLookupCuenta"
+        titulo="Seleccionar Cuenta Contable PUC (Auxiliar)"
+        [cuentas]="cuentasAuxiliares()"
+        (cuentaSeleccionada)="alSeleccionarCuentaLookup($event)"
+      />
+
+      <app-tercero-lookup-modal
+        [(visible)]="mostrarLookupTercero"
+        titulo="Seleccionar Tercero para Asiento Contable"
+        [terceros]="tercerosAdaptados()"
+        (seleccionado)="alSeleccionarTerceroLookup($event)"
+      />
     </div>
   `,
 })
@@ -305,6 +365,56 @@ export class CrearAsientoModalComponent implements OnInit {
     { cuenta_id: '', tercero_id: '', glosa_detalle: '', documento_referencia: '', debito: 0, credito: 0 },
     { cuenta_id: '', tercero_id: '', glosa_detalle: '', documento_referencia: '', debito: 0, credito: 0 },
   ];
+
+  // Estados Modales Enterprise Lookup
+  readonly mostrarLookupCuenta = signal(false);
+  readonly lineaSeleccionandoCuenta = signal<number | null>(null);
+
+  readonly mostrarLookupTercero = signal(false);
+  readonly lineaSeleccionandoTercero = signal<number | null>(null);
+
+  readonly tercerosAdaptados = computed(() => {
+    return this.terceros().map((t: any) => ({
+      id: t.id,
+      numero_identificacion: t.numero_documento || t.numero_identificacion || '',
+      razon_social: t.razon_social || (t.primer_nombre ? `${t.primer_nombre} ${t.primer_apellido || ''}`.trim() : ''),
+      nombre_completo: t.nombre_completo || t.razon_social || (t.primer_nombre ? `${t.primer_nombre} ${t.primer_apellido || ''}`.trim() : ''),
+    }));
+  });
+
+  obtenerCuenta(id: string): CuentaAuxiliar | undefined {
+    return this.cuentasAuxiliares().find((c) => c.id === id);
+  }
+
+  obtenerTercero(id: string): TerceroItem | undefined {
+    return this.terceros().find((t) => t.id === id);
+  }
+
+  abrirLookupCuenta(index: number): void {
+    this.lineaSeleccionandoCuenta.set(index);
+    this.mostrarLookupCuenta.set(true);
+  }
+
+  alSeleccionarCuentaLookup(cuenta: any): void {
+    const idx = this.lineaSeleccionandoCuenta();
+    if (idx !== null && this.lineas[idx]) {
+      this.lineas[idx].cuenta_id = cuenta.id;
+    }
+    this.mostrarLookupCuenta.set(false);
+  }
+
+  abrirLookupTercero(index: number): void {
+    this.lineaSeleccionandoTercero.set(index);
+    this.mostrarLookupTercero.set(true);
+  }
+
+  alSeleccionarTerceroLookup(tercero: any): void {
+    const idx = this.lineaSeleccionandoTercero();
+    if (idx !== null && this.lineas[idx]) {
+      this.lineas[idx].tercero_id = tercero.id;
+    }
+    this.mostrarLookupTercero.set(false);
+  }
 
   cuentasAuxiliares = signal<CuentaAuxiliar[]>([]);
   terceros = signal<TerceroItem[]>([]);

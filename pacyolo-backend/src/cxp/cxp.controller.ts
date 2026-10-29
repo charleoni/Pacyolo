@@ -53,6 +53,36 @@ export class CxpController {
     return this.cxpService.obtenerResumenCartera(empresa_id);
   }
 
+  // ==========================================
+  // REPORTES ANALÍTICOS DE CXP & PROVEEDORES
+  // ==========================================
+
+  @Get('reportes/edades-cartera')
+  @ApiOperation({ summary: 'Matriz de análisis de cartera de proveedores por edades de vencimiento' })
+  obtenerEdadesCartera(@Query('empresa_id') empresa_id: string) {
+    return this.cxpService.obtenerAnalisisEdadesCartera(empresa_id);
+  }
+
+  @Get('reportes/estado-cuenta/:proveedor_id')
+  @ApiOperation({ summary: 'Estado de cuenta consolidado y facturas abiertas por proveedor' })
+  obtenerEstadoCuenta(
+    @Param('proveedor_id', ParseUUIDPipe) proveedor_id: string,
+    @Query('empresa_id') empresa_id: string,
+  ) {
+    return this.cxpService.obtenerEstadoCuentaProveedor(empresa_id, proveedor_id);
+  }
+
+  @Get('reportes/extracto/:proveedor_id')
+  @ApiOperation({ summary: 'Extracto cronológico de compras vs pagos por proveedor' })
+  obtenerExtracto(
+    @Param('proveedor_id', ParseUUIDPipe) proveedor_id: string,
+    @Query('empresa_id') empresa_id: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+  ) {
+    return this.cxpService.obtenerExtractoProveedor(empresa_id, proveedor_id, desde, hasta);
+  }
+
   @Post('pagar')
   @ApiOperation({
     summary: 'Registrar pago o abono a una factura (Comprobante de Egreso EGR)',
@@ -71,6 +101,22 @@ export class CxpController {
   @ApiResponse({ status: 200, description: 'Historial de pagos.', type: [PagoCxp] })
   listarPagos(@Param('id', ParseUUIDPipe) id: string): Promise<PagoCxp[]> {
     return this.cxpService.listarPagos(id);
+  }
+
+  @Post('pagos/:id/anular')
+  @ApiOperation({
+    summary: 'Anular un pago de CxP formalmente',
+    description: 'Revierte el saldo y estado de la cuenta por pagar, anula el comprobante de egreso contable (EGR), marca el pago como ANULADO y registra la pista de auditoría inmutable.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del pago a anular' })
+  @ApiResponse({ status: 200, description: 'Pago anulado exitosamente.' })
+  anularPago(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('motivo') motivo?: string,
+    @Body('usuario_id') usuarioId?: string,
+    @Body('usuario_email') usuarioEmail?: string,
+  ): Promise<PagoCxp> {
+    return this.cxpService.anularPago(id, motivo || 'Anulación de pago solicitada por el usuario', usuarioId, usuarioEmail);
   }
 
   @Get(':id')

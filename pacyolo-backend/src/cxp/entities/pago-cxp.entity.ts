@@ -68,6 +68,21 @@ export class PagoCxp {
   @Column({ type: 'varchar', length: 255, nullable: true })
   glosa: string | null;
 
+  @Column({ type: 'varchar', length: 20, default: 'APLICADO' })
+  estado: 'APLICADO' | 'ANULADO';
+
+  @Column({ type: 'uuid', nullable: true })
+  usuario_id: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  motivo_anulacion: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  anulado_at: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  anulado_por: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 }

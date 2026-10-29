@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 interface Borrador {
   id: string;
@@ -100,6 +101,7 @@ export class BorradoresComponent implements OnInit {
   constructor(
     private readonly http: HttpClient,
     private readonly authService: AuthService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   ngOnInit(): void {
@@ -125,24 +127,37 @@ export class BorradoresComponent implements OnInit {
         revisado_por: usr ? `${usr.nombres} ${usr.apellidos}` : 'Usuario Web',
       })
       .subscribe({
-        next: () => this.cargarBorradores(),
-        error: (err) => alert('Error al aprobar borrador: ' + (err.error?.message || err.message)),
+        next: () => {
+          this.notificationService.success('Borrador aprobado e integrado formalmente al libro contable.');
+          this.cargarBorradores();
+        },
+        error: (err) => this.notificationService.error('Error al aprobar borrador: ' + (err.error?.message || err.message)),
       });
   }
 
-  rechazar(id: string): void {
-    const motivo = prompt('Ingrese el motivo justificado de rechazo contable:');
-    if (!motivo) return;
+  async rechazar(id: string): Promise<void> {
+    const motivo = await this.notificationService.prompt({
+      title: 'Rechazo Contable de Borrador',
+      message: 'Indique la justificación formal o inconsistencia detectada:',
+      placeholder: 'Ej. Concepto contable incorrecto, tercero no coincide...',
+      confirmText: 'Rechazar Borrador',
+      intent: 'danger',
+    });
+
+    if (!motivo || !motivo.trim()) return;
 
     const usr = this.authService.usuario();
     this.http
       .post(`http://localhost:3000/api/v1/integracion/borradores/${id}/rechazar`, {
-        motivo,
+        motivo: motivo.trim(),
         revisado_por: usr ? `${usr.nombres} ${usr.apellidos}` : 'Usuario Web',
       })
       .subscribe({
-        next: () => this.cargarBorradores(),
-        error: (err) => alert('Error al rechazar borrador: ' + (err.error?.message || err.message)),
+        next: () => {
+          this.notificationService.warning('Borrador rechazado y registrado en la pista de auditoría.');
+          this.cargarBorradores();
+        },
+        error: (err) => this.notificationService.error('Error al rechazar borrador: ' + (err.error?.message || err.message)),
       });
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 interface MiembroEmpresa {
   id: string;
@@ -157,6 +158,7 @@ export class UsuariosAdminComponent implements OnInit {
   constructor(
     private readonly http: HttpClient,
     private readonly authService: AuthService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   ngOnInit(): void {
@@ -185,22 +187,34 @@ export class UsuariosAdminComponent implements OnInit {
         rol: nuevoRol,
       })
       .subscribe({
-        next: () => this.cargarMiembros(),
-        error: (err) => alert('Error al actualizar rol: ' + (err.error?.message || err.message)),
+        next: () => {
+          this.notificationService.info('Rol de usuario actualizado exitosamente.');
+          this.cargarMiembros();
+        },
+        error: (err) => this.notificationService.error('Error al actualizar rol: ' + (err.error?.message || err.message)),
       });
   }
 
-  revocarAcceso(usuarioId: string): void {
+  async revocarAcceso(usuarioId: string): Promise<void> {
     const emp = this.authService.empresaActiva();
     if (!emp) return;
 
-    if (!confirm('¿Confirma que desea revocar el acceso a esta empresa?')) return;
+    const confirmado = await this.notificationService.confirm({
+      title: 'Revocar Acceso a la Empresa',
+      message: '¿Confirma que desea revocar el acceso de este usuario a la empresa activa? Perderá todos los privilegios inmediatamente.',
+      confirmText: 'Revocar Acceso',
+      intent: 'danger',
+    });
+    if (!confirmado) return;
 
     this.http
       .delete(`http://localhost:3000/api/v1/usuarios/${usuarioId}/empresa/${emp.empresa_id}`)
       .subscribe({
-        next: () => this.cargarMiembros(),
-        error: (err) => alert('Error al revocar acceso: ' + (err.error?.message || err.message)),
+        next: () => {
+          this.notificationService.warning('Acceso de usuario revocado.');
+          this.cargarMiembros();
+        },
+        error: (err) => this.notificationService.error('Error al revocar acceso: ' + (err.error?.message || err.message)),
       });
   }
 
@@ -216,6 +230,7 @@ export class UsuariosAdminComponent implements OnInit {
       .subscribe({
         next: () => {
           this.mostrarModalCrear.set(false);
+          this.notificationService.success('Usuario registrado y vinculado a la empresa con éxito.');
           this.cargarMiembros();
           this.nuevoUsuario = {
             nombres: '',
@@ -225,7 +240,7 @@ export class UsuariosAdminComponent implements OnInit {
             rol: 'AUXILIAR_CONTABLE',
           };
         },
-        error: (err) => alert('Error al registrar usuario: ' + (err.error?.message || err.message)),
+        error: (err) => this.notificationService.error('Error al registrar usuario: ' + (err.error?.message || err.message)),
       });
   }
 }

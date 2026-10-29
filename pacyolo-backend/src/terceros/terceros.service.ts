@@ -114,9 +114,13 @@ export class TercerosService {
     return tercero;
   }
 
-  async findByEmpresa(empresaId: string): Promise<Tercero[]> {
+  async findByEmpresa(empresaId?: string): Promise<Tercero[]> {
+    const where: any = { activo: true };
+    if (empresaId) {
+      where.empresa_id = empresaId;
+    }
     return await this.terceroRepo.find({
-      where: { empresa_id: empresaId, activo: true },
+      where,
       order: { nombre_completo: 'ASC' },
     });
   }

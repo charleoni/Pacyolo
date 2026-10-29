@@ -10,8 +10,19 @@ import { EmpresaSesion } from '../../core/models/auth.model';
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      <!-- Navbar Superior -->
-      <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between">
+      <!-- Backdrop invisible para captura global de clics al desplegar menú -->
+      @if (menuAbierto()) {
+        <div
+          (click)="cerrarMenus()"
+          class="fixed inset-0 z-30 bg-transparent cursor-default"
+          aria-hidden="true"
+        ></div>
+      }
+
+      <!-- Barra Superior y Navegación Sticky Global -->
+      <div class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 shadow-md">
+        <!-- Navbar Superior -->
+        <header class="border-b border-slate-800/80 px-6 py-3 flex items-center justify-between">
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-2.5">
             <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-500/20">
@@ -61,7 +72,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
       </header>
 
       <!-- Sub-Barra de Navegación de Features -->
-      <nav class="border-b border-slate-800 bg-slate-900/40 px-6 flex items-center gap-2">
+      <nav class="px-6 flex items-center gap-2">
         <a
           routerLink="/dashboard"
           routerLinkActive="border-indigo-500 text-white font-medium"
@@ -94,7 +105,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuAbierto() === 'contabilidad') {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute top-full left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Módulo Contable</span>
@@ -143,13 +154,67 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
 
-        <a
-          routerLink="/dashboard/cxp"
-          routerLinkActive="border-indigo-500 text-white font-medium"
-          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition"
-        >
-          📦 Compras & CxP
-        </a>
+        <!-- Contenedor / Menú Abastecimiento & Stock -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleMenu('abastecimiento', $event)"
+            [class]="esRutaAbastecimientoActiva() ? 'border-indigo-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200 border-transparent'"
+            class="px-4 py-3 text-xs border-b-2 transition inline-flex items-center gap-1.5 cursor-pointer focus:outline-none select-none"
+          >
+            <span>📦 Abastecimiento & Stock</span>
+            <svg
+              class="w-3.5 h-3.5 transition-transform duration-200 text-slate-400"
+              [class.rotate-180]="menuAbierto() === 'abastecimiento'"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          @if (menuAbierto() === 'abastecimiento') {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute top-full left-0 mt-1 w-64 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+            >
+              <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gestión de Stock & Compras</span>
+              </div>
+
+              <a
+                routerLink="/dashboard/inventarios/articulos"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📦</span>
+                <span>Catálogo de Artículos (NIC 2)</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/compras/ordenes"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>📑</span>
+                <span>Órdenes de Compra (OC)</span>
+              </a>
+
+              <a
+                routerLink="/dashboard/cxp"
+                routerLinkActive="bg-indigo-600/20 text-indigo-300 font-semibold border-l-2 border-indigo-500"
+                (click)="cerrarMenus()"
+                class="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800/80 hover:text-white transition cursor-pointer"
+              >
+                <span>💰</span>
+                <span>Cuentas por Pagar & Reportes</span>
+              </a>
+            </div>
+          }
+        </div>
 
         <a
           routerLink="/dashboard/parametros"
@@ -182,7 +247,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           @if (menuAbierto() === 'seguridad') {
             <div
               (click)="$event.stopPropagation()"
-              class="absolute left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+              class="absolute top-full left-0 mt-1 w-56 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
             >
               <div class="px-3 py-1 border-b border-slate-800/80 mb-1">
                 <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Control & Auditoría</span>
@@ -211,6 +276,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
       </nav>
+      </div>
 
       <!-- Contenedor Principal -->
       <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
@@ -224,9 +290,9 @@ export class DashboardLayoutComponent {
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
 
-  menuAbierto = signal<'contabilidad' | 'seguridad' | null>(null);
+  menuAbierto = signal<'contabilidad' | 'abastecimiento' | 'seguridad' | null>(null);
 
-  toggleMenu(menu: 'contabilidad' | 'seguridad', event: MouseEvent): void {
+  toggleMenu(menu: 'contabilidad' | 'abastecimiento' | 'seguridad', event: MouseEvent): void {
     event.stopPropagation();
     this.menuAbierto.update((actual) => (actual === menu ? null : menu));
   }
@@ -245,6 +311,15 @@ export class DashboardLayoutComponent {
     );
   }
 
+  esRutaAbastecimientoActiva(): boolean {
+    const url = this.router.url;
+    return (
+      url.includes('/dashboard/inventarios') ||
+      url.includes('/dashboard/compras') ||
+      url.includes('/dashboard/cxp')
+    );
+  }
+
   esRutaSeguridadActiva(): boolean {
     const url = this.router.url;
     return (
@@ -253,9 +328,16 @@ export class DashboardLayoutComponent {
     );
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.elementRef.nativeElement.contains(event.target)) {
+    @HostListener('document:click')
+  onDocumentClick(): void {
+    if (this.menuAbierto()) {
+      this.cerrarMenus();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.menuAbierto()) {
       this.cerrarMenus();
     }
   }

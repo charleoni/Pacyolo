@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
 import {
   ParametrosService,
   ParametroItem,
@@ -49,7 +50,7 @@ export interface Tercero {
 @Component({
   selector: 'app-terceros-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TablePaginationComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado con Flujo Dual -->
@@ -143,7 +144,7 @@ export interface Tercero {
       <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <thead class="sticky top-0 z-10 bg-slate-950 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
               <tr>
                 <th class="py-3 px-4">Documento / NIT</th>
                 <th class="py-3 px-4">Nombre / Razón Social</th>
@@ -154,7 +155,7 @@ export interface Tercero {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60 font-sans">
-              <tr *ngFor="let t of tercerosFiltrados()" class="hover:bg-slate-800/40 transition">
+              <tr *ngFor="let t of tercerosPaginados()" class="hover:bg-slate-800/40 transition">
                 <td class="py-3 px-4">
                   <div class="font-mono text-white font-semibold">
                     {{ t.tipo_identificacion }}: {{ t.numero_identificacion }}
@@ -230,6 +231,13 @@ export interface Tercero {
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="tercerosFiltrados().length"
+          [currentPage]="paginaTerceros()"
+          [pageSize]="tamanoTerceros()"
+          (pageChange)="paginaTerceros.set($event)"
+          (pageSizeChange)="tamanoTerceros.set($event); paginaTerceros.set(1)"
+        />
       </div>
 
       <!-- ======================================================== -->
@@ -470,11 +478,16 @@ export interface Tercero {
             <div *ngIf="pestanaFichaActiva === 'general'" class="space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label class="block font-semibold text-slate-300 mb-1">Tipo Identificación *</label>
+                  <label class="block font-semibold text-slate-300 mb-1">
+                    Tipo Identificación *
+                    <span *ngIf="esEdicion()" class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  </label>
                   <select
                     [(ngModel)]="fichaTercero.tipo_identificacion"
                     (change)="onCambioIdentificacionFicha()"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                    [disabled]="esEdicion()"
+                    [class]="esEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                    class="w-full border rounded-xl px-3 py-2 focus:outline-none"
                   >
                     <option *ngFor="let t of tiposIdentificacion()" [value]="t.codigo">
                       {{ t.codigo }} — {{ t.nombre }}
@@ -483,13 +496,18 @@ export interface Tercero {
                 </div>
 
                 <div>
-                  <label class="block font-semibold text-slate-300 mb-1">Número de Documento *</label>
+                  <label class="block font-semibold text-slate-300 mb-1">
+                    Número de Documento *
+                    <span *ngIf="esEdicion()" class="text-[10px] text-amber-400 font-semibold ml-1">🔒 Inmutable</span>
+                  </label>
                   <input
                     type="text"
                     [(ngModel)]="fichaTercero.numero_identificacion"
                     (input)="onCambioIdentificacionFicha()"
+                    [disabled]="esEdicion()"
                     placeholder="Ej: 900123456"
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
+                    [class]="esEdicion() ? 'bg-slate-900/80 text-slate-400 border-slate-800 cursor-not-allowed select-none' : 'bg-slate-950 text-white border-slate-800 focus:border-indigo-500'"
+                    class="w-full border rounded-xl px-3 py-2 font-mono focus:outline-none"
                   />
                 </div>
 
@@ -837,6 +855,15 @@ export class TercerosAdminComponent implements OnInit {
   errorMsg = signal<string | null>(null);
 
   busqueda = '';
+
+  // Paginación Reactiva
+  readonly paginaTerceros = signal(1);
+  readonly tamanoTerceros = signal(25);
+  tercerosPaginados(): Tercero[] {
+    const p = this.paginaTerceros();
+    const s = this.tamanoTerceros();
+    return this.tercerosFiltrados().slice((p - 1) * s, p * s);
+  }
   filtroTipo = 'TODOS';
   pestanaFichaActiva: 'general' | 'ubicacion' | 'tributaria' | 'bancaria' = 'general';
 
@@ -1158,9 +1185,10 @@ export class TercerosAdminComponent implements OnInit {
     this.guardando.set(true);
     this.errorMsg.set(null);
 
+    const { id, created_at, updated_at, ...datosTercero } = this.fichaTercero;
     const payload = {
       empresa_id: emp.empresa_id,
-      ...this.fichaTercero,
+      ...datosTercero,
       numero_identificacion: (this.fichaTercero.numero_identificacion || '').trim(),
       nombre_completo: (this.fichaTercero.nombre_completo || '').trim(),
     };

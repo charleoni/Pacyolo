@@ -19,6 +19,10 @@ import {
   CreateClasificacionTerceroDto,
   CreateTipoComprobanteConfigDto,
   CreateMetodoPagoDto,
+  CreateUnidadMedidaDto,
+  CreateCategoriaArticuloDto,
+  CreateBodegaDto,
+  CreateTipoMovimientoDto,
   UpdateEstadoParametroDto,
   UpdateParametroDto,
 } from './dto/parametro.dto.js';
@@ -135,6 +139,62 @@ export class ParametrosController {
     @Query('departamento_codigo') departamentoCodigo?: string,
   ) {
     return await this.parametrosService.buscarMunicipios(query, departamentoCodigo);
+  }
+
+  // 9. UNIDADES DE MEDIDA
+  @Get('unidades-medida')
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  @ApiOperation({ summary: 'Listar unidades de medida oficiales DIAN/ISO' })
+  async listarUnidadesMedida(@Headers('x-empresa-id') empresaId?: string) {
+    return await this.parametrosService.listarUnidadesMedida(empresaId);
+  }
+
+  @Post('unidades-medida')
+  @ApiOperation({ summary: 'Crear nueva unidad de medida personalizada' })
+  async crearUnidadMedida(@Body() dto: CreateUnidadMedidaDto) {
+    return await this.parametrosService.crearUnidadMedida(dto);
+  }
+
+  // 10. CATEGORÍAS DE ARTÍCULOS
+  @Get('categorias-articulos')
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  @ApiOperation({ summary: 'Listar categorías y familias de artículos con cuentas NIIF' })
+  async listarCategoriasArticulos(@Headers('x-empresa-id') empresaId?: string) {
+    return await this.parametrosService.listarCategoriasArticulos(empresaId);
+  }
+
+  @Post('categorias-articulos')
+  @ApiOperation({ summary: 'Crear nueva categoría de artículos con mapeo contable' })
+  async crearCategoriaArticulo(@Body() dto: CreateCategoriaArticuloDto) {
+    return await this.parametrosService.crearCategoriaArticulo(dto);
+  }
+
+  // 11. BODEGAS DE ALMACENAMIENTO
+  @Get('bodegas')
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  @ApiOperation({ summary: 'Listar bodegas físicas y virtuales de almacenamiento' })
+  async listarBodegas(@Headers('x-empresa-id') empresaId?: string) {
+    return await this.parametrosService.listarBodegas(empresaId);
+  }
+
+  @Post('bodegas')
+  @ApiOperation({ summary: 'Crear nueva bodega de almacenamiento' })
+  async crearBodega(@Body() dto: CreateBodegaDto) {
+    return await this.parametrosService.crearBodega(dto);
+  }
+
+  // 12. TIPOS DE MOVIMIENTOS DE INVENTARIO
+  @Get('tipos-movimiento')
+  @ApiHeader({ name: 'x-empresa-id', required: false })
+  @ApiOperation({ summary: 'Listar tipos de movimientos de inventario (Entradas, Salidas, Traslados)' })
+  async listarTiposMovimiento(@Headers('x-empresa-id') empresaId?: string) {
+    return await this.parametrosService.listarTiposMovimiento(empresaId);
+  }
+
+  @Post('tipos-movimiento')
+  @ApiOperation({ summary: 'Crear nuevo tipo de movimiento de inventario' })
+  async crearTipoMovimiento(@Body() dto: CreateTipoMovimientoDto) {
+    return await this.parametrosService.crearTipoMovimiento(dto);
   }
 
   // ACTUALIZACIÓN DE PARÁMETROS MAESTROS

@@ -4,6 +4,47 @@ Todas las versiones notables de este proyecto están documentadas en este archiv
 
 ---
 
+## [v0.8.0-sprint8] - 2026-10-19
+### 📦 Artículos (NIC 2), Órdenes de Compra, Entradas de Almacén, Kardex Multibodega & CxP Analítico
+- **Tablas Paramétricas de Abastecimiento & Inventario:**
+  - Implementación de 4 nuevas tablas maestras relacionales integradas al gestor dinámico de parámetros:
+    1. `core_unidades_medida`: Unidades estándar DIAN/ISO (NIU, KGM, MTR, GLI, C62, etc.).
+    2. `inv_categorias_articulos`: Categorías de inventario con asignación de cuentas contables por defecto (Activo 14, Costo 61, Gasto 51/52).
+    3. `inv_bodegas`: Catálogo multibodega por empresa con responsable y dirección.
+    4. `inv_tipos_movimiento`: Tipos de movimientos de inventario (`ENTRADA_COMPRA`, `SALIDA_VENTA`, `AJUSTE_SOBRANTE`, `AJUSTE_FALTANTE`, etc.) con bandera de afectación a costo promedio.
+- **Catálogo Maestro de Artículos (NIC 2):**
+  - Entidad `inv_articulos`, SKU único por empresa, clasificación operativa (`INVENTARIABLE`, `SERVICIO`, `CONSUMIBLE`), código de barras, tarifa de IVA (0%, 5%, 19%), tarifa de INC y cuentas contables predeterminadas.
+  - Gestión de existencias por bodega a través de `inv_saldos_bodega`.
+- **Circuito de Abastecimiento: Órdenes de Compra (OC):**
+  - Modelo `compras_ordenes` y líneas, numeración consecutiva automática (`OC-XXXX`), cálculo en tiempo real de subtotales, IVA y retenciones.
+  - Flujo de estados: `BORRADOR` -> `APROBADA` -> `RECIBIDA_PARCIAL` -> `RECIBIDA_TOTAL` o `CANCELADA`.
+- **Entradas de Almacén (EA) & Recepción Física:**
+  - Modelo `inv_entradas_almacen` y líneas, recepción física de mercancías con o sin orden de compra vinculada, actualización progresiva de cantidades recibidas en la OC.
+- **Motor de Kardex Físico y Valorado en Tiempo Real (NIC 2):**
+  - Tabla inmutable `inv_kardex_movimientos` con recálculo automático del costo promedio ponderado móvil en cada entrada.
+  - Salidas y notas de ajuste valoradas al costo medio vigente, garantizando consistencia con la NIC 2.
+  - Actualización atómica de existencias totales y saldos por bodega.
+- **Notas de Ajuste Físico de Inventario:**
+  - Modelo `inv_notas_ajuste` y líneas para legalizar sobrantes, mermas o recuentos físicos con motivo justificado.
+- **Cruce de Factura de Proveedor & Asiento Contable Automático NIIF:**
+  - Integración del circuito de compra con el módulo contable: causación de factura afectando Activo 1435 / Gasto 51-52, IVA Descontable 2408, Retenciones 2365 y Pasivo Proveedores 2205 en comprobante `CAU`.
+- **Módulo Analítico de Cuentas por Pagar (CxP):**
+  - 3 nuevos informes analíticos de alta dirección:
+    1. **Estado de Cuenta por Proveedor:** Balance consolidado, total vencido, total corriente y desglose de facturas abiertas con cálculo de días de mora.
+    2. **Extracto Cronológico de Cuenta:** Libro auxiliar interactivo de cargos (facturas) vs abonos (egresos) con saldo acumulado movimiento por movimiento.
+    3. **Matriz de Análisis de Vencimiento por Edades:** Distribución horizontal de la cartera en franjas (Corriente, 1-30 días, 31-60 días, 61-90 días, +90 días) con totales globales y tabulación por proveedor.
+- **Frontend Reactivo en Angular 22:**
+  - Nuevo menú desplegable `📦 Abastecimiento & Stock ▼` en el Navbar.
+  - Vistas operativas:
+    - `/dashboard/inventarios/articulos`: Ficha de artículos NIC 2, Entradas de almacén, Visor de Kardex continuo, Notas de ajuste y Existencias por bodega.
+    - `/dashboard/compras/ordenes`: Panel de Órdenes de Compra con modal interactivo, cálculo dinámico de impuestos y control de estados.
+    - `/dashboard/cxp`: Panel de Cuentas por Pagar con pestañas para Cartera, Estado de Cuenta, Extracto y Matriz de Edades con botón de impresión.
+- **Garantía de Calidad:**
+  - **85 pruebas unitarias de backend pasando al 100% (18 suites de prueba de backend Vitest)**.
+  - Compilación de producción en Angular (`ng build`) exitosa con 0 errores.
+
+---
+
 ## [v0.7.0-sprint7] - 2026-10-18
 ### ⚙️ Tablas Maestras Dinámicas, Integridad Referencial & Reorganización Modular de Navegación
 - **Arquitectura Paramétrica Universal (Cero Enums):**

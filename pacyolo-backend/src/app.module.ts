@@ -16,6 +16,8 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { ParametrosModule } from './parametros/parametros.module.js';
+import { InventariosModule } from './inventarios/inventarios.module.js';
+import { ComprasModule } from './compras/compras.module.js';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { ParametrosModule } from './parametros/parametros.module.js';
     AuthModule,
     AuditoriaModule,
     ParametrosModule,
+    InventariosModule,
+    ComprasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
