@@ -4,7 +4,7 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/10-tesoreria-cajas-bancos`  
+*Rama Activa:* `sprint/11-libros-oficiales-cierres-estados-financieros`  
 *Última Versión Publicada:* `v0.10.0-sprint10` (Cerrada y Certificada)
 
 ---
@@ -56,7 +56,55 @@
 
 ## 🔮 Backlog Estratégico de Sprints Futuros (Arquitectura ERP PACYOLO)
 
-### 📌 SPRINT 11: Libros Oficiales Registrados, Cierres Contables & Los 5 Estados Financieros NIIF
+### 📌 SPRINT 11: Libros Oficiales Registrados, Cierres Contables & Los 5 Estados Financieros NIIF `[ACTIVO]`
+- **Objetivo del Sprint:** Implementar el núcleo de gobierno contable periódico, libros oficiales de comercio y generación de los 5 estados financieros bajo estricto rigor NIIF (NIC 1, NIC 7, NIC 8, NIC 21) y los **4 Pilares de Gobernanza Contable Total de PACYOLO**:
+  1. **Control de Períodos Contables & Candado de Seguridad:**
+     - Entidad `PeriodoContable` con estados: `ABIERTO`, `CERRADO_MENSUAL`, `BLOQUEADO_AUDITORIA`.
+     - Validación en guard/service contable para rechazar cualquier inserción, modificación o anulación de comprobantes en períodos con candado activo.
+  2. **Motor de Cierre Anual NIIF (Comprobante `CIE` al 31 de Diciembre):**
+     - Liquidación automática y cancelación de saldos de cuentas de resultado (Clases 4, 5, 6, 7) contra la cuenta intermedia `590505 Ganancias y Pérdidas`.
+     - Traspaso a cuentas patrimoniales definitivas: `360505 Utilidad del Ejercicio` o `361005 Pérdida del Ejercicio`.
+     - Reseteo de saldos de resultado para el siguiente ejercicio y continuidad de saldos de balance (1, 2, 3).
+  3. **Motor de Reexpresión y Diferencia en Cambio NIIF (NIC 21):**
+     - Ajuste mensual de cuentas en moneda extranjera según TRM oficial de cierre contra cuentas `530525` (Gasto DxC) o `421020` (Ingreso DxC).
+  4. **Motor de Agregación Jerárquica del PUC (Niveles 1 a 5):**
+     - Capacidad de rollup y consolidación dinámica a nivel de:
+       - Nivel 1: Clase (1 dígito)
+       - Nivel 2: Grupo (2 dígitos)
+       - Nivel 3: Cuenta (4 dígitos)
+       - Nivel 4: Subcuenta (6 dígitos)
+       - Nivel 5: Auxiliar analítico por Tercero (8-10 dígitos).
+  5. **Libros Oficiales de Comercio Registrados (Código de Comercio & Revisoría Fiscal):**
+     - Libro Mayor y Balances mensual (Saldos iniciales, movimientos débitos/créditos y saldos finales).
+     - Libro Diario Columnario mensual clasificado por tipo de comprobante (`ING`, `EGR`, `FAC`, `NC`, `ND`, `CAU`, `CIE`).
+     - Libro de Inventarios y Balances anual.
+     - Libro Auxiliar Integral con trazabilidad de tercero (NIT), comprobante, fecha, detalle y saldo progresivo.
+  6. **Generador Oficial de los 5 Estados Financieros NIIF (NIC 1 / NIC 7):**
+     - Estado de Situación Financiera (ESF) clasificado (Corriente / No Corriente).
+     - Estado de Resultado Integral (ERI con desglose de utilidad bruta, operacional, antes de impuestos y ORI).
+     - Estado de Cambios en el Patrimonio (variaciones de capital, reservas y resultados).
+     - Estado de Flujos de Efectivo (NIC 7: Método Directo e Indirecto).
+     - Notas y Revelaciones a los Estados Financieros.
+  7. **Frontend Reactivo con Angular Signals & Exportación/Impresión Membretada Formal:**
+     - Tablero de períodos contables con botón de bloqueo/desbloqueo auditado.
+     - Asistente de Cierre Anual con previsualización del asiento `CIE`.
+     - Visor interactivo de libros oficiales con selector de nivel (1 al 5) y drill-down.
+     - Visor y descargador de Estados Financieros comparativos listos para firmas reglamentarias.
+
+---
+
+### 📋 Desglose de Micro-Tareas Sprint 11 (Estimación: Bloques de ~2 Horas)
+
+| # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
+| :-: | :--- | :--- | :--- | :--- | :-: |
+| **11.1** | Modelo de Datos: Períodos Contables & Candado | Entidades `PeriodoContable` y `CierreEjercicio` en PostgreSQL (`contabilidad`) con validación de candado en `AsientosService`. | 2h | `[ ]` Pendiente | — |
+| **11.2** | Motor de Cierre Anual NIIF (`CIE`) | Servicio de liquidación automática de cuentas nominales contra `590505` y generación atómica del Comprobante `CIE` hacia `360505`/`361005`. | 2h | `[ ]` Pendiente | — |
+| **11.3** | Motor de Diferencia en Cambio (NIC 21) | Servicio de reexpresión de saldos en moneda extranjera según TRM de fin de mes con asiento automático en `530525`/`421020`. | 2h | `[ ]` Pendiente | — |
+| **11.4** | Motor de Consultas Jerárquicas del PUC (1-5) | Algoritmo optimizado de agregación por Clase, Grupo, Cuenta, Subcuenta y Auxiliar con soporte para drill-down analítico por tercero. | 2h | `[ ]` Pendiente | — |
+| **11.5** | Libros Oficiales: Mayor y Balances & Diario Columnario | Endpoints y generadores de Libro Mayor y Balances y Libro Diario Columnario con formato oficial exigido por Revisoría Fiscal. | 2h | `[ ]` Pendiente | — |
+| **11.6** | Libros Oficiales: Auxiliar Integral & Inventarios | Servicio de Libro Auxiliar Integral con saldo continuo por tercero/cuenta y Libro de Inventarios y Balances anual. | 2h | `[ ]` Pendiente | — |
+| **11.7** | Los 5 Estados Financieros NIIF (NIC 1 / NIC 7) | Endpoints de cálculo de Situación Financiera, Resultado Integral, Cambios en Patrimonio, Flujos de Efectivo y Notas de revelación. | 2h | `[ ]` Pendiente | — |
+| **11.8** | Frontend Angular: Cierres, Libros & Estados Financieros | Componentes Angular Signals: Panel de control de períodos, Asistente de Cierre Anual, Visor multinivel de Libros y Visor de Estados Financieros membretados. | 2h | `[ ]` Pendiente | — |
 - **Cierre y Bloqueo de Períodos Mensuales (Candado Contable):** Bloqueo formal de fechas auditado para blindar meses presentados o declarados ante modificaciones o inserciones extemporáneas.
 - **Motor de Cierre Anual NIIF (Comprobante `CIE` al 31 de Diciembre):**
   - Cancelación automática de todas las cuentas nominales de resultado (Clase 4 Ingresos Débito, Clase 5 Gastos Crédito, Clases 6 y 7 Costos Crédito) contra la cuenta intermedia `590505 Ganancias y Pérdidas`.
