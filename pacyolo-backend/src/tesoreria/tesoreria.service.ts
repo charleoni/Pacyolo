@@ -79,7 +79,13 @@ export class TesoreriaService {
 
     // Si se indicó cuenta de banco origen, generamos comprobante de egreso por constitución de fondo fijo
     if (dto.cuenta_banco_origen_id) {
-      const cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
+      let cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
+      if (!cuentaBanco) {
+        const ctaBancaria = await this.cuentaRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
+        if (ctaBancaria) {
+          cuentaBanco = await this.pucRepo.findOne({ where: { id: ctaBancaria.cuenta_puc_id } });
+        }
+      }
       if (cuentaBanco) {
         const asiento = await this.asientosService.create({
           empresa_id: empresaId,
@@ -251,7 +257,13 @@ export class TesoreriaService {
       }
     }
 
-    const cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
+    let cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
+    if (!cuentaBanco) {
+      const ctaBancaria = await this.cuentaRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
+      if (ctaBancaria) {
+        cuentaBanco = await this.pucRepo.findOne({ where: { id: ctaBancaria.cuenta_puc_id } });
+      }
+    }
     if (!cuentaBanco) throw new NotFoundException('Cuenta bancaria de pago no encontrada');
 
     // Construir líneas del comprobante de egreso:
