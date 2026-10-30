@@ -71,6 +71,11 @@ export class TesoreriaService {
 
     const cuentaPuc = await this.pucRepo.findOne({ where: { id: dto.cuenta_puc_id } });
     if (!cuentaPuc) throw new NotFoundException('Cuenta PUC de caja menor no encontrada');
+    if (!cuentaPuc.permite_movimiento) {
+      throw new BadRequestException(
+        `La cuenta [${cuentaPuc.codigo} - ${cuentaPuc.nombre}] es de nivel superior y NO permite movimientos directos. Debe seleccionar una cuenta auxiliar (ej. 11051001).`
+      );
+    }
 
     const responsable = await this.terceroRepo.findOne({ where: { id: dto.responsable_id } });
     if (!responsable) throw new NotFoundException('Tercero custodio/responsable no encontrado');
@@ -87,6 +92,11 @@ export class TesoreriaService {
         }
       }
       if (cuentaBanco) {
+        if (!cuentaBanco.permite_movimiento) {
+          throw new BadRequestException(
+            `La cuenta bancaria [${cuentaBanco.codigo} - ${cuentaBanco.nombre}] es de nivel superior y NO permite movimientos directos. Debe seleccionar una cuenta auxiliar de banco.`
+          );
+        }
         const asiento = await this.asientosService.create({
           empresa_id: empresaId,
           tipo_comprobante: TipoComprobante.EGR,
@@ -180,6 +190,11 @@ export class TesoreriaService {
 
     const cuentaGasto = await this.pucRepo.findOne({ where: { id: dto.cuenta_gasto_id } });
     if (!cuentaGasto) throw new NotFoundException('Cuenta contable de gasto no encontrada');
+    if (!cuentaGasto.permite_movimiento) {
+      throw new BadRequestException(
+        `La cuenta [${cuentaGasto.codigo} - ${cuentaGasto.nombre}] es de nivel superior y NO permite movimientos directos. Debe seleccionar una cuenta auxiliar de gasto.`
+      );
+    }
 
     const countGastos = await this.gastoRepo.count({
       where: { empresa_id: empresaId, caja_menor_id: caja.id },
@@ -265,6 +280,11 @@ export class TesoreriaService {
       }
     }
     if (!cuentaBanco) throw new NotFoundException('Cuenta bancaria de pago no encontrada');
+    if (!cuentaBanco.permite_movimiento) {
+      throw new BadRequestException(
+        `La cuenta bancaria [${cuentaBanco.codigo} - ${cuentaBanco.nombre}] es de nivel superior y NO permite movimientos directos. Debe seleccionar una cuenta auxiliar de banco.`
+      );
+    }
 
     // Construir líneas del comprobante de egreso:
     // Débito a cada cuenta de gasto (51/52) + Débito a IVA (240802 si aplica) - Crédito a Retenciones (2365 si aplica)
