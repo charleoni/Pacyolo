@@ -56,23 +56,63 @@
 
 ## 🔮 Backlog Estratégico de Sprints Futuros (Arquitectura ERP PACYOLO)
 
-### 📌 SPRINT 11: Reportes Financieros Oficiales NIIF & Exportaciones
-- **Balance de Comprobación:** Sumas y saldos a nivel de Clase, Grupo, Cuenta, Subcuenta y Auxiliar.
-- **Estado de Situación Financiera (Balance General NIIF):** Activo = Pasivo + Patrimonio (Corriente / No Corriente).
-- **Estado de Resultados Integral (P&G):** Ingresos, Costos, Utilidad Bruta, Gastos Operacionales, EBITDA y Utilidad Neta.
-- **Certificados Tributarios:** Generación en PDF oficial de Certificados de Retención en la Fuente con firma digital.
-- **Exportación a Excel:** Reportes tabulados con fórmulas y estructura para Medios Magnéticos DIAN.
+### 📌 SPRINT 11: Libros Oficiales Registrados, Cierres Contables & Los 5 Estados Financieros NIIF
+- **Cierre y Bloqueo de Períodos Mensuales (Candado Contable):** Bloqueo formal de fechas auditado para blindar meses presentados o declarados ante modificaciones o inserciones extemporáneas.
+- **Motor de Cierre Anual NIIF (Comprobante `CIE` al 31 de Diciembre):**
+  - Cancelación automática de todas las cuentas nominales de resultado (Clase 4 Ingresos Débito, Clase 5 Gastos Crédito, Clases 6 y 7 Costos Crédito) contra la cuenta intermedia `590505 Ganancias y Pérdidas`.
+  - Traslado automático a Patrimonio: Débito `5905` $\longleftrightarrow$ Crédito `360505 Utilidad del Ejercicio` (o Débito `361005 Pérdida` $\longleftrightarrow$ Crédito `5905`).
+  - Saldo en cero para cuentas de resultado el 1 de enero y apertura de saldos iniciales de balance (1, 2, 3).
+- **Diferencia en Cambio NIIF (NIC 21):** Reexpresión mensual de activos y pasivos en moneda extranjera según TRM de cierre oficial (`530525` vs `421020`).
+- **Árbol Jerárquico Multinivel del PUC:** Selector de profundidad dinámica para reportes:
+  - Nivel 1: Clase (1 dígito)
+  - Nivel 2: Grupo (2 dígitos)
+  - Nivel 3: Cuenta (4 dígitos)
+  - Nivel 4: Subcuenta (6 dígitos)
+  - Nivel 5: Auxiliar de detalle analítico (8 a 10 dígitos) con drill-down interactivo.
+- **Los 5 Estados Financieros Oficiales NIIF (NIC 1 / DUR 2420):**
+  1. Estado de Situación Financiera clasificado (Corriente / No Corriente).
+  2. Estado de Resultado Integral (ERI con desglose de P&G y ORI).
+  3. Estado de Cambios en el Patrimonio (conciliación de variaciones de capital, reservas y utilidades).
+  4. Estado de Flujos de Efectivo (NIC 7: Métodos Directo e Indirecto con actividades de operación, inversión y financiación).
+  5. Notas y Revelaciones a los Estados Financieros (resumen de políticas y desglose analítico).
+- **Libros Oficiales Registrados (Código de Comercio y Revisoría Fiscal):**
+  - Libro Mayor y Balances mensual.
+  - Libro Diario Columnario mensual por tipo de comprobante.
+  - Libro de Inventarios y Balances anual.
+  - Libro Auxiliar Integral por Cuenta Contable y Tercero (NIT).
 
 ### 📌 SPRINT 12: Activos Fijos & Propiedad, Planta y Equipo (NIC 16)
-- **Ficha Técnica de Activos:** Códigos de placa, ubicación física, centro de costos y vida útil NIIF.
+- **Ficha Técnica de Activos:** Códigos de placa, ubicación física, centro de costos, proveedor, factura base, valor de salvamento y vida útil NIIF.
 - **Motor de Depreciación Mensual Automática:** Asiento de fin de mes `Débito 5160 / 5260 <-> Crédito 1592`.
-- **Deterioro y Bajas:** Retiro por obsolescencia y cálculo de utilidad/pérdida en venta de activos fijos.
+- **Deterioro y Bajas:** Retiro por obsolescencia y cálculo de utilidad/pérdida en enajenación de activos fijos.
 
 ### 📌 SPRINT 13: Nómina Electrónica & Seguridad Social (UGPP / DIAN)
-- **Contratos Laborales & Devengos:** Sueldo básico, auxilio de transporte, horas extras diurnas/nocturnas/festivas y recargos.
-- **Deducciones de Ley:** Salud (4%), Pensión (4%), Fondo de Solidaridad Pensional, retención en la fuente laboral.
+- **Contratos Laborales & Devengos:** Sueldo básico, auxilio de transporte, horas extras diurnas/nocturnas/festivas, recargos y bonificaciones.
+- **Deducciones de Ley:** Salud (4%), Pensión (4%), Fondo de Solidaridad Pensional, retención en la fuente laboral (Procedimiento 1 / 2).
 - **Aportes Patronales & Provisiones:** EPS patronal, Pensión (12%), ARL, Parafiscales (SENA, ICBF, Caja) y provisión de Cesantías, Intereses, Prima y Vacaciones.
 - **Contabilización Automática & Transmisión DIAN:** Asiento contable de nómina y generación del XML / CUNE para la DIAN.
+
+### 📌 SPRINT 14: Módulo Tributario, Liquidación de Impuestos & Información Exógena DIAN (Medios Magnéticos)
+- **Mapeo de PUC a Conceptos DIAN:** Configuración de cuentas auxiliares hacia los conceptos de información exógena.
+- **Borradores de Declaraciones Tributarias Oficiales:**
+  - Formulario 300 (IVA bimestral/cuatrimestral): bases gravadas (19%, 5%), exentas, excluidas, IVA generado vs descontable.
+  - Formulario 350 (Retención en la Fuente mensual): compras, servicios, honorarios, arrendamientos, salarios y autorretenciones.
+  - Declaración de ICA territorial (según municipio DANE y actividades gravadas).
+- **Motor de Información Exógena Nacional DIAN (Medios Magnéticos):**
+  - Generación y exportación a Excel / XML validable en el prevalidador DIAN:
+    - Formato 1001: Pagos o abonos en cuenta y retenciones practicadas.
+    - Formato 1003: Retenciones en la fuente que le practicaron a la empresa.
+    - Formato 1005 / 1006: IVA descontable e IVA generado e Impoconsumo.
+    - Formato 1007: Ingresos propios recibidos en el ejercicio.
+    - Formato 1008 / 1009: Saldos de Cuentas por Cobrar (CxC) y Cuentas por Pagar (CxP) a 31 de diciembre.
+    - Formato 1011 / 1012: Información de declaraciones y saldos en cuentas bancarias.
+    - Formato 2276: Certificado de ingresos y retenciones por rentas de trabajo (nómina).
+- **Certificados Tributarios:** Certificados de retención en la fuente e IVA con firma digital para proveedores.
+
+### 📌 SPRINT 15: Auditoría Contable, Exportación XBRL (Supersociedades) & Certificación Enterprise
+- **Taxonomía XBRL Oficial:** Exportación para el software STORM / XBRL Express de la Superintendencia de Sociedades.
+- **Motor de Pruebas de Consistencia de Partida Doble:** Verificación automatizada de Sumas Iguales en el 100% de los asientos históricos.
+- **Certificación de Inmutabilidad:** Validación de pistas de auditoría (`aud_pistas`) e integridad de sellos temporales.
 
 ---
 
