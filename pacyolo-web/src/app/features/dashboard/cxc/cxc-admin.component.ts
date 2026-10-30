@@ -9,6 +9,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/components/tercero-lookup-modal.component';
 import { PucLookupModalComponent, CuentaPucLookupItem } from '../../../shared/components/puc-lookup-modal.component';
 import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
+import { ComprobanteImpresionModalComponent } from '../../../shared/components/comprobante-impresion-modal.component';
 
 @Component({
   selector: 'app-cxc-admin',
@@ -725,6 +726,8 @@ export class CxcAdminComponent implements OnInit {
 
   // Recaudos
   cxcSeleccionada = signal<CuentaPorCobrarItem | null>(null);
+  mostrarModalImprimirRecibo = signal<boolean>(false);
+  asientoReciboParaImprimir = signal<any | null>(null);
   modalRecaudoVisible = signal<boolean>(false);
   modalHistorialRecaudosVisible = signal<boolean>(false);
   recaudosFactura = signal<RecaudoCxcItem[]>([]);
@@ -870,6 +873,21 @@ export class CxcAdminComponent implements OnInit {
         this.recaudosFactura.set(recaudos || []);
         this.modalHistorialRecaudosVisible.set(true);
       },
+    });
+  }
+
+  imprimirRecibo(r: RecaudoCxcItem): void {
+    const asientoId = r.asiento_id || (r.asiento && r.asiento.id);
+    if (!asientoId) {
+      this.notification.warning('Sin Comprobante', 'Este recaudo no tiene un comprobante contable directo asociado.');
+      return;
+    }
+    this.http.get(`http://localhost:3000/api/v1/asientos/${asientoId}`).subscribe({
+      next: (asiento) => {
+        this.asientoReciboParaImprimir.set(asiento);
+        this.mostrarModalImprimirRecibo.set(true);
+      },
+      error: (err) => this.notification.error('Error al cargar comprobante', err.error?.message || err.message),
     });
   }
 

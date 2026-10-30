@@ -20,6 +20,7 @@ export interface CajaMenorItem {
   saldo_actual_efectivo: number;
   saldo_en_vales: number;
   estado: 'ABIERTA' | 'EN_REPOSICION' | 'CERRADA';
+  asiento_apertura_id?: string;
   observaciones?: string;
   created_at: string;
 }

@@ -15,6 +15,8 @@ import { NotificationService } from '../../../core/services/notification.service
 import { AuthService } from '../../../core/services/auth.service';
 import { PucLookupModalComponent, CuentaPucLookupItem } from '../../../shared/components/puc-lookup-modal.component';
 import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/components/tercero-lookup-modal.component';
+import { ComprobanteImpresionModalComponent } from '../../../shared/components/comprobante-impresion-modal.component';
+import { ActaArqueoImpresionModalComponent } from '../../../shared/components/acta-arqueo-impresion-modal.component';
 
 @Component({
   selector: 'app-tesoreria-admin',

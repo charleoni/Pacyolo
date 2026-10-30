@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CrearAsientoModalComponent } from './crear-asiento-modal.component';
 import { TablePaginationComponent } from '../../../shared/components/table-pagination.component';
+import { ComprobanteImpresionModalComponent } from '../../../shared/components/comprobante-impresion-modal.component';
 
 interface AsientoLinea {
   id: string;
@@ -40,7 +41,7 @@ interface Asiento {
 @Component({
   selector: 'app-libro-diario',
   standalone: true,
-  imports: [CommonModule, FormsModule, CrearAsientoModalComponent, TablePaginationComponent],
+  imports: [CommonModule, FormsModule, CrearAsientoModalComponent, TablePaginationComponent, ComprobanteImpresionModalComponent],
   template: `
     <div class="space-y-6">
       <!-- Encabezado con Botón de Creación -->
@@ -109,6 +110,15 @@ interface Asiento {
                     </span>
                   </td>
                   <td class="py-3 px-4 text-right whitespace-nowrap space-x-1.5">
+                    <button
+                      (click)="imprimirComprobante(asiento)"
+                      class="px-2.5 py-1 text-xs text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/50 rounded-lg border border-indigo-800/40 transition inline-flex items-center gap-1 cursor-pointer"
+                      title="Imprimir Comprobante Oficial (Pilar 2)"
+                    >
+                      <span>🖨️</span>
+                      <span>Imprimir</span>
+                    </button>
+
                     <button
                       (click)="verDetalle(asiento)"
                       class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
@@ -216,7 +226,14 @@ interface Asiento {
             </div>
           </div>
 
-          <div class="flex justify-end pt-2">
+          <div class="flex justify-end gap-2 pt-2">
+            <button
+              (click)="imprimirComprobante(asientoDetalle()!)"
+              class="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>🖨️</span>
+              <span>Imprimir Comprobante Formal</span>
+            </button>
             <button
               (click)="asientoDetalle.set(null)"
               class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition"
@@ -269,6 +286,12 @@ interface Asiento {
           </div>
         </div>
       </div>
+
+      <!-- Modal de Impresión Oficial (Pilar 2 de Gobernanza) -->
+      <app-comprobante-impresion-modal
+        [asiento]="asientoParaImprimir()"
+        [(visible)]="mostrarModalImprimir"
+      />
     </div>
   `,
 })
@@ -286,6 +309,8 @@ export class LibroDiarioComponent implements OnInit {
   mostrarModalCrear = signal<boolean>(false);
   asientoDetalle = signal<Asiento | null>(null);
   asientoAAnular = signal<Asiento | null>(null);
+  asientoParaImprimir = signal<Asiento | null>(null);
+  mostrarModalImprimir = signal<boolean>(false);
   motivoAnulacion = '';
   anulando = signal<boolean>(false);
 
@@ -319,6 +344,21 @@ export class LibroDiarioComponent implements OnInit {
       next: (full) => this.asientoDetalle.set(full),
       error: (err) => console.error('Error cargando detalle de asiento:', err),
     });
+  }
+
+  imprimirComprobante(asiento: Asiento): void {
+    if (asiento.lineas && asiento.lineas.length > 0) {
+      this.asientoParaImprimir.set(asiento);
+      this.mostrarModalImprimir.set(true);
+    } else {
+      this.http.get<Asiento>(`http://localhost:3000/api/v1/asientos/${asiento.id}`).subscribe({
+        next: (full) => {
+          this.asientoParaImprimir.set(full);
+          this.mostrarModalImprimir.set(true);
+        },
+        error: (err) => console.error('Error cargando comprobante para impresión:', err),
+      });
+    }
   }
 
   abrirModalAnular(asiento: Asiento): void {
