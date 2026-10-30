@@ -6,6 +6,8 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { PucService } from './puc.service.js';
@@ -40,11 +42,16 @@ export class PucController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas las cuentas del PUC de una empresa' })
-  @ApiQuery({ name: 'empresa_id', required: true })
+  @ApiQuery({ name: 'empresa_id', required: false })
   @ApiResponse({ status: 200, type: [PucCuenta] })
   async findAll(
-    @Query('empresa_id', ParseUUIDPipe) empresaId: string,
+    @Request() req: any,
+    @Query('empresa_id') queryEmpresaId?: string,
   ): Promise<PucCuenta[]> {
+    const empresaId = queryEmpresaId || req.headers?.['x-empresa-id'] || req.user?.empresa_activa_id;
+    if (!empresaId) {
+      throw new BadRequestException('empresa_id es requerido como query param o header x-empresa-id');
+    }
     return await this.pucService.findAll(empresaId);
   }
 
@@ -53,11 +60,16 @@ export class PucController {
     summary: 'Listar únicamente cuentas auxiliares (que permiten movimiento)',
     description: 'Ideal para poblar selectores en creación de asientos o mapeos.',
   })
-  @ApiQuery({ name: 'empresa_id', required: true })
+  @ApiQuery({ name: 'empresa_id', required: false })
   @ApiResponse({ status: 200, type: [PucCuenta] })
   async findAuxiliares(
-    @Query('empresa_id', ParseUUIDPipe) empresaId: string,
+    @Request() req: any,
+    @Query('empresa_id') queryEmpresaId?: string,
   ): Promise<PucCuenta[]> {
+    const empresaId = queryEmpresaId || req.headers?.['x-empresa-id'] || req.user?.empresa_activa_id;
+    if (!empresaId) {
+      throw new BadRequestException('empresa_id es requerido como query param o header x-empresa-id');
+    }
     return await this.pucService.findAuxiliares(empresaId);
   }
 
@@ -66,11 +78,16 @@ export class PucController {
     summary: 'Obtener el catálogo PUC estructurado en árbol jerárquico',
     description: 'Devuelve las clases raíz (1 al 6) con sus ramas de hijos anidados.',
   })
-  @ApiQuery({ name: 'empresa_id', required: true })
+  @ApiQuery({ name: 'empresa_id', required: false })
   @ApiResponse({ status: 200, type: [PucCuenta] })
   async getTree(
-    @Query('empresa_id', ParseUUIDPipe) empresaId: string,
+    @Request() req: any,
+    @Query('empresa_id') queryEmpresaId?: string,
   ): Promise<PucCuenta[]> {
+    const empresaId = queryEmpresaId || req.headers?.['x-empresa-id'] || req.user?.empresa_activa_id;
+    if (!empresaId) {
+      throw new BadRequestException('empresa_id es requerido como query param o header x-empresa-id');
+    }
     return await this.pucService.getTree(empresaId);
   }
 

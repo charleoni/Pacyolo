@@ -12,6 +12,7 @@ import {
   ConciliacionBancariaItem,
 } from '../../../core/services/tesoreria.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { PucLookupModalComponent, CuentaPucLookupItem } from '../../../shared/components/puc-lookup-modal.component';
 import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/components/tercero-lookup-modal.component';
 
@@ -967,6 +968,7 @@ import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/compon
   `,
 })
 export class TesoreriaAdminComponent implements OnInit {
+  public readonly authService = inject(AuthService);
   private readonly tesoreriaService = inject(TesoreriaService);
   private readonly notificaciones = inject(NotificationService);
   private readonly fb = inject(FormBuilder);
@@ -1007,6 +1009,10 @@ export class TesoreriaAdminComponent implements OnInit {
   modalPucCajaVisible = signal<boolean>(false);
   modalPucGastoVisible = signal<boolean>(false);
   modalPucNotaVisible = signal<boolean>(false);
+  modalPucBancoDesembolsoVisible = signal<boolean>(false);
+  modalPucBancoReembolsoVisible = signal<boolean>(false);
+  cuentaPucBancoDesembolsoSeleccionada = signal<CuentaPucLookupItem | null>(null);
+  cuentaPucBancoReembolsoSeleccionada = signal<CuentaPucLookupItem | null>(null);
 
   // Formularios reactivos
   formCajaMenor: FormGroup;
@@ -1311,6 +1317,7 @@ export class TesoreriaAdminComponent implements OnInit {
   abrirModalReembolso(caja: CajaMenorItem) {
     this.cajaActiva.set(caja);
     this.cuentaBancoReembolsoId = '';
+    this.cuentaPucBancoReembolsoSeleccionada.set(null);
     this.valesSeleccionadosIds.set([]);
     this.tesoreriaService.listarGastosCaja(caja.id, 'LEGALIZADO').subscribe({
       next: (vales) => {
