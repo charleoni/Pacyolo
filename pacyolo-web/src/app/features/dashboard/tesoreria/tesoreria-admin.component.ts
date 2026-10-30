@@ -1001,6 +1001,22 @@ import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/compon
       [cuentas]="cuentasPucDisponibles()"
       (cuentaSeleccionada)="onCuentaPucNotaSeleccionada($event)">
     </app-puc-lookup-modal>
+
+    <!-- Lookup PUC para Banco Desembolso Caja Menor -->
+    <app-puc-lookup-modal
+      [(visible)]="modalPucBancoDesembolsoVisible"
+      titulo="Seleccionar Cuenta de Banco de Desembolso (1110)"
+      [cuentas]="cuentasPucDisponibles()"
+      (cuentaSeleccionada)="onCuentaPucBancoDesembolsoSeleccionada($event)">
+    </app-puc-lookup-modal>
+
+    <!-- Lookup PUC para Banco Reembolso Caja Menor -->
+    <app-puc-lookup-modal
+      [(visible)]="modalPucBancoReembolsoVisible"
+      titulo="Seleccionar Cuenta Bancaria de Giro (1110)"
+      [cuentas]="cuentasPucDisponibles()"
+      (cuentaSeleccionada)="onCuentaPucBancoReembolsoSeleccionada($event)">
+    </app-puc-lookup-modal>
   `,
 })
 export class TesoreriaAdminComponent implements OnInit {
@@ -1387,6 +1403,17 @@ export class TesoreriaAdminComponent implements OnInit {
         this.modalReembolsoAbierto.set(true);
       },
     });
+  }
+
+  onCuentaPucBancoReembolsoSeleccionada(p: CuentaPucLookupItem) {
+    this.cuentaPucBancoReembolsoSeleccionada.set(p);
+    this.cuentaBancoReembolsoId = p.id;
+    this.modalPucBancoReembolsoVisible.set(false);
+  }
+
+  limpiarBancoReembolso() {
+    this.cuentaPucBancoReembolsoSeleccionada.set(null);
+    this.cuentaBancoReembolsoId = '';
   }
 
   toggleSeleccionVale(id: string) {
