@@ -41,12 +41,15 @@
   - **Kardex Integral NIIF**: Movimientos cronológicos detallados (Entradas, Salidas, Traslados, Ajustes, Costo promedio móvil resultante).
   - **Consulta Documental**: Búsqueda e inspección de cualquier documento fuente por consecutivo (`OC-XXXX`, `EA-XXXX`, `TR-XXXX`, `AJ-XXXX`, `CAU-XXXX`).
 
-## 6. Principio de Gobernanza Contable Total: Los 4 Pilares de Todo Documento
+## 6. Principio de Gobernanza Contable Total: Los 5 Pilares Documentales del ERP
 - Todo documento operativo, comercial o de control que nazca en el sistema (Notas de Ajuste, Entradas de Almacén con causación, Traslados con impacto, Facturas, Recaudos, Pagos) DEBE satisfacer estrictamente los **4 Pilares Documentales**:
   1. **Contabilización Obligatoria**: PACYOLO es ante todo un ERP Contable. Todo hecho económico o variación patrimonial/física valorada DEBE generar automáticamente su Comprobante de Diario (`Asiento` + `AsientoLinea`) con estricta partida doble (Sumas Iguales: Débitos = Créditos) y vinculación bidireccional (`asiento_id`).
   2. **Impresión Formal Membretada**: Todo documento debe contar con vista previa e impresión formal (`window.print()` con CSS print optimizado o PDF) con datos fiscales de la empresa, consecutivo oficial, desglose de cuentas/ítems y firmas reglamentarias (Elaboró, Revisó, Aprobó).
   3. **Edición o Control de Anulación/Ajuste**: Debe poder consultarse y gestionarse; si está en estado borrador o preliminar se permite edición con campos inmutables protegidos; si ya está causado o aprobado, no puede eliminarse destructivamente, requiriendo anulación auditada o nota de ajuste.
   4. **Pistas de Auditoría Inmutables**: Registro estricto del usuario ejecutor (`usuario_id` / `creado_por`), timestamp inmutable y registro en bitácora de auditoría (`aud_pistas`).
+  5. **Integridad Causal y Control de Dependencias (Anti-Anulación Huérfana)**:
+     - **Protección del Libro Diario Central**: Queda estrictamente PROHIBIDO anular desde el Libro Diario general comprobantes que fueron originados por subsistemas operativos (`origen_sistema !== 'MANUAL'`). El Libro Diario solo permite anular comprobantes de diario manuales (`CD` / `AJU`). Los asientos de subsistemas deben anularse o ajustarse desde su módulo de origen (Tesorería, CxP, CxC, Inventarios, Ventas) para salvaguardar la sincronización física y financiera.
+     - **Control de Sucesores y Consumos Activos**: Ningún documento fuente puede anularse si tiene documentos dependientes activos o si sus efectos ya fueron consumidos (ej. apertura de caja menor con vales gastados, entradas de almacén con stock vendido, causación CxP con pagos aplicados o facturas con recaudos). La reversión debe realizarse en orden cronológico inverso (LIFO / Top-Down) o mediante Documentos de Ajuste en el presente (NIC 8: Devolución a Proveedor, Nota Crédito/Débito, Liquidación Formal de Fondo).
 
 
 ## 7. Arquitectura Limpia y Principios de Código (Clean Architecture & SRP)

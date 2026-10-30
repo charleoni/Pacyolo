@@ -93,4 +93,20 @@ describe('AsientosService — Motor de Partida Doble NIIF', () => {
       BadRequestException,
     );
   });
+
+  it('debe rechazar la anulación directa desde el Libro Diario si el asiento fue originado por un subsistema (Pilar 5 de Gobernanza)', async () => {
+    const asientoSubsistema: any = {
+      id: 'asiento-123',
+      numero_comprobante: 'EGR-000005',
+      estado: 'CONTABILIZADO',
+      origen_sistema: 'TESORERIA',
+      lineas: [],
+    };
+
+    mockAsientoRepo.findOne.mockResolvedValue(asientoSubsistema);
+
+    await expect(
+      service.anular('asiento-123', 'Motivo prueba', 'usuario-1', false),
+    ).rejects.toThrow(BadRequestException);
+  });
 });

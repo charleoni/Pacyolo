@@ -35,6 +35,9 @@ interface Asiento {
   total_credito: number;
   estado: string;
   motivo_anulacion?: string;
+  origen_sistema?: string;
+  origen_documento_tipo?: string;
+  origen_documento_id?: string;
   lineas?: AsientoLinea[];
 }
 
@@ -127,14 +130,26 @@ interface Asiento {
                       Líneas
                     </button>
 
-                    <button
-                      *ngIf="asiento.estado !== 'ANULADO'"
-                      (click)="abrirModalAnular(asiento)"
-                      class="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition"
-                      title="Anular con reversión NIIF"
-                    >
-                      Anular
-                    </button>
+                    @if (asiento.estado !== 'ANULADO') {
+                      @if (!asiento.origen_sistema || asiento.origen_sistema === 'MANUAL') {
+                        <button
+                          (click)="abrirModalAnular(asiento)"
+                          class="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition cursor-pointer"
+                          title="Anular comprobante manual con reversión NIIF"
+                        >
+                          Anular
+                        </button>
+                      } @else {
+                        <button
+                          (click)="explicarBloqueoAnulacion(asiento)"
+                          class="px-2.5 py-1 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 rounded-lg border border-amber-800/40 transition inline-flex items-center gap-1 cursor-pointer"
+                          [title]="'Protegido por Pilar 5 (Integridad Causal): Originado por módulo ' + asiento.origen_sistema"
+                        >
+                          <span>🔒</span>
+                          <span>{{ formatearOrigen(asiento.origen_sistema) }}</span>
+                        </button>
+                      }
+                    }
                   </td>
                 </tr>
               } @empty {
@@ -344,6 +359,27 @@ export class LibroDiarioComponent implements OnInit {
       next: (full) => this.asientoDetalle.set(full),
       error: (err) => console.error('Error cargando detalle de asiento:', err),
     });
+  }
+
+  formatearOrigen(origen?: string): string {
+    switch (origen) {
+      case 'TESORERIA': return 'Tesorería';
+      case 'CXP': return 'CxP';
+      case 'CXC': return 'CxC';
+      case 'VENTAS':
+      case 'VENTAS_COSTO': return 'Ventas';
+      case 'INVENTARIOS': return 'Inventarios';
+      case 'COMPRAS': return 'Compras';
+      default: return origen || 'Subsistema';
+    }
+  }
+
+  explicarBloqueoAnulacion(asiento: Asiento): void {
+    const modulo = this.formatearOrigen(asiento.origen_sistema);
+    this.notificationService.warning(
+      'Anulación Protegida (Pilar 5 de Gobernanza)',
+      `El comprobante ${asiento.numero_comprobante} fue generado automáticamente por el módulo de ${modulo}. Para salvaguardar la consistencia de inventarios, pagos y fondos, cualquier anulación debe gestionarse directamente desde dicho módulo.`
+    );
   }
 
   imprimirComprobante(asiento: Asiento): void {

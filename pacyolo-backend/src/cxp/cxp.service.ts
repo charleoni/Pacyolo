@@ -463,6 +463,7 @@ export class CxpService {
           pago.asiento_id,
           `Anulación de pago de factura ${cxp.numero_factura_proveedor}: ${motivo}`,
           usuarioId,
+          true,
         );
       } catch (err: any) {
         console.error(`Error anulando asiento ${pago.asiento_id} de pago cxp:`, err.message);

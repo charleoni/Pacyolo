@@ -102,6 +102,9 @@ export class TesoreriaService {
           tipo_comprobante: TipoComprobante.EGR,
           fecha_contable: new Date().toISOString().split('T')[0],
           glosa_general: `Constitución de fondo fijo ${dto.nombre} (${dto.codigo})`,
+          origen_sistema: 'TESORERIA',
+          origen_documento_tipo: 'CAJA_MENOR_APERTURA',
+          origen_documento_id: dto.codigo,
           lineas: [
             {
               cuenta_id: cuentaPuc.id,
@@ -362,6 +365,9 @@ export class TesoreriaService {
       tipo_comprobante: TipoComprobante.EGR,
       fecha_contable: dto.fecha_egreso,
       glosa_general: `Reposición de Caja Menor ${caja.nombre} - ${gastos.length} vales legalizados`,
+      origen_sistema: 'TESORERIA',
+      origen_documento_tipo: 'CAJA_MENOR_REEMBOLSO',
+      origen_documento_id: caja.id,
       lineas: lineasAsiento,
     });
 

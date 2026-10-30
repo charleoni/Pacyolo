@@ -166,6 +166,9 @@ export class CxcService {
       empresa_id: empresaId,
       tipo_comprobante: TipoComprobante.ING,
       fecha_contable: dto.fecha_recaudo,
+      origen_sistema: 'CXC',
+      origen_documento_tipo: 'RECAUDO_CARTERA',
+      origen_documento_id: cxc.id,
       glosa_general: `Recaudo de cartera factura ${cxc.numero_factura} - ${cxc.tercero?.razon_social}${
         descuento > 0 ? ` (Dcto Pronto Pago: $${descuento})` : ''
       }`,
@@ -244,7 +247,7 @@ export class CxcService {
     // Anular asiento
     if (recaudo.asiento_id) {
       try {
-        await this.asientosService.anular(recaudo.asiento_id, motivo, usuario?.id);
+        await this.asientosService.anular(recaudo.asiento_id, motivo, usuario?.id, true);
       } catch (e) {
         // ignore
       }

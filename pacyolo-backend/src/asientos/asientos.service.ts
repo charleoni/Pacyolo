@@ -222,11 +222,30 @@ export class AsientosService {
   /**
    * Anula un comprobante contable generando un asiento de reversión estricto NIIF
    */
-  async anular(id: string, motivo: string, usuarioId?: string): Promise<Asiento> {
+  /**
+   * Anula un comprobante contable generando un asiento de reversión estricto NIIF.
+   * Cumple con el Pilar 5 de Gobernanza Contable Total (Integridad Causal y Control de Dependencias).
+   * @param forceFromSubsystem true cuando la anulación es orquestada por el subsistema de origen (ej. CxC, CxP, Tesorería)
+   */
+  async anular(
+    id: string,
+    motivo: string,
+    usuarioId?: string,
+    forceFromSubsystem = false,
+  ): Promise<Asiento> {
     const original = await this.findOne(id);
 
     if (original.estado === EstadoAsiento.ANULADO) {
       throw new BadRequestException('El comprobante ya se encuentra anulado');
+    }
+
+    // PILAR 5 DE GOBERNANZA: Integridad Causal y Control de Dependencias
+    // Si el comprobante proviene de un subsistema operativo y se intenta anular directamente
+    // desde el Libro Diario sin pasar por el módulo de origen:
+    if (original.origen_sistema && original.origen_sistema !== 'MANUAL' && !forceFromSubsystem) {
+      throw new BadRequestException(
+        `El comprobante [${original.numero_comprobante}] fue originado por el subsistema [${original.origen_sistema}]. Por el Pilar 5 de Gobernanza Contable (Integridad Causal), no puede anularse aisladamente desde el Libro Diario. Debe anularse o ajustarse desde su módulo de origen para salvaguardar las dependencias operativas.`
+      );
     }
 
     // Invertir débitos y créditos para reversar el impacto contable
@@ -245,6 +264,9 @@ export class AsientosService {
       tipo_comprobante: TipoComprobante.AJU,
       fecha_contable: new Date().toISOString().split('T')[0],
       glosa_general: `ANULACIÓN de ${original.numero_comprobante}: ${motivo}`,
+      origen_sistema: 'MANUAL',
+      origen_documento_tipo: 'REVERSION_NIIF',
+      origen_documento_id: original.id,
       created_by: usuarioId,
       lineas: lineasReversion,
     });
