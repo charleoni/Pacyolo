@@ -4,8 +4,8 @@
 *Ubicación:* `C:\proyectos\PACYOLO\docs\SPRINT_ACTIVO.md`  
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
-*Rama Activa:* `sprint/09-ventas-pos-costeo-cxc`  
-*Última Versión Publicada:* `v0.8.0-sprint8` (Cerrada y Fusionada en `main` y `develop`)
+*Rama Activa:* `sprint/09-ventas-pos-costeo-cxc` (Cierre Formal -> `v0.9.0-sprint9`)  
+*Última Versión Publicada:* `v0.9.0-sprint9` (Cerrada y Certificada)
 
 ---
 
@@ -49,14 +49,14 @@
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **9.1** | Modelo de Datos: Ventas & CxC | Entidades relacionales en PostgreSQL (`ventas_facturas`, `ventas_facturas_lineas`, `cxc_cuentas_por_cobrar`, `cxc_recaudos`, `cxc_recaudos_lineas`) con constraints multi-tenant y migraciones TypeORM. | 2h | `[ ]` Pendiente | - |
-| **9.2** | Motor Tributario & Asiento de Venta | Servicio backend para liquidación de IVA (240805), INC (2495), anticipos de retenciones (1355) y generación del Comprobante Diario oficial (`FAC`). | 2h | `[ ]` Pendiente | - |
-| **9.3** | Costeo Automático de Ventas en Kardex | Conexión atómica de ventas con inventarios: salida de bodega, verificación de existencias suficientes, recálculo de stock y asiento automático `Débito 61 <-> Crédito 14`. | 2h | `[ ]` Pendiente | - |
-| **9.4** | Módulo de Cartera CxC & Recaudos (`ING`) | Endpoints y lógica de recaudo de cartera, comprobantes de ingreso oficiales, abonos parciales, liquidación de saldos y control de anulación auditada. | 2h | `[ ]` Pendiente | - |
-| **9.5** | Reportes Analíticos de CxC | Endpoints para Estado de Cuenta por Cliente, Extracto Cronológico de Cartera y Matriz de Antigüedad de Saldos por Edades (0-30, 31-60, 61-90, +90 días). | 2h | `[ ]` Pendiente | - |
-| **9.6** | Frontend Web: Facturación Estándar & POS | Formulario reactivo en Angular 22 con Enterprise Lookup Modal para clientes/artículos, cálculo dinámico de impuestos, modo POS rápido de mostrador y visor de impresión (Factura Carta + Tirilla 80mm). | 2h | `[ ]` Pendiente | - |
-| **9.7** | Frontend Web: Cartera CxC & Recaudos | Panel de administración de cartera de clientes, formulario de Recibo de Caja (`ING`), visor de Estado de Cuenta, Extracto y Matriz por Edades. | 2h | `[ ]` Pendiente | - |
-| **9.8** | Certificación, Pruebas Unitarias & Cierre | Suite de pruebas unitarias Vitest en backend (cobertura 100% en nuevos servicios), validación integral del flujo y cierre formal del Sprint 9. | 2h | `[ ]` Pendiente | - |
+| **9.1** | Modelo de Datos: Ventas, NC & CxC | Entidades relacionales en PostgreSQL (`ventas_facturas`, `ventas_facturas_lineas`, `ventas_notas_credito`, `ventas_notas_credito_lineas`, `cxc_cuentas_por_cobrar`, `cxc_recaudos`) con constraints multi-tenant y soporte de reversión NIIF. | 2h | `[X]` Completado | 29/10/2026 |
+| **9.2** | Motor Tributario & Asiento de Venta | Servicio backend para liquidación de IVA (240805), INC (2495), anticipos de retenciones (1355) y generación del Comprobante Diario oficial (`FAC` / `POS`). | 2h | `[X]` Completado | 29/10/2026 |
+| **9.3** | Costeo Automático de Ventas en Kardex | Conexión atómica de ventas con inventarios: salida de bodega, verificación de existencias suficientes, recálculo de stock y asiento automático `Débito 61 <-> Crédito 14`. | 2h | `[X]` Completado | 29/10/2026 |
+| **9.4** | Notas Crédito NIIF (`NC-XXXX`) | Motor de reversión NIIF 15 / NIC 2: devolución total, parcial o ajuste de precio, reingreso a bodega en Kardex (`Débito 14 <-> Crédito 61`) y asiento comercial (`Débito 4175` + `Débito 2408` vs cartera/caja/anticipo). | 2h | `[X]` Completado | 29/10/2026 |
+| **9.5** | Módulo de Cartera CxC & Recaudos (`ING`) | Endpoints y lógica de recaudo de cartera, comprobantes de ingreso oficiales, abonos parciales, descuento condicionado por pronto pago NIIF 15 (`530535`) y anulación auditada. | 2h | `[X]` Completado | 29/10/2026 |
+| **9.6** | Reportes Analíticos de CxC | Endpoints para Estado de Cuenta por Cliente, Extracto Cronológico de Cartera y Matriz de Antigüedad de Saldos por Edades (0-30, 31-60, 61-90, +90 días). | 2h | `[X]` Completado | 29/10/2026 |
+| **9.7** | Frontend Web: Facturación, POS & Notas Crédito | Módulo Angular reactivo con Enterprise Lookup Modal para clientes/artículos, pestaña de Notas Crédito, modal interactivo de reversión e impresión formal membretada. | 2h | `[X]` Completado | 29/10/2026 |
+| **9.8** | Certificación, Pruebas Unitarias & Cierre | Suite de pruebas unitarias Vitest en backend (88/88 tests pasando, 19 suites), build de producción Angular exitoso y certificación funcional con el usuario. | 2h | `[X]` Completado | 29/10/2026 |
 
 ---
 
@@ -89,6 +89,17 @@
 ---
 
 ## 📜 Historial de Sprints Cerrados
+
+### ✅ SPRINT 9: Facturación Comercial, POS Mostrador, Costeo NIC 2, Notas Crédito NIIF 15 & Cartera CxC (COMPLETADO 100%)
+- **Versión de Cierre:** `v0.9.0-sprint9` (29/10/2026).
+- **Rama:** `sprint/09-ventas-pos-costeo-cxc` (Fusionada en `develop` y `main`).
+- **Logros:**
+  - **Facturación Comercial Estándar (`FAC`) & Tiquete POS:** Emisión oficial, liquidación tributaria (IVA 0%, 5%, 19%, INC 8%, retenciones 1355) y medios de pago mixtos (Efectivo + Bancos + Saldo a Crédito).
+  - **Costeo Automático de Ventas en Kardex (NIC 2):** Salida a costo promedio ponderado móvil, afectación de existencias por bodega y comprobante automático `Débito 61 <-> Crédito 14`.
+  - **Notas Crédito NIIF (`NC-XXXX`):** Motor de reversión no destructiva (devolución física total, parcial y ajustes de precio) con doble asiento contable (comercial en `4175` y costeo en `1435 vs 6135`), reingreso a bodega original y destino financiero (cartera `1305`, dinero `1105/1110` o saldo a favor `2805`).
+  - **Módulo de Cartera CxC (NIIF 9) & Pronto Pago:** Control de exigibilidad corriente vs vencida, Recibos de Caja (`ING`) con descuento financiero condicionado (`530535`) sin alterar la base de IVA facturada a la DIAN.
+  - **Reportes Analíticos de Cartera:** Estado de Cuenta por Cliente, Extracto Cronológico de Cargos vs Abonos y Matriz de Antigüedad por Edades (Corriente, 1-30, 31-60, 61-90, +90 días).
+  - **Gobernanza de los 4 Pilares Documentales & Calidad:** Contabilización obligatoria con estricta partida doble, pistas de auditoría inmutables, impresión membretada formal, 88 pruebas unitarias aprobadas al 100% y build Angular sin errores.
 
 ### ✅ SPRINT 8: Artículos, Compras, Entradas de Almacén, Kardex NIIF & CxP Analítico (COMPLETADO 100%)
 - **Versión de Cierre:** `v0.8.0-sprint8` (28/10/2026).
