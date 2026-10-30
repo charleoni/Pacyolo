@@ -523,32 +523,68 @@ import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/compon
               </div>
             </div>
 
-            <!-- Selector de Cuenta PUC con Modal Lookup -->
+            <!-- Selector de Cuenta PUC de Caja Menor (110510) -->
             <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1">Cuenta PUC Auxiliar (110510XX)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">
+                1. Cuenta PUC de la Caja Menor (110510XX - Donde ingresa el efectivo)
+              </label>
               <div class="flex items-center gap-2">
                 <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 truncate font-mono">
-                  {{ cuentaPucCajaSeleccionada() ? cuentaPucCajaSeleccionada()?.codigo + ' - ' + cuentaPucCajaSeleccionada()?.nombre : 'Seleccione cuenta auxiliar...' }}
+                  @if (cuentaPucCajaSeleccionada()) {
+                    <span class="text-emerald-400 font-bold">[{{ cuentaPucCajaSeleccionada()?.codigo }}]</span> {{ cuentaPucCajaSeleccionada()?.nombre }}
+                  } @else {
+                    <span class="text-slate-500 italic">Seleccione cuenta auxiliar de caja (ej. 11051001)...</span>
+                  }
                 </div>
                 <button
                   type="button"
                   (click)="modalPucCajaVisible.set(true)"
-                  class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all">
-                  🔍 Buscar
+                  class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
+                  🔍 Buscar Cuenta Caja
                 </button>
               </div>
+              <p class="text-[11px] text-slate-500 mt-1">
+                Cuenta de activo donde se registrará el saldo en efectivo custodiado (Débito).
+              </p>
             </div>
 
+            <!-- Selector de Cuenta de Banco de Desembolso (1110) -->
             <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1">Cuenta de Banco Origen (Opcional para egreso de apertura)</label>
-              <select formControlName="cuenta_banco_origen_id" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Sin comprobante de apertura inmediato</option>
-                @for (cta of cuentasBancarias(); track cta.id) {
-                  <option [value]="cta.cuenta_puc?.id">{{ cta.banco_nombre }} - {{ cta.numero_cuenta }} ({{ cta.cuenta_puc?.codigo }})</option>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">
+                2. Banco de Desembolso (1110XX - De donde sale el dinero)
+              </label>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 truncate font-mono">
+                  @if (cuentaPucBancoDesembolsoSeleccionada()) {
+                    <span class="text-indigo-400 font-bold">[{{ cuentaPucBancoDesembolsoSeleccionada()?.codigo }}]</span> {{ cuentaPucBancoDesembolsoSeleccionada()?.nombre }}
+                  } @else {
+                    <span class="text-slate-500 italic">Opcional: Sin comprobante de apertura inmediato...</span>
+                  }
+                </div>
+                <button
+                  type="button"
+                  (click)="modalPucBancoDesembolsoVisible.set(true)"
+                  class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md">
+                  🔍 Buscar Banco
+                </button>
+                @if (cuentaPucBancoDesembolsoSeleccionada()) {
+                  <button
+                    type="button"
+                    (click)="limpiarBancoDesembolso()"
+                    title="Quitar cuenta de banco"
+                    class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all">
+                    ✕
+                  </button>
                 }
-              </select>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                @if (cuentaPucBancoDesembolsoSeleccionada()) {
+                  <span class="text-emerald-400 font-semibold">⚡ Al guardar se generará automáticamente el Comprobante de Egreso (EGR) acreditando este banco.</span>
+                } @else {
+                  <span class="text-slate-500">Si seleccionas un banco se genera el comprobante de Egreso contable de inmediato. Si lo dejas vacío, solo se registra la caja.</span>
+                }
+              </p>
             </div>
-
             <div class="pt-4 border-t border-slate-800 flex justify-end gap-2">
               <button type="button" (click)="modalCrearCajaAbierto.set(false)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold">Cancelar</button>
               <button type="submit" [disabled]="formCajaMenor.invalid || !responsableSeleccionado() || !cuentaPucCajaSeleccionada()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30">Guardar Fondo Fijo</button>
@@ -1147,6 +1183,7 @@ export class TesoreriaAdminComponent implements OnInit {
     this.formCajaMenor.reset({ monto_fondo_fijo: 1000000 });
     this.responsableSeleccionado.set(null);
     this.cuentaPucCajaSeleccionada.set(null);
+    this.cuentaPucBancoDesembolsoSeleccionada.set(null);
     this.modalCrearCajaAbierto.set(true);
   }
 
@@ -1160,18 +1197,42 @@ export class TesoreriaAdminComponent implements OnInit {
     this.modalPucCajaVisible.set(false);
   }
 
+  onCuentaPucBancoDesembolsoSeleccionada(p: CuentaPucLookupItem) {
+    this.cuentaPucBancoDesembolsoSeleccionada.set(p);
+    this.formCajaMenor.patchValue({ cuenta_banco_origen_id: p.id });
+    this.modalPucBancoDesembolsoVisible.set(false);
+  }
+
+  limpiarBancoDesembolso() {
+    this.cuentaPucBancoDesembolsoSeleccionada.set(null);
+    this.formCajaMenor.patchValue({ cuenta_banco_origen_id: '' });
+  }
+
   guardarCajaMenor() {
     if (this.formCajaMenor.invalid || !this.responsableSeleccionado() || !this.cuentaPucCajaSeleccionada()) return;
 
-    const payload = {
-      ...this.formCajaMenor.value,
+    const formVal = this.formCajaMenor.value;
+    const bancoId = this.cuentaPucBancoDesembolsoSeleccionada()?.id || (formVal.cuenta_banco_origen_id ? formVal.cuenta_banco_origen_id : null);
+
+    const payload: any = {
+      codigo: formVal.codigo?.trim(),
+      nombre: formVal.nombre?.trim(),
+      monto_fondo_fijo: Number(formVal.monto_fondo_fijo),
       responsable_id: this.responsableSeleccionado()?.id,
       cuenta_puc_id: this.cuentaPucCajaSeleccionada()?.id,
     };
 
+    if (formVal.observaciones && formVal.observaciones.trim() !== '') {
+      payload.observaciones = formVal.observaciones.trim();
+    }
+
+    if (bancoId && bancoId.trim() !== '') {
+      payload.cuenta_banco_origen_id = bancoId.trim();
+    }
+
     this.tesoreriaService.crearCajaMenor(payload).subscribe({
       next: (res) => {
-        this.notificaciones.success('Caja Menor Constituida', `Se creó la caja ${res.codigo} con fondo de \${{ res.monto_fondo_fijo | number:'1.2-2' }}`);
+        this.notificaciones.success('Caja Menor Constituida', `Se creó la caja ${res.codigo} con fondo de $${Number(res.monto_fondo_fijo).toLocaleString()}`);
         this.modalCrearCajaAbierto.set(false);
         this.cargarDatos();
       },
