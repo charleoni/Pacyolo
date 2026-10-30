@@ -1,8 +1,8 @@
 import { Component, computed, inject, input, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
-import { imprimirElementoAislado } from '../../core/utils/print.util';
 import { ArqueoCajaMenorItem, CajaMenorItem } from '../../core/services/tesoreria.service';
+import { imprimirElementoAislado, ESTILOS_IMPRESION_CORPORATIVA } from '../../core/utils/print.util';
 
 @Component({
   selector: 'app-acta-arqueo-impresion-modal',
@@ -10,12 +10,12 @@ import { ArqueoCajaMenorItem, CajaMenorItem } from '../../core/services/tesoreri
   imports: [CommonModule],
   template: `
     @if (visible() && arqueo()) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
         <!-- Contenedor del documento -->
-        <div class="bg-white text-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none print:w-full print:max-w-none relative flex flex-col my-auto border border-slate-300 print:border-none">
+        <div class="bg-white text-slate-900 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden relative flex flex-col my-auto border border-slate-300">
           
           <!-- BARRA DE HERRAMIENTAS (SE OCULTA AL IMPRIMIR) -->
-          <div class="bg-slate-900 text-white px-6 py-3 flex items-center justify-between border-b border-slate-800 print:hidden">
+          <div class="bg-slate-900 text-white px-6 py-3 flex items-center justify-between border-b border-slate-800">
             <div class="flex items-center gap-2">
               <span class="text-xl">⚖️</span>
               <span class="font-bold text-sm">Acta Oficial de Arqueo Físico (Pilar 2 de Gobernanza)</span>
@@ -37,233 +37,200 @@ import { ArqueoCajaMenorItem, CajaMenorItem } from '../../core/services/tesoreri
           </div>
 
           <!-- DOCUMENTO FORMAL MEMBRETADO -->
-          <div id="documento-acta-arqueo-oficial" class="p-8 sm:p-10 font-sans text-xs space-y-6 print:p-4">
-            
-            <!-- 1. ENCABEZADO MEMBRETADO -->
-            <div class="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
-              <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded bg-slate-900 text-white font-black flex items-center justify-center text-sm print:border print:border-black">
-                    PY
+          <div class="p-6 sm:p-8 overflow-y-auto max-h-[85vh] bg-white">
+            <div id="documento-acta-arqueo-oficial" class="doc-wrapper">
+              
+              <!-- 1. ENCABEZADO MEMBRETADO -->
+              <div class="doc-header">
+                <div>
+                  <div class="company-brand">
+                    <div class="company-logo">PY</div>
+                    <h1 class="company-title">
+                      {{ empresa()?.razon_social || 'EMPRESA CONTABLE DEMO S.A.S.' }}
+                    </h1>
                   </div>
-                  <h1 class="text-lg font-black tracking-tight text-slate-900 uppercase">
-                    {{ empresa()?.razon_social || 'EMPRESA CONTABLE DEMO S.A.S.' }}
-                  </h1>
+                  <div class="company-tax-info">
+                    <p><b>NIT:</b> {{ empresa()?.nit || '900.123.456-7' }} — Régimen Ordinario</p>
+                    <p><b>Dirección:</b> Carrera 10 # 72-15, Oficina 402 | Bogotá D.C., Colombia</p>
+                    <p><b>Teléfono:</b> (601) 345-6789 | <b>Email:</b> contabilidad&#64;pacyolo.com</p>
+                  </div>
                 </div>
-                <div class="text-[11px] text-slate-600 space-y-0.5">
-                  <p><b>NIT:</b> {{ empresa()?.nit || '900.123.456-7' }} — Régimen Ordinario</p>
-                  <p><b>Dirección:</b> Carrera 10 # 72-15, Oficina 402 | Bogotá D.C., Colombia</p>
-                  <p><b>Teléfono:</b> (601) 345-6789 | <b>Email:</b> contabilidad&#64;pacyolo.com</p>
+
+                <!-- CAJA DEL CONSECUTIVO Y FECHA -->
+                <div class="doc-consecutive-box">
+                  <span class="doc-consecutive-badge">ACTA DE AUDITORÍA FÍSICA</span>
+                  <span class="doc-consecutive-title">ARQUEO DE CAJA MENOR</span>
+                  <span class="doc-consecutive-number">No. {{ arqueo()?.consecutivo || 'ARQ-0001' }}</span>
                 </div>
               </div>
 
-              <!-- CAJA DEL CONSECUTIVO Y FECHA -->
-              <div class="bg-slate-50 border-2 border-slate-900 rounded-xl p-3 text-center min-w-[240px] print:bg-white">
-                <span class="text-[10px] font-mono uppercase tracking-widest text-slate-500 block">ACTA DE AUDITORÍA FÍSICA</span>
-                <span class="text-sm font-black text-slate-900 block leading-tight mt-0.5">
-                  ARQUEO DE CAJA MENOR
-                </span>
-                <span class="text-base font-mono font-bold text-indigo-700 block mt-1 print:text-black">
-                  No. {{ arqueo()?.consecutivo || 'ARQ-0001' }}
-                </span>
-                <span class="text-[10px] text-slate-600 block mt-0.5">
-                  Fecha: {{ arqueo()?.fecha_arqueo | date:'dd/MM/yyyy HH:mm' }}
-                </span>
+              <!-- 2. DATOS DE IDENTIFICACIÓN DE LA CAJA Y CUSTODIO -->
+              <div class="doc-meta-grid">
+                <div>
+                  <span class="meta-item-label">Caja Menor / Fondo</span>
+                  <span class="meta-item-value">{{ caja()?.codigo }} - {{ caja()?.nombre }}</span>
+                </div>
+                <div>
+                  <span class="meta-item-label">Custodio / Responsable</span>
+                  <span class="meta-item-value">{{ caja()?.responsable?.nombre_completo || arqueo()?.custodio?.nombre_completo || 'Custodio Asignado' }}</span>
+                </div>
+                <div>
+                  <span class="meta-item-label">Auditor / Revisor</span>
+                  <span class="meta-item-value">{{ nombreAuditor() }}</span>
+                </div>
+                <div>
+                  <span class="meta-item-label">Fondo Fijo Asignado</span>
+                  <span class="meta-item-value mono">$ {{ (arqueo()?.monto_fondo_fijo || caja()?.monto_fondo_fijo || 0) | number:'1.2-2' }}</span>
+                </div>
               </div>
-            </div>
 
-            <!-- 2. DATOS DE IDENTIFICACIÓN DE LA CAJA Y CUSTODIO -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-slate-300 rounded-xl p-3 print:bg-white print:border-slate-400">
-              <div>
-                <span class="text-[10px] font-bold uppercase text-slate-500 block">Caja Menor / Fondo</span>
-                <span class="font-bold text-slate-800 text-[11px] block">{{ caja()?.codigo }} - {{ caja()?.nombre }}</span>
-              </div>
-              <div>
-                <span class="text-[10px] font-bold uppercase text-slate-500 block">Custodio / Responsable</span>
-                <span class="font-bold text-slate-800 text-[11px] block">{{ caja()?.responsable?.nombre_completo || arqueo()?.custodio?.nombre_completo || 'Custodio Asignado' }}</span>
-              </div>
-              <div>
-                <span class="text-[10px] font-bold uppercase text-slate-500 block">Auditor / Revisor</span>
-                <span class="font-bold text-slate-800 text-[11px] block">{{ nombreAuditor() }}</span>
-              </div>
-              <div>
-                <span class="text-[10px] font-bold uppercase text-slate-500 block">Fondo Fijo Asignado</span>
-                <span class="font-mono font-bold text-slate-900 text-xs block">\${{ (arqueo()?.monto_fondo_fijo || caja()?.monto_fondo_fijo || 0) | number:'1.2-2' }}</span>
-              </div>
-            </div>
-
-            <!-- 3. DESGLOSE FÍSICO DE MONEDAS Y BILLETES -->
-            <div>
-              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <span>💵</span> Desglose del Conteo de Papel Moneda y Monedas
-              </h3>
-              <div class="border border-slate-300 rounded-xl overflow-hidden print:border-slate-400">
-                <table class="w-full text-left border-collapse">
-                  <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] border-b border-slate-300 print:bg-slate-50">
+              <!-- 3. DESGLOSE FÍSICO DE MONEDAS Y BILLETES -->
+              <div class="doc-table-card">
+                <table class="doc-table">
+                  <thead>
                     <tr>
-                      <th class="py-1.5 px-3">Denominación</th>
-                      <th class="py-1.5 px-3 text-center">Tipo</th>
-                      <th class="py-1.5 px-3 text-center">Cantidad Física Recontada</th>
-                      <th class="py-1.5 px-3 text-right">Subtotal Pesos</th>
+                      <th style="width: 25%;">Denominación</th>
+                      <th style="width: 25%;" class="text-center">Tipo de Especie</th>
+                      <th style="width: 25%;" class="text-center">Cantidad Física Recontada</th>
+                      <th style="width: 25%;" class="text-right">Subtotal Pesos</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-200">
+                  <tbody>
                     @for (den of denominacionesBilletes; track den.valor) {
                       <tr>
-                        <td class="py-1.5 px-3 font-mono font-bold text-slate-800">\${{ den.valor | number:'1.0-0' }}</td>
-                        <td class="py-1.5 px-3 text-center text-slate-600">Billete</td>
-                        <td class="py-1.5 px-3 text-center font-mono font-bold text-slate-900">{{ obtenerCantidad(den.clave) }}</td>
-                        <td class="py-1.5 px-3 text-right font-mono font-bold text-slate-900">
-                          \${{ (obtenerCantidad(den.clave) * den.valor) | number:'1.2-2' }}
+                        <td class="font-mono" style="font-weight: 700; color: #0f172a;">$ {{ den.valor | number:'1.0-0' }}</td>
+                        <td class="text-center" style="color: #475569;">Papel Moneda (Billete)</td>
+                        <td class="text-center font-mono" style="font-weight: 700; color: #0f172a;">{{ obtenerCantidad(den.clave) }}</td>
+                        <td class="text-right font-mono" style="font-weight: 700; color: #0f172a;">
+                          $ {{ (obtenerCantidad(den.clave) * den.valor) | number:'1.2-2' }}
                         </td>
                       </tr>
                     }
                     <tr>
-                      <td class="py-1.5 px-3 font-mono font-bold text-slate-800">Monedas y Fracciones</td>
-                      <td class="py-1.5 px-3 text-center text-slate-600">Monedas</td>
-                      <td class="py-1.5 px-3 text-center text-slate-400">-</td>
-                      <td class="py-1.5 px-3 text-right font-mono font-bold text-slate-900">
-                        \${{ obtenerMonedas() | number:'1.2-2' }}
+                      <td class="font-mono" style="font-weight: 700; color: #0f172a;">Monedas y Fracciones</td>
+                      <td class="text-center" style="color: #475569;">Moneda Metálica</td>
+                      <td class="text-center" style="color: #94a3b8;">-</td>
+                      <td class="text-right font-mono" style="font-weight: 700; color: #0f172a;">
+                        $ {{ obtenerMonedas() | number:'1.2-2' }}
                       </td>
                     </tr>
                   </tbody>
-                  <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300 print:bg-slate-50">
+                  <tfoot>
                     <tr>
-                      <td colspan="3" class="py-2 px-3 text-right uppercase text-slate-700">Total Efectivo Físico Arqueado:</td>
-                      <td class="py-2 px-3 text-right font-mono text-emerald-700 text-sm">
-                        \${{ (arqueo()?.total_efectivo_fisico || 0) | number:'1.2-2' }}
+                      <td colspan="3" class="text-right" style="font-size: 9px; text-transform: uppercase;">Total Efectivo Físico Arqueado:</td>
+                      <td class="text-right font-mono" style="font-size: 11px; color: #166534;">
+                        $ {{ (arqueo()?.total_efectivo_fisico || 0) | number:'1.2-2' }}
                       </td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
-            </div>
 
-            <!-- 4. BALANCE GENERAL DE ARQUEO Y DIAGNÓSTICO -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Cuadro de Balance -->
-              <div class="border border-slate-300 rounded-xl p-3 bg-slate-50 print:bg-white print:border-slate-400 space-y-2">
-                <h4 class="text-[11px] font-bold uppercase text-slate-700 border-b border-slate-300 pb-1">Cuadratura del Fondo</h4>
-                <div class="space-y-1 font-mono text-xs">
-                  <div class="flex justify-between py-0.5">
-                    <span class="text-slate-600">(+) Total Efectivo Físico:</span>
-                    <span class="font-bold">\${{ (arqueo()?.total_efectivo_fisico || 0) | number:'1.2-2' }}</span>
+              <!-- 4. BALANCE GENERAL DE ARQUEO Y DIAGNÓSTICO -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                <!-- Cuadro de Balance -->
+                <div class="doc-concept-card" style="margin-bottom: 0;">
+                  <span class="meta-item-label" style="border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 6px;">Cuadratura del Fondo</span>
+                  <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; line-height: 1.6;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color: #64748b;">(+) Total Efectivo Físico:</span>
+                      <span style="font-weight: 700;">$ {{ (arqueo()?.total_efectivo_fisico || 0) | number:'1.2-2' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="color: #64748b;">(+) Total Vales / Soportes:</span>
+                      <span style="font-weight: 700;">$ {{ (arqueo()?.total_vales_comprobantes || 0) | number:'1.2-2' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px solid #cbd5e1; padding-top: 2px; font-weight: 800; color: #1e3a8a;">
+                      <span>(=) Total Fondo Recontado:</span>
+                      <span>$ {{ (arqueo()?.total_fondo_contado || 0) | number:'1.2-2' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: #64748b;">
+                      <span>(-) Monto Fondo Fijo:</span>
+                      <span>$ {{ (arqueo()?.monto_fondo_fijo || 0) | number:'1.2-2' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 2px solid #0f172a; padding-top: 3px; font-weight: 900; font-size: 11px;">
+                      <span>Diferencia Resultante:</span>
+                      <span [style.color]="arqueo()?.resultado === 'FALTANTE' ? '#b91c1c' : arqueo()?.resultado === 'SOBRANTE' ? '#b45309' : '#15803d'">
+                        $ {{ (arqueo()?.diferencia || 0) | number:'1.2-2' }}
+                      </span>
+                    </div>
                   </div>
-                  <div class="flex justify-between py-0.5">
-                    <span class="text-slate-600">(+) Total Vales / Soportes Pendientes:</span>
-                    <span class="font-bold">\${{ (arqueo()?.total_vales_comprobantes || 0) | number:'1.2-2' }}</span>
+                </div>
+
+                <!-- Dictamen de Auditoría -->
+                <div class="doc-concept-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                  <div>
+                    <span class="meta-item-label" style="border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 6px;">Dictamen de Auditoría</span>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                      <span style="font-size: 10px; font-weight: 700;">Resultado:</span>
+                      <span
+                        class="meta-status-badge"
+                        [style.background]="arqueo()?.resultado === 'CUADRADO' ? '#dcfce7' : arqueo()?.resultado === 'FALTANTE' ? '#fee2e2' : '#fef3c7'"
+                        [style.color]="arqueo()?.resultado === 'CUADRADO' ? '#166534' : arqueo()?.resultado === 'FALTANTE' ? '#991b1b' : '#92400e'"
+                        [style.borderColor]="arqueo()?.resultado === 'CUADRADO' ? '#bbf7d0' : arqueo()?.resultado === 'FALTANTE' ? '#fecaca' : '#fde68a'">
+                        {{ arqueo()?.resultado }}
+                      </span>
+                    </div>
+                    <div style="font-size: 9.5px; color: #334155;">
+                      <p style="font-weight: 700;">Observaciones:</p>
+                      <p style="font-style: italic; margin-top: 2px;">{{ arqueo()?.observaciones || 'Sin observaciones registradas durante la práctica del arqueo.' }}</p>
+                    </div>
                   </div>
-                  <div class="flex justify-between py-1 border-t border-slate-300 font-bold">
-                    <span class="text-slate-800">(=) Total Fondo Recontado:</span>
-                    <span class="text-indigo-700">\${{ (arqueo()?.total_fondo_contado || 0) | number:'1.2-2' }}</span>
-                  </div>
-                  <div class="flex justify-between py-0.5 text-slate-600">
-                    <span>(-) Monto Fondo Fijo Autorizado:</span>
-                    <span>\${{ (arqueo()?.monto_fondo_fijo || 0) | number:'1.2-2' }}</span>
-                  </div>
-                  <div class="flex justify-between py-1 border-t-2 border-slate-800 font-black text-sm">
-                    <span [class]="arqueo()?.resultado === 'FALTANTE' ? 'text-rose-700' : arqueo()?.resultado === 'SOBRANTE' ? 'text-amber-700' : 'text-emerald-700'">
-                      Diferencia Resultante:
-                    </span>
-                    <span [class]="arqueo()?.resultado === 'FALTANTE' ? 'text-rose-700' : arqueo()?.resultado === 'SOBRANTE' ? 'text-amber-700' : 'text-emerald-700'">
-                      \${{ (arqueo()?.diferencia || 0) | number:'1.2-2' }}
-                    </span>
+
+                  <div style="font-size: 8px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px; margin-top: 6px;">
+                    <b>Control Interno:</b> El custodio manifiesta haber recibido a entera satisfacción el total de los fondos y comprobantes recontados.
                   </div>
                 </div>
               </div>
 
-              <!-- Diagnóstico y Observaciones -->
-              <div class="border border-slate-300 rounded-xl p-3 bg-slate-50 print:bg-white print:border-slate-400 flex flex-col justify-between">
-                <div>
-                  <h4 class="text-[11px] font-bold uppercase text-slate-700 border-b border-slate-300 pb-1 mb-2">Dictamen de Auditoría</h4>
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="text-xs font-bold">Resultado:</span>
-                    <span
-                      class="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider"
-                      [ngClass]="{
-                        'bg-emerald-100 text-emerald-800 border border-emerald-300': arqueo()?.resultado === 'CUADRADO',
-                        'bg-rose-100 text-rose-800 border border-rose-300': arqueo()?.resultado === 'FALTANTE',
-                        'bg-amber-100 text-amber-800 border border-amber-300': arqueo()?.resultado === 'SOBRANTE'
-                      }">
-                      {{ arqueo()?.resultado }}
-                    </span>
+              <!-- 5. FIRMAS REGLAMENTARIAS DE AUDITORÍA -->
+              <div class="doc-signatures-section">
+                <span class="signatures-title">Legalización y Suscripción del Acta (3 Firmas Reglamentarias):</span>
+                <div class="signatures-grid cols-3">
+                  
+                  <div class="signature-box">
+                    <span class="signature-role">1. Custodio del Fondo</span>
+                    <div class="signature-line"></div>
+                    <div>
+                      <span class="signature-name">{{ caja()?.responsable?.nombre_completo || arqueo()?.custodio?.nombre_completo || 'Custodio Responsable' }}</span>
+                      <span class="signature-meta">C.C. {{ caja()?.responsable?.numero_identificacion || '________________' }}</span>
+                    </div>
                   </div>
-                  <div class="text-[11px] text-slate-700">
-                    <p class="font-bold">Observaciones:</p>
-                    <p class="italic mt-0.5">{{ arqueo()?.observaciones || 'Sin observaciones registradas durante la práctica del arqueo.' }}</p>
-                  </div>
-                </div>
 
-                <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-300">
-                  <p><b>Nota de Control Interno:</b> El custodio manifiesta haber recibido a entera satisfacción el total de los fondos recontados y soportes relacionados.</p>
+                  <div class="signature-box">
+                    <span class="signature-role">2. Auditor / Revisor</span>
+                    <div class="signature-line"></div>
+                    <div>
+                      <span class="signature-name">{{ nombreAuditor() }}</span>
+                      <span class="signature-meta">T.P. No. / C.C. ________________</span>
+                    </div>
+                  </div>
+
+                  <div class="signature-box">
+                    <span class="signature-role">3. Aprobó (Gerencia)</span>
+                    <div class="signature-line"></div>
+                    <div>
+                      <span class="signature-name">Representante Legal / Gerencia</span>
+                      <span class="signature-meta">Firma y Sello</span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-            </div>
 
-            <!-- 5. FIRMAS REGLAMENTARIAS DE AUDITORÍA -->
-            <div>
-              <span class="text-[10px] font-bold uppercase text-slate-600 block mb-2">Legalización y Suscripción del Acta:</span>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                
-                <div class="border border-slate-300 rounded-xl p-3 text-center flex flex-col justify-between min-h-[105px] print:border-slate-400">
-                  <span class="text-[9px] font-bold uppercase text-slate-500">1. Custodio del Fondo</span>
-                  <div class="border-b border-dashed border-slate-400 my-4"></div>
-                  <div>
-                    <span class="font-bold text-[10px] text-slate-800 block truncate">{{ caja()?.responsable?.nombre_completo || arqueo()?.custodio?.nombre_completo || 'Custodio Responsable' }}</span>
-                    <span class="text-[9px] text-slate-500 font-mono block">C.C. {{ caja()?.responsable?.numero_identificacion || '________________' }}</span>
-                  </div>
-                </div>
-
-                <div class="border border-slate-300 rounded-xl p-3 text-center flex flex-col justify-between min-h-[105px] print:border-slate-400">
-                  <span class="text-[9px] font-bold uppercase text-slate-500">2. Auditor / Revisor</span>
-                  <div class="border-b border-dashed border-slate-400 my-4"></div>
-                  <div>
-                    <span class="font-bold text-[10px] text-slate-800 block truncate">{{ nombreAuditor() }}</span>
-                    <span class="text-[9px] text-slate-500 font-mono block">T.P. No. / C.C. ________________</span>
-                  </div>
-                </div>
-
-                <div class="border border-slate-300 rounded-xl p-3 text-center flex flex-col justify-between min-h-[105px] print:border-slate-400">
-                  <span class="text-[9px] font-bold uppercase text-slate-500">3. Aprobó (Gerencia / Control Interno)</span>
-                  <div class="border-b border-dashed border-slate-400 my-4"></div>
-                  <div>
-                    <span class="font-bold text-[10px] text-slate-800 block truncate">Representante Legal / Gerencia</span>
-                    <span class="text-[9px] text-slate-500 font-mono block">Firma y Sello</span>
-                  </div>
-                </div>
-
+              <!-- PIE DE PÁGINA -->
+              <div class="doc-footer">
+                <span>PACYOLO ERP Tesorería & Auditoría — Acta Inmutable Sometida a Pistas de Auditoría</span>
+                <span>Generado: {{ fechaActual() }}</span>
               </div>
-            </div>
 
-            <!-- PIE DE PÁGINA -->
-            <div class="border-t border-slate-200 pt-3 flex items-center justify-between text-[9px] text-slate-500 print:pt-2">
-              <span>PACYOLO ERP Tesorería & Auditoría — Acta Inmutable Sometida a Pistas de Auditoría</span>
-              <span>Generado: {{ fechaActual() }}</span>
             </div>
-
           </div>
         </div>
       </div>
     }
   `,
-  styles: [`
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      .print\\:fixed, .print\\:fixed * {
-        visibility: visible;
-      }
-      .print\\:fixed {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-      }
-    }
-  `],
+  
 })
 export class ActaArqueoImpresionModalComponent {
   private readonly authService = inject(AuthService);
@@ -275,6 +242,7 @@ export class ActaArqueoImpresionModalComponent {
   readonly empresa = computed(() => this.authService.empresaActiva());
   readonly usuarioActual = computed(() => this.authService.usuario());
   readonly fechaActual = computed(() => new Date().toLocaleString('es-CO'));
+
   readonly nombreAuditor = computed(() => {
     const u = this.usuarioActual();
     if (!u) return 'Auditor General';
