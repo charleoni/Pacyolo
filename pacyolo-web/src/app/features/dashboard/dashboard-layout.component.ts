@@ -268,7 +268,16 @@ import { EmpresaSesion } from '../../core/models/auth.model';
           }
         </div>
 
+                <!-- Tesorería & Bancos (Sprint 10) -->
         <a
+          routerLink="/dashboard/tesoreria"
+          routerLinkActive="border-indigo-500 text-white font-medium"
+          class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition inline-flex items-center gap-1.5"
+        >
+          <span>🏦 Tesorería & Bancos</span>
+        </a>
+
+<a
           routerLink="/dashboard/parametros"
           routerLinkActive="border-indigo-500 text-white font-medium"
           class="px-4 py-3 text-xs text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition inline-flex items-center gap-1.5"
