@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { imprimirElementoAislado } from '../../core/utils/print.util';
 import { ArqueoCajaMenorItem, CajaMenorItem } from '../../core/services/tesoreria.service';
 
 @Component({
@@ -36,7 +37,7 @@ import { ArqueoCajaMenorItem, CajaMenorItem } from '../../core/services/tesoreri
           </div>
 
           <!-- DOCUMENTO FORMAL MEMBRETADO -->
-          <div class="p-8 sm:p-10 font-sans text-xs space-y-6 print:p-4">
+          <div id="documento-acta-arqueo-oficial" class="p-8 sm:p-10 font-sans text-xs space-y-6 print:p-4">
             
             <!-- 1. ENCABEZADO MEMBRETADO -->
             <div class="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -303,7 +304,8 @@ export class ActaArqueoImpresionModalComponent {
   }
 
   imprimir(): void {
-    window.print();
+    const consecutivo = this.arqueo()?.consecutivo || 'ARQ';
+    imprimirElementoAislado('documento-acta-arqueo-oficial', `Acta Oficial de Arqueo No. ${consecutivo}`);
   }
 
   cerrar(): void {

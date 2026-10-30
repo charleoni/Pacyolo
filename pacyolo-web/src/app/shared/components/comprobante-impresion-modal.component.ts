@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { imprimirElementoAislado } from '../../core/utils/print.util';
 
 export function numeroALetras(valor: number): string {
   if (isNaN(valor) || valor === null || valor === undefined) return 'CERO PESOS M/CTE';
@@ -134,7 +135,7 @@ export function numeroALetras(valor: number): string {
           </div>
 
           <!-- DOCUMENTO FORMAL MEMBRETADO (A4 / CARTA) -->
-          <div class="p-8 sm:p-10 font-sans text-xs space-y-6 print:p-4">
+          <div id="documento-comprobante-oficial" class="p-8 sm:p-10 font-sans text-xs space-y-6 print:p-4">
             
             <!-- 1. ENCABEZADO MEMBRETADO CON DATOS FISCALES -->
             <div class="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -409,7 +410,8 @@ export class ComprobanteImpresionModalComponent {
   readonly fechaActual = computed(() => new Date().toLocaleString('es-CO'));
 
   imprimir(): void {
-    window.print();
+    const num = this.asiento()?.numero_comprobante || '';
+    imprimirElementoAislado('documento-comprobante-oficial', `${this.nombreDocumento()} No. ${num}`);
   }
 
   cerrar(): void {
