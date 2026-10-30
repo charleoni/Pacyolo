@@ -9,7 +9,7 @@ import {
   ValidateNested,
   IsArray,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { TipoCuentaBancaria } from '../entities/cuenta-bancaria.entity.js';
 import { TipoMovimientoExtracto } from '../entities/extracto-bancario.entity.js';
 
@@ -34,6 +34,7 @@ export class CreateCajaMenorDto {
   @Min(0.01)
   monto_fondo_fijo: number;
 
+  @Transform(({ value }) => (!value || value === '' || value === null ? undefined : value))
   @IsOptional()
   @IsUUID()
   cuenta_banco_origen_id?: string; // Para generar el comprobante de apertura inicial
@@ -59,6 +60,7 @@ export class CreateGastoCajaMenorDto {
   @IsUUID()
   cuenta_gasto_id: string; // Cuenta 51/52
 
+  @Transform(({ value }) => (!value || value === '' || value === null ? undefined : value))
   @IsOptional()
   @IsUUID()
   centro_costo_id?: string;
