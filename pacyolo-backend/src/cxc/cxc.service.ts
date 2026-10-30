@@ -4,14 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Like } from 'typeorm';
 import {
   CuentaPorCobrar,
   EstadoCuentaPorCobrar,
 } from './entities/cuenta-por-cobrar.entity.js';
 import { RecaudoCxc } from './entities/recaudo-cxc.entity.js';
 import { Tercero } from '../terceros/entities/tercero.entity.js';
-import { PucCuenta } from '../puc/entities/puc.entity.js';
+import { PucCuenta, ClaseCuenta } from '../puc/entities/puc.entity.js';
 import { AsientosService } from '../asientos/asientos.service.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { TipoComprobante } from '../asientos/entities/asiento.entity.js';
@@ -111,11 +111,13 @@ export class CxcService {
     }
 
     const monto = Number(dto.monto_recaudo);
+    const descuento = Number(dto.descuento_pronto_pago || 0);
+    const totalAbono = Number((monto + descuento).toFixed(2));
     const saldoActual = Number(cxc.saldo_pendiente);
 
-    if (monto > saldoActual + 0.01) {
+    if (totalAbono > saldoActual + 0.01) {
       throw new BadRequestException(
-        `El monto a recaudar ($${monto.toLocaleString()}) supera el saldo pendiente ($${saldoActual.toLocaleString()}).`,
+        `El total abonado ($${totalAbono.toLocaleString()} = Recaudo $${monto.toLocaleString()} + Descuento $${descuento.toLocaleString()}) supera el saldo pendiente ($${saldoActual.toLocaleString()}).`,
       );
     }
 
@@ -127,29 +129,49 @@ export class CxcService {
     }
 
     // 1. Contabilizar Comprobante de Ingreso (ING)
+    const lineasAsiento: any[] = [
+      {
+        cuenta_id: cuentaBanco.id,
+        tercero_id: cxc.tercero_id,
+        debito: monto,
+        credito: 0,
+        glosa_detalle: `Ingreso a ${cuentaBanco.nombre} por recaudo ${cxc.numero_factura}`,
+      },
+    ];
+
+    if (descuento > 0) {
+      const cuentaDescuento = await this.buscarCuentaPuc(
+        empresaId,
+        ['530535', '5305', '53'],
+        ClaseCuenta.GASTO,
+      );
+      lineasAsiento.push({
+        cuenta_id: cuentaDescuento.id,
+        tercero_id: cxc.tercero_id,
+        debito: descuento,
+        credito: 0,
+        glosa_detalle: `Descuento financiero por pronto pago factura ${cxc.numero_factura}`,
+      });
+    }
+
+    lineasAsiento.push({
+      cuenta_id: cxc.cuenta_activo_id,
+      tercero_id: cxc.tercero_id,
+      debito: 0,
+      credito: totalAbono,
+      glosa_detalle: `Abono a cartera clientes factura ${cxc.numero_factura}`,
+    });
+
     const asiento = await this.asientosService.create({
       empresa_id: empresaId,
       tipo_comprobante: TipoComprobante.ING,
       fecha_contable: dto.fecha_recaudo,
-      glosa_general: `Recaudo de cartera factura ${cxc.numero_factura} - ${cxc.tercero?.razon_social}`,
+      glosa_general: `Recaudo de cartera factura ${cxc.numero_factura} - ${cxc.tercero?.razon_social}${
+        descuento > 0 ? ` (Dcto Pronto Pago: $${descuento})` : ''
+      }`,
       origen_sistema: 'RECAUDO_CXC',
       origen_documento_id: cxc.id,
-      lineas: [
-        {
-          cuenta_id: cuentaBanco.id,
-          tercero_id: cxc.tercero_id,
-          debito: monto,
-          credito: 0,
-          glosa_detalle: `Ingreso a ${cuentaBanco.nombre} por recaudo ${cxc.numero_factura}`,
-        },
-        {
-          cuenta_id: cxc.cuenta_activo_id,
-          tercero_id: cxc.tercero_id,
-          debito: 0,
-          credito: monto,
-          glosa_detalle: `Abono a cartera clientes factura ${cxc.numero_factura}`,
-        },
-      ],
+      lineas: lineasAsiento,
     });
 
     // 2. Registrar el Recaudo
@@ -159,6 +181,7 @@ export class CxcService {
       asiento_id: asiento.id,
       cuenta_banco_id: cuentaBanco.id,
       monto_recaudo: monto,
+      descuento_pronto_pago: descuento,
       fecha_recaudo: dto.fecha_recaudo,
       metodo_recaudo: dto.metodo_recaudo,
       referencia_transaccion: dto.referencia_transaccion || `ING-${cxc.numero_factura}`,
@@ -169,7 +192,7 @@ export class CxcService {
     const recaudoGuardado = await this.recaudoRepo.save(recaudo);
 
     // 3. Actualizar saldo y estado de cartera
-    const nuevoSaldo = Math.max(0, Number((saldoActual - monto).toFixed(2)));
+    const nuevoSaldo = Math.max(0, Number((saldoActual - totalAbono).toFixed(2)));
     cxc.saldo_pendiente = nuevoSaldo;
     cxc.estado = nuevoSaldo <= 0.01 ? EstadoCuentaPorCobrar.COBRADA_TOTAL : EstadoCuentaPorCobrar.COBRADA_PARCIAL;
     await this.cxcRepo.save(cxc);
@@ -187,6 +210,8 @@ export class CxcService {
           numero_factura: cxc.numero_factura,
           cliente: cxc.tercero?.razon_social,
           monto_recaudo: monto,
+          descuento_pronto_pago: descuento,
+          total_abonado: totalAbono,
           nuevo_saldo: nuevoSaldo,
           asiento_id: asiento.id,
         },
@@ -458,5 +483,37 @@ export class CxcService {
       },
       clientes: filas,
     };
+  }
+
+  private async buscarCuentaPuc(
+    empresaId: string,
+    codigosPrioritarios: (string | null | undefined)[],
+    clasePreferida?: ClaseCuenta,
+  ): Promise<PucCuenta> {
+    const limpios = codigosPrioritarios.filter((c): c is string => !!c && c.trim().length > 0);
+    for (const cod of limpios) {
+      let c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, codigo: cod.trim(), permite_movimiento: true },
+      });
+      if (c) return c;
+
+      c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, codigo: Like(`${cod.trim()}%`), permite_movimiento: true },
+        order: { codigo: 'ASC' },
+      });
+      if (c) return c;
+    }
+
+    if (clasePreferida) {
+      const c = await this.pucRepo.findOne({
+        where: { empresa_id: empresaId, clase: clasePreferida, permite_movimiento: true },
+        order: { codigo: 'ASC' },
+      });
+      if (c) return c;
+    }
+
+    throw new BadRequestException(
+      `No se encontró una cuenta contable auxiliar en el PUC para [${limpios.join(', ')}]. Verifique el catálogo de cuentas.`,
+    );
   }
 }

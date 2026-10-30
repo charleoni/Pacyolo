@@ -9,10 +9,11 @@
 
 ---
 
-## 🎯 SPRINT 9: Facturación Comercial Propia, Mostrador / POS, Costeo Automático de Ventas & Cartera (CxC)
-- **Objetivo del Sprint:** Implementar el circuito de ingresos, ventas y cuentas por cobrar bajo rigor NIIF (NIIF 15, NIC 2 y NIIF 9):
+## 🎯 SPRINT 9: Facturación Comercial Propia, Mostrador / POS, Costeo Automático de Ventas, Notas Crédito & Cartera (CxC)
+- **Objetivo del Sprint:** Implementar el circuito completo de ingresos, ventas, devoluciones comerciales y cuentas por cobrar bajo estricto rigor NIIF (NIIF 15, NIC 2 y NIIF 9) y los **4 Pilares de Gobernanza Contable Total de PACYOLO**:
   1. **Facturación Comercial Estándar & Punto de Venta (POS / Mostrador):**
      - Emisión de facturas de venta oficiales (`FAC-XXXX`) y tiras de caja rápida para mostrador / POS (`POS-XXXX`).
+     - Soporte para medios de pago mixtos (Efectivo + Transferencia/Tarjeta + Saldo a Crédito).
      - Liquidación tributaria completa: IVA generado (0%, 5%, 19%), Impuesto Nacional al Consumo (INC 8%) y retenciones practicadas por clientes (Anticipo Retefuente 135515, ReteICA 135518, ReteIVA 135517).
      - Manejo de condiciones de pago: Contado vs Crédito (con fecha de vencimiento y cupo).
      - Manejo de propinas voluntarias (pasivo de distribución a terceros).
@@ -21,17 +22,24 @@
      - Generación automática del asiento contable de costo:
        $$\text{Débito 61 (Costo de Ventas)} \quad \longleftrightarrow \quad \text{Crédito 14 (Inventario en Bodega)}$$
      - Discriminación para ítems de tipo `SERVICIO` (sin afectación a inventario físico).
-  3. **Módulo de Cartera de Clientes & Recaudos (CxC - NIIF 9):**
+  3. **Notas Crédito en Ventas (`NC-XXXX` - Reversión NIIF 15 & NIC 2):**
+     - Prohibición de anulación destructiva: toda reversión se realiza mediante Nota Crédito oficial DIAN/NIIF vinculada a la factura original.
+     - Tipos de Nota Crédito: Devolución física total, devolución física parcial o ajuste/rebaja de precio sin movimiento físico.
+     - Destino del saldo financiero: Aplicar a Cartera (`Crédito 1305`), Reembolso de dinero (`Crédito 1105/1110`) o Saldo a Favor / Anticipo de Cliente (`Crédito 2805`).
+     - Reingreso físico simétrico a Kardex como `ENTRADA_DEVOLUCION_VENTA` a la bodega de origen de cada ítem, con asiento de reversión de costo:
+       $$\text{Débito 14 (Inventario en Bodega)} \quad \longleftrightarrow \quad \text{Crédito 61 (Costo de Ventas)}$$
+  4. **Módulo de Cartera de Clientes & Recaudos (CxC - NIIF 9) con Pronto Pago:**
      - Control del derecho de cobro en clientes (`1305`) con desglose de saldo corriente vs vencido.
      - Registro de recibos de caja / Comprobantes de Ingreso (`ING`) para abonos parciales o cancelación total, afectando Caja (`1105`) o Bancos (`1110`).
+     - Descuento por pronto pago / financiero condicionado (NIIF 15 / NIIF 9): reconocimiento en resultados como Gasto Financiero (`Débito 530535`) extinguiendo la cartera (`Crédito 1305`) sin alterar la base de IVA facturada a la DIAN.
      - Control de no-destructividad: anulación auditada de recibos con reversión contable y reactivación del saldo de cartera.
-  4. **Reportes Operativos y Analíticos de Cartera:**
+  5. **Reportes Operativos y Analíticos de Cartera:**
      - Estado de cuenta por cliente (saldo consolidado y facturas abiertas).
      - Extracto cronológico interactivo de cargos vs abonos.
      - Matriz de análisis de vencimiento por edades de cartera (Corriente, 1-30, 31-60, 61-90, +90 días).
-  5. **Gobernanza de los 4 Pilares Documentales & Frontend Reactivo (Angular Signals):**
+  6. **Gobernanza de los 4 Pilares Documentales & Frontend Reactivo (Angular Signals):**
      - Contabilización obligatoria en Libro Diario con estricta partida doble.
-     - Vistas previas e impresión formal membretada (factura carta y tiquete POS de 80mm).
+     - Vistas previas e impresión formal membretada (factura carta, tiquete POS de 80mm y Nota Crédito).
      - Pistas de auditoría inmutables (`aud_pistas`).
      - Enterprise Lookup Modals para selección de clientes, artículos y cuentas sin selects nativos.
 

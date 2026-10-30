@@ -9,7 +9,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { VentasService } from './ventas.service.js';
-import { CreateFacturaVentaDto } from './dto/ventas.dto.js';
+import { CreateFacturaVentaDto, CreateNotaCreditoDto } from './dto/ventas.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 
@@ -17,6 +17,24 @@ import { RolesGuard } from '../auth/roles.guard.js';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class VentasController {
   constructor(private readonly ventasService: VentasService) {}
+
+  @Get('notas-credito')
+  async listarNotasCredito(@Request() req: any, @Query('search') search?: string) {
+    const empresaId = req.headers['x-empresa-id'] || req.user?.empresa_activa_id;
+    return await this.ventasService.listarNotasCredito(empresaId, search);
+  }
+
+  @Get('notas-credito/:id')
+  async obtenerNotaCreditoPorId(@Request() req: any, @Param('id') id: string) {
+    const empresaId = req.headers['x-empresa-id'] || req.user?.empresa_activa_id;
+    return await this.ventasService.obtenerNotaCreditoPorId(empresaId, id);
+  }
+
+  @Post('notas-credito')
+  async emitirNotaCredito(@Request() req: any, @Body() dto: CreateNotaCreditoDto) {
+    const empresaId = req.headers['x-empresa-id'] || req.user?.empresa_activa_id;
+    return await this.ventasService.emitirNotaCredito(empresaId, dto, req.user);
+  }
 
   @Get()
   async listar(@Request() req: any, @Query('search') search?: string) {

@@ -22,6 +22,11 @@ export class RegistrarRecaudoDto {
   @Min(0.01, { message: 'El monto de recaudo debe ser mayor a cero' })
   monto_recaudo: number;
 
+  @IsNumber()
+  @IsOptional()
+  @Min(0, { message: 'El descuento por pronto pago no puede ser negativo' })
+  descuento_pronto_pago?: number;
+
   @IsString()
   @IsNotEmpty()
   fecha_recaudo: string;

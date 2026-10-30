@@ -517,15 +517,33 @@ import { TablePaginationComponent } from '../../../shared/components/table-pagin
           </div>
 
           <div class="space-y-3">
-            <div class="space-y-1">
-              <label class="text-xs font-semibold text-slate-300">Monto a Recaudar *</label>
-              <input
-                type="number"
-                min="0.01"
-                [max]="cxcSeleccionada()?.saldo_pendiente || 0"
-                [(ngModel)]="montoRecaudo"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-slate-300">Monto Recibido en Dinero *</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  [(ngModel)]="montoRecaudo"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-semibold text-slate-300">Dcto. Pronto Pago (NIIF 15 / 530535)</label>
+                <input
+                  type="number"
+                  min="0"
+                  [(ngModel)]="descuentoProntoPago"
+                  placeholder="0.00"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 flex justify-between items-center text-xs">
+              <span class="text-slate-400">Total Extinción Cartera (1305):</span>
+              <span class="font-mono font-bold text-emerald-400">
+                \${{ (Number(montoRecaudo || 0) + Number(descuentoProntoPago || 0)).toLocaleString('es-CO', { minimumFractionDigits: 2 }) }}
+              </span>
             </div>
 
             <!-- Selector de Cuenta de Banco/Caja (PUC Lookup) -->
@@ -711,6 +729,7 @@ export class CxcAdminComponent implements OnInit {
   modalHistorialRecaudosVisible = signal<boolean>(false);
   recaudosFactura = signal<RecaudoCxcItem[]>([]);
   montoRecaudo = 0;
+  descuentoProntoPago = 0;
   fechaRecaudo = new Date().toISOString().split('T')[0];
   metodoRecaudo = 'TRANSFERENCIA';
   referenciaTransaccion = '';
@@ -803,6 +822,7 @@ export class CxcAdminComponent implements OnInit {
   abrirModalRecaudo(cxc: CuentaPorCobrarItem): void {
     this.cxcSeleccionada.set(cxc);
     this.montoRecaudo = Number(cxc.saldo_pendiente);
+    this.descuentoProntoPago = 0;
     this.fechaRecaudo = new Date().toISOString().split('T')[0];
     this.referenciaTransaccion = `REC-${cxc.numero_factura}`;
     this.modalRecaudoVisible.set(true);
@@ -821,10 +841,11 @@ export class CxcAdminComponent implements OnInit {
       cuenta_por_cobrar_id: cxc.id,
       cuenta_banco_id: banco.id,
       monto_recaudo: Number(this.montoRecaudo),
+      descuento_pronto_pago: Number(this.descuentoProntoPago || 0),
       fecha_recaudo: this.fechaRecaudo,
       metodo_recaudo: this.metodoRecaudo,
       referencia_transaccion: this.referenciaTransaccion,
-      glosa: `Recaudo factura ${cxc.numero_factura}`,
+      glosa: `Recaudo factura ${cxc.numero_factura}${Number(this.descuentoProntoPago) > 0 ? ` (Dcto Pronto Pago: $${this.descuentoProntoPago})` : ''}`,
     };
 
     this.guardandoRecaudo.set(true);

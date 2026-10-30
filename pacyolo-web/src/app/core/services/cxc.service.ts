@@ -39,6 +39,7 @@ export interface RecaudoCxcItem {
   asiento_id?: string;
   asiento?: any;
   monto_recaudo: number;
+  descuento_pronto_pago?: number;
   fecha_recaudo: string;
   metodo_recaudo: string;
   referencia_transaccion?: string;

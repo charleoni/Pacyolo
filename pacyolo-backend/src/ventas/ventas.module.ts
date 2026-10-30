@@ -4,6 +4,10 @@ import { VentasController } from './ventas.controller.js';
 import { VentasService } from './ventas.service.js';
 import { FacturaVenta } from './entities/factura-venta.entity.js';
 import { FacturaVentaLinea } from './entities/factura-venta-linea.entity.js';
+import {
+  NotaCreditoVenta,
+  NotaCreditoVentaLinea,
+} from './entities/nota-credito-venta.entity.js';
 import { Articulo } from '../inventarios/entities/articulo.entity.js';
 import { SaldoBodega } from '../inventarios/entities/saldo-bodega.entity.js';
 import { KardexMovimiento } from '../inventarios/entities/kardex-movimiento.entity.js';
@@ -20,6 +24,8 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
     TypeOrmModule.forFeature([
       FacturaVenta,
       FacturaVentaLinea,
+      NotaCreditoVenta,
+      NotaCreditoVentaLinea,
       Articulo,
       SaldoBodega,
       KardexMovimiento,
