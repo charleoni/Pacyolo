@@ -18,6 +18,8 @@ import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { ParametrosModule } from './parametros/parametros.module.js';
 import { InventariosModule } from './inventarios/inventarios.module.js';
 import { ComprasModule } from './compras/compras.module.js';
+import { VentasModule } from './ventas/ventas.module.js';
+import { CxcModule } from './cxc/cxc.module.js';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { ComprasModule } from './compras/compras.module.js';
     ParametrosModule,
     InventariosModule,
     ComprasModule,
+    VentasModule,
+    CxcModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -58,6 +58,9 @@ export class RecaudoCxc {
   @Column({ type: 'decimal', precision: 16, scale: 2 })
   monto_recaudo: number;
 
+  @Column({ type: 'decimal', precision: 16, scale: 2, default: 0 })
+  descuento_pronto_pago: number;
+
   @Column({ type: 'date' })
   fecha_recaudo: string;
 
