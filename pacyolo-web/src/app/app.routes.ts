@@ -15,6 +15,7 @@ import { ArticulosAdminComponent } from './features/dashboard/inventarios/articu
 import { ComprasAdminComponent } from './features/dashboard/compras/compras-admin.component';
 import { VentasAdminComponent } from './features/dashboard/ventas/ventas-admin.component';
 import { CxcAdminComponent } from './features/dashboard/cxc/cxc-admin.component';
+import { TesoreriaAdminComponent } from './features/dashboard/tesoreria/tesoreria-admin.component';
 
 export const routes: Routes = [
   {
@@ -45,6 +46,10 @@ export const routes: Routes = [
       {
         path: 'cxc',
         component: CxcAdminComponent,
+      },
+      {
+        path: 'tesoreria',
+        component: TesoreriaAdminComponent,
       },
       {
         path: 'cxp',
