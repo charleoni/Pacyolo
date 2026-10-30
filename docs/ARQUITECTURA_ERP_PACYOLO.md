@@ -203,13 +203,54 @@ flowchart TD
 
 ---
 
-#### MÓDULO 9: Reportes Financieros NIIF & Exportaciones Oficiales
-- **Balance de Comprobación:** Sumas y saldos a cualquier nivel del PUC (Clase, Grupo, Cuenta, Subcuenta, Auxiliar).
-- **Estado de Situación Financiera (Balance General):** Activo = Pasivo + Patrimonio clasificado en Corriente y No Corriente.
-- **Estado de Resultados Integral (P&G):** Ingresos operacionales, Costo de ventas, Utilidad bruta, Gastos operacionales, EBITDA y Utilidad neta.
-- **Libros Oficiales:** Diario Columnario, Mayor y Balances, Libro de Inventarios y Balances.
-- **Certificados Tributarios:** Certificados de Retención en la Fuente en PDF con firma digital del contador.
-- **Exportación Estructurada:** Excel con fórmulas y JSON/CSV para medios magnéticos DIAN.
+#### MÓDULO 9: Libros Oficiales Registrados, Cierres Contables & Los 5 Estados Financieros NIIF (DUR 2420 / NIC 1)
+- **Cierre y Bloqueo de Períodos Mensuales (Candado Contable):**
+  - Congelamiento formal y auditado de fechas contables para impedir modificaciones o inserciones extemporáneas en períodos ya declarados o presentados a gerencia.
+- **Motor de Cierre Anual NIIF (Comprobante `CIE` al 31 de Diciembre):**
+  - Cancelación automática de todas las cuentas nominales de resultado (Clase 4 Débito, Clases 5, 6 y 7 Crédito) contra la cuenta intermedia `590505 Ganancias y Pérdidas`.
+  - Traslado del saldo neto al Patrimonio: Débito `5905` <-> Crédito `360505 Utilidad del Ejercicio` (o Débito `361005 Pérdida` <-> Crédito `5905`).
+  - Traslado automático de saldos de balance (1, 2, 3) como saldos iniciales del año siguiente.
+- **Diferencia en Cambio NIIF (NIC 21):**
+  - Reexpresión mensual de activos y pasivos en moneda extranjera según la TRM oficial de la Superfinanciera (`530525` vs `421020`).
+- **Árbol Jerárquico Multinivel del PUC:**
+  - Selector dinámico de profundidad en Balances con drill-down interactivo: Nivel 1 (Clase 1 dígito), Nivel 2 (Grupo 2 dígitos), Nivel 3 (Cuenta 4 dígitos), Nivel 4 (Subcuenta 6 dígitos) y Nivel 5 (Auxiliar de detalle a 8-10 dígitos).
+- **Los 5 Estados Financieros Oficiales NIIF (NIC 1 / NIC 7 / Sección 3 NIIF Pymes):**
+  1. **Estado de Situación Financiera:** Clasificado en Corriente y No Corriente.
+  2. **Estado de Resultado Integral (ERI):** Desglose de P&G operativo y Otro Resultado Integral (ORI).
+  3. **Estado de Cambios en el Patrimonio:** Conciliación de capital social, reservas y utilidades.
+  4. **Estado de Flujos de Efectivo (NIC 7):** Flujos por actividades de Operación, Inversión y Financiación bajo métodos Directo e Indirecto.
+  5. **Notas y Revelaciones a los Estados Financieros:** Resumen de políticas y desagregaciones analíticas.
+- **Libros Oficiales Registrados (Código de Comercio y Revisoría Fiscal):**
+  - Libro Mayor y Balances mensual.
+  - Libro Diario Columnario mensual por tipo de comprobante.
+  - Libro de Inventarios y Balances anual.
+  - Libro Auxiliar Integral por Cuenta Contable y Tercero (NIT).
+
+---
+
+#### MÓDULO 10: Módulo Tributario, Liquidación de Impuestos & Información Exógena DIAN (Medios Magnéticos)
+- **Mapeo de PUC a Conceptos DIAN:** Configuración de cuentas auxiliares hacia los conceptos de exógena nacional.
+- **Borradores de Declaraciones Tributarias Oficiales:**
+  - Formulario 300 (IVA bimestral/cuatrimestral): bases gravadas (19%, 5%), exentas, excluidas, IVA generado vs descontable.
+  - Formulario 350 (Retención en la Fuente mensual): compras, servicios, honorarios, arrendamientos, salarios y autorretenciones.
+  - Declaración de ICA territorial (según municipio DANE y actividades gravadas).
+- **Motor de Información Exógena Nacional DIAN (Medios Magnéticos):**
+  - Generación y exportación a Excel / XML validable en el prevalidador DIAN:
+    - Formato 1001: Pagos o abonos en cuenta y retenciones practicadas.
+    - Formato 1003: Retenciones en la fuente que le practicaron a la empresa.
+    - Formato 1005 / 1006: IVA descontable e IVA generado e Impoconsumo.
+    - Formato 1007: Ingresos propios recibidos en el ejercicio.
+    - Formato 1008 / 1009: Saldos de Cuentas por Cobrar (CxC) y Cuentas por Pagar (CxP) a 31 de diciembre.
+    - Formato 1011 / 1012: Información de declaraciones y saldos en cuentas bancarias.
+    - Formato 2276: Certificado de ingresos y retenciones por rentas de trabajo (nómina).
+- **Certificados Tributarios:** Certificados de retención en la fuente e IVA con firma digital para proveedores.
+
+---
+
+#### MÓDULO 11: Auditoría Contable, Exportación XBRL (Supersociedades) & Certificación Enterprise
+- **Taxonomía XBRL Oficial:** Exportación estructurada para el software STORM / XBRL Express de la Superintendencia de Sociedades.
+- **Motor de Pruebas de Consistencia de Partida Doble:** Verificación automatizada de Sumas Iguales en el 100% de los asientos históricos.
+- **Certificación de Inmutabilidad:** Validación de pistas de auditoría (`aud_pistas`) e integridad de sellos temporales.
 
 ---
 
@@ -217,14 +258,16 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Fase1["Fase 1 (Completada): Cimientos\nCore Ledger NIIF + Motor Tributario + Auth RBAC + Web Base"]
-    Fase2["Fase 2: Operación Contable Manual en Web\nFormularios de Asientos de Diario, Causación CxP y Pagos EGR"]
-    Fase3["Fase 3: Facturación Comercial & POS\nFacturas de Venta Propias, Impoconsumo 8%, IVA y Tiras POS"]
-    Fase4["Fase 4: Inventarios & Kardex Permanente\nArtículos, Bodegas, Chasis/Motor y Costeo Automático 61 vs 14"]
-    Fase5["Fase 5: Tesorería & Conciliación Bancaria\nCajas Menores, Arqueos, Cuentas y Cruce de Extractos Bancarios"]
-    Fase6["Fase 6: Reportes Financieros NIIF\nBalance de Comprobación, P&G, Certificados PDF y Excel"]
-    Fase7["Fase 7: Activos Fijos NIIF\nFichas de Placas, Depreciación Mensual Automática y Bajas"]
-    Fase8["Fase 8: Nómina Electrónica & UGPP\nContratos, Devengos, Seguridad Social, Parafiscales y DIAN"]
+    Fase1["Fase 1 (Hecha): Cimientos Core Ledger NIIF + Motor Tributario + Auth RBAC"]
+    Fase2["Fase 2 (Hecha): Operación Contable Web Manual (Comprobantes, Causación CxP y Pagos EGR)"]
+    Fase3["Fase 3 (Hecha): Facturación Comercial, POS Mostrador, Costeo NIC 2 & Cartera CxC"]
+    Fase4["Fase 4 (Hecha): Inventarios & Kardex Permanente (Artículos, Bodegas y Costeo 61 vs 14)"]
+    Fase5["Fase 5 (Activa - Sprint 10): Tesorería, Cajas Menores, Bancos & Conciliación Bancaria"]
+    Fase6["Fase 6 (Sprint 11): Libros Oficiales, Cierres Contables (CIE 5905) & 5 Estados Financieros NIIF"]
+    Fase7["Fase 7 (Sprint 12): Activos Fijos NIIF (Fichas, Depreciación Mensual Automática y Bajas)"]
+    Fase8["Fase 8 (Sprint 13): Nómina Electrónica & UGPP (Contratos, Devengos, Seguridad Social y DIAN)"]
+    Fase9["Fase 9 (Sprint 14): Módulo Tributario, Impuestos (300, 350, ICA) & Exógena DIAN"]
+    Fase10["Fase 10 (Sprint 15): Auditoría Contable, XBRL Supersociedades & Certificación Enterprise"]
 
     Fase1 --> Fase2
     Fase2 --> Fase3
@@ -233,22 +276,25 @@ flowchart TD
     Fase5 --> Fase6
     Fase6 --> Fase7
     Fase7 --> Fase8
+    Fase8 --> Fase9
+    Fase9 --> Fase10
 ```
 
 | Fase | Alcance Central | Beneficio para el Negocio |
 | :---: | :--- | :--- |
 | **Fase 1 (Hecha)** | Core Ledger NIIF, Motor Tributario, Ingesta API/Webhooks, RBAC Multi-tenant y Web Base. | Cimientos arquitectónicos sólidos y seguros. |
-| **Fase 2 (Inmediata)** | **Operación Contable Web Manual:** Formularios interactivos para digitar comprobantes contables con partida doble, causar compras y registrar pagos/egresos directamente desde el navegador. | El contador ya puede operar el 100% de la contabilidad sin depender de APIs. |
-| **Fase 3** | **Facturación Comercial & POS:** Generación propia de facturas de venta, facturación rápida de mostrador / tiras POS con propinas e impuesto al consumo (INC 8%), notas crédito y cartera. | La panadería o almacén emite sus ventas directas al cliente. |
-| **Fase 4** | **Inventarios & Kardex Permanente:** Catálogo de artículos (materias primas, motos con serial/chasis, repuestos), movimientos de almacén y costeo automático de ventas (61 vs 14). | Maneja la panadería (harina/recetas) y el almacén de motos (chasis/repuestos). |
-| **Fase 5** | **Tesorería & Conciliación Bancaria:** Cajas menores, arqueos de efectivo, control de cuentas bancarias y motor de conciliación automática contra extractos oficiales. | Control milimétrico de la plata real en bancos y cajas. |
-| **Fase 6** | **Reportes Financieros NIIF:** Balance de Comprobación, Estado de Situación Financiera, Estado de Resultados (P&G), Certificados de Retención PDF y Excel. | Cumplimiento legal, bancos, socios y DIAN. |
-| **Fase 7** | **Activos Fijos NIIF:** Ficha de activos, cálculo de depreciación mensual automática (1592 vs 5160), control de vidas útiles y bajas de bienes. | Control patrimonial de hornos, motos de reparto y maquinaria. |
-| **Fase 8** | **Nómina Electrónica & Seguridad Social:** Liquidación de salarios, horas extras, prestaciones sociales, aportes a EPS/Pensión/ARL y XML para la DIAN. | Liquidación y deducción legal del personal con causación contable. |
+| **Fase 2 (Hecha)** | **Operación Contable Web Manual:** Comprobantes contables con partida doble, causación de compras y pagos/egresos directamente desde el navegador. | El contador opera el 100% de la contabilidad sin depender de APIs. |
+| **Fase 3 (Hecha)** | **Facturación Comercial & POS:** Facturas de venta oficiales, tiras POS con impoconsumo (INC 8%), notas crédito NIIF 15 / NIC 2 y cartera CxC con pronto pago. | Facturación oficial en panadería, almacén o servicios. |
+| **Fase 4 (Hecha)** | **Inventarios & Kardex Permanente:** Catálogo universal (servicios, productos simples, materias primas), movimientos y costeo automático (61 vs 14). | Valuación NIC 2 de existencias en tiempo real. |
+| **Fase 5 (Activa - Sprint 10)** | **Tesorería & Conciliación Bancaria:** Cajas menores, arqueos de efectivo, control de cuentas bancarias y motor de conciliación automática contra extractos oficiales. | Control milimétrico de la liquidez real en bancos y cajas. |
+| **Fase 6 (Sprint 11)** | **Libros Oficiales, Cierres & 5 Estados Financieros NIIF:** Cierre mensual con candado, cierre anual con `CIE` (`5905`), árbol multinivel (1 a 5) y los 5 Estados Financieros (ESF, ERI, Cambios Patrimonio, Flujos NIC 7 y Notas). | Cumplimiento pleno DUR 2420, bancos, socios y revisoría fiscal. |
+| **Fase 7 (Sprint 12)** | **Activos Fijos NIIF:** Ficha de activos, cálculo de depreciación mensual automática (1592 vs 5160), control de vidas útiles y bajas de bienes. | Control patrimonial de hornos, vehículos y maquinaria. |
+| **Fase 8 (Sprint 13)** | **Nómina Electrónica & Seguridad Social:** Liquidación de salarios, horas extras, prestaciones sociales, aportes a EPS/Pensión/ARL y XML para la DIAN. | Liquidación y deducción legal del personal con causación contable. |
+| **Fase 9 (Sprint 14)** | **Módulo Tributario & Medios Magnéticos DIAN:** Borradores de Formularios 300, 350, ICA y generador de formatos de Exógena (1001 a 1009, 2276) para el prevalidador. | Blindaje tributario total ante la DIAN y municipios. |
+| **Fase 10 (Sprint 15)** | **Auditoría & Taxonomía XBRL:** Exportación a XBRL STORM Supersociedades, verificación masiva de sumas iguales y certificación de inmutabilidad. | Grado Revisoría Fiscal y reporte a entes de control. |
 
 ---
 
 ### 5. 💡 Conclusión y Alineación
 
-Esta es la visión completa, integral y sin atajos: **un ERP contable universal que no le tiene miedo a ninguna industria** porque tiene su lógica modularizada, su partida doble matemática inquebrantable y su doble canal (humano en web + máquinas vía API).
-
+Esta es la visión completa, integral y sin atajos: **un ERP contable universal que no le tiene miedo a ninguna industria** porque tiene su lógica modularizada, su partida doble matemática inquebrantable, su estricto apego al marco regulatorio NIIF / DIAN y su doble canal (humano en web + máquinas vía API).
