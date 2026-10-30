@@ -79,7 +79,7 @@ describe('TesoreriaService', () => {
     };
 
     mockPucRepo = {
-      findOne: vi.fn().mockResolvedValue({ id: 'puc-1', codigo: '11051001', nombre: 'Caja Menor' }),
+      findOne: vi.fn().mockResolvedValue({ id: 'puc-1', codigo: '11051001', nombre: 'Caja Menor', permite_movimiento: true }),
     };
 
     mockTerceroRepo = {

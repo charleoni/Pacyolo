@@ -7,6 +7,7 @@ export interface CuentaPucLookupItem {
   codigo: string;
   nombre: string;
   naturaleza?: string;
+  permite_movimiento?: boolean;
   es_auxiliar?: boolean;
   nivel?: number;
 }
@@ -133,8 +134,15 @@ export interface CuentaPucLookupItem {
                 </button>
               </div>
 
-              <div class="font-mono text-[11px]">
-                Coincidencias: <b class="text-emerald-400">{{ cuentasFiltradas().length }}</b>
+              <div class="flex items-center gap-2">
+                @if (soloAuxiliares()) {
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <span>🔒</span> Solo Cuentas Auxiliares (Imputables)
+                  </span>
+                }
+                <div class="font-mono text-[11px]">
+                  Coincidencias: <b class="text-emerald-400">{{ cuentasFiltradas().length }}</b>
+                </div>
               </div>
             </div>
           </div>
@@ -143,21 +151,32 @@ export interface CuentaPucLookupItem {
           <div class="flex-1 overflow-y-auto p-4 space-y-1.5">
             @for (cuenta of cuentasFiltradas(); track cuenta.id) {
               <div
-                (click)="seleccionar(cuenta)"
-                class="group p-3 bg-slate-950/80 hover:bg-slate-800/60 border border-slate-800/80 hover:border-emerald-500/50 rounded-xl transition cursor-pointer flex items-center justify-between gap-3"
+                (click)="esImputable(cuenta) ? seleccionar(cuenta) : null"
+                [class]="esImputable(cuenta) ? 'hover:bg-slate-800/60 hover:border-emerald-500/50 cursor-pointer' : 'opacity-60 cursor-not-allowed bg-slate-950/40'"
+                class="group p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl transition flex items-center justify-between gap-3"
               >
                 <!-- Código y Nombre -->
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                  <span class="font-mono font-bold text-emerald-400 text-sm group-hover:text-emerald-300 transition whitespace-nowrap">
+                  <span class="font-mono font-bold text-emerald-400 text-sm whitespace-nowrap">
                     {{ cuenta.codigo }}
                   </span>
-                  <div class="truncate text-xs text-slate-200 group-hover:text-white font-medium">
+                  <div class="truncate text-xs text-slate-200 font-medium">
                     {{ cuenta.nombre }}
                   </div>
                 </div>
 
-                <!-- Naturaleza y Selección -->
-                <div class="flex items-center gap-3 shrink-0">
+                <!-- Naturaleza, Tipo de Cuenta y Selección -->
+                <div class="flex items-center gap-2.5 shrink-0">
+                  @if (esImputable(cuenta)) {
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      AUXILIAR
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500 border border-slate-700">
+                      MAYOR (No Imputable)
+                    </span>
+                  }
+
                   <span
                     [class]="cuenta.naturaleza === 'DEBITO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'"
                     class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border"
@@ -165,13 +184,24 @@ export interface CuentaPucLookupItem {
                     {{ cuenta.naturaleza || 'DÉBITO' }}
                   </span>
 
-                  <button
-                    type="button"
-                    class="px-3 py-1 bg-emerald-600/30 group-hover:bg-emerald-600 text-emerald-300 group-hover:text-white rounded-lg text-xs font-semibold transition flex items-center gap-1"
-                  >
-                    <span>Seleccionar</span>
-                    <span>➜</span>
-                  </button>
+                  @if (esImputable(cuenta)) {
+                    <button
+                      type="button"
+                      class="px-3 py-1 bg-emerald-600/30 group-hover:bg-emerald-600 text-emerald-300 group-hover:text-white rounded-lg text-xs font-semibold transition flex items-center gap-1"
+                    >
+                      <span>Seleccionar</span>
+                      <span>➜</span>
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      disabled
+                      class="px-2.5 py-1 bg-slate-800 text-slate-500 rounded-lg text-xs font-semibold cursor-not-allowed opacity-60"
+                      title="Las cuentas de nivel superior (Clase, Grupo, Cuenta) son solo de título y resumen, no reciben movimientos directos"
+                    >
+                      Bloqueada
+                    </button>
+                  }
                 </div>
               </div>
             } @empty {
@@ -207,6 +237,7 @@ export class PucLookupModalComponent {
   readonly visible = model<boolean>(false);
   readonly cuentas = input<CuentaPucLookupItem[]>([]);
   readonly titulo = input<string>('Catálogo PUC - Selección de Cuenta Contable');
+  readonly soloAuxiliares = input<boolean>(true);
 
   readonly cuentaSeleccionada = output<CuentaPucLookupItem>();
   readonly cancelar = output<void>();
@@ -214,13 +245,27 @@ export class PucLookupModalComponent {
   readonly busqueda = signal('');
   readonly filtroClase = signal<string>('');
 
+  esImputable(c: CuentaPucLookupItem): boolean {
+    if (typeof c.permite_movimiento === 'boolean') {
+      return c.permite_movimiento;
+    }
+    if (typeof c.es_auxiliar === 'boolean') {
+      return c.es_auxiliar;
+    }
+    return !!c.codigo && c.codigo.length >= 6;
+  }
+
   readonly cuentasFiltradas = computed(() => {
     const q = this.busqueda().toLowerCase().trim();
     const clase = this.filtroClase();
+    const soloAux = this.soloAuxiliares();
     const all = this.cuentas();
 
     return all
       .filter((c) => {
+        if (soloAux && !this.esImputable(c)) {
+          return false;
+        }
         const matchClase = !clase || (c.codigo && c.codigo.startsWith(clase));
         if (!matchClase) return false;
         if (!q) return true;
@@ -233,6 +278,9 @@ export class PucLookupModalComponent {
   });
 
   seleccionar(cuenta: CuentaPucLookupItem): void {
+    if (this.soloAuxiliares() && !this.esImputable(cuenta)) {
+      return;
+    }
     this.cuentaSeleccionada.emit(cuenta);
     this.visible.set(false);
   }
