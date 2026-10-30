@@ -5,11 +5,11 @@
 *Arquitectura Maestra:* `C:\proyectos\PACYOLO\docs\ARQUITECTURA_ERP_PACYOLO.md`  
 *Regla de Ritmo:* Base diaria de 2 horas. Si en una jornada se dispone de más tiempo, se adelantan tareas del backlog y se actualiza este registro de inmediato.  
 *Rama Activa:* `sprint/10-tesoreria-cajas-bancos`  
-*Última Versión Publicada:* `v0.9.0-sprint9` (Cerrada y Certificada)
+*Última Versión Publicada:* `v0.10.0-sprint10` (Cerrada y Certificada)
 
 ---
 
-## 🎯 SPRINT 10: Tesorería, Cajas Menores & Conciliación Bancaria
+## 🎯 SPRINT 10: Tesorería, Cajas Menores & Conciliación Bancaria `[CERRADO & CERTIFICADO]`
 - **Objetivo del Sprint:** Desarrollar el módulo integral de tesorería y gestión de liquidez bajo estricto rigor NIIF (NIC 7 - Estado de Flujos de Efectivo y NIIF 9) y los **4 Pilares de Gobernanza Contable Total de PACYOLO**:
   1. **Gestión de Cajas Menores (Fondo Fijo):**
      - Apertura y constitución de fondo fijo de caja menor (`110510`) con asignación de custodio responsable, centro de costos y monto máximo autorizado.
@@ -43,14 +43,14 @@
 
 | # | Bloque | Tarea / Entregable Técnico | Estimado | Estado | Fecha Realización |
 | :-: | :--- | :--- | :--- | :-: | :-: |
-| **10.1** | Modelo de Datos: Tesorería & Conciliación | Entidades TypeORM relacionales en PostgreSQL (`teso_cajas_menores`, `teso_cajas_menores_gastos`, `teso_cajas_menores_arqueos`, `teso_cuentas_bancarias`, `teso_extractos_bancarios`, `teso_conciliaciones_bancarias`, `teso_conciliaciones_partidas`) con constraints multi-tenant y auditoría. | 2h | `[ ]` Pendiente | — |
-| **10.2** | Motor de Cajas Menores & Legalización | Servicios backend para constitución de fondo fijo (`110510`), causación de gastos menores con retenciones/IVA y reposición periódica vía Comprobante de Egreso (`EGR`). | 2h | `[ ]` Pendiente | — |
-| **10.3** | Módulo de Arqueos de Caja Menor | Servicio de arqueos físicos: desglose de monedas/billetes, comparación contra saldo contable, acta de arqueo y causación automática de sobrantes (`4295`) o faltantes (`1365`/`5395`). | 2h | `[ ]` Pendiente | — |
-| **10.4** | Cuentas Bancarias & Libro Auxiliar | Gestión de cuentas corrientes/ahorros vinculadas al PUC (`1110`), consulta de saldo en tiempo real y libro auxiliar bancario con filtros por fecha y tercero. | 2h | `[ ]` Pendiente | — |
-| **10.5** | Parser e Importador de Extractos Bancarios | Servicio de importación de extractos (CSV / Excel) para bancos colombianos con validación de estructura, mapeo de columnas y prevención de duplicados. | 2h | `[ ]` Pendiente | — |
-| **10.6** | Algoritmo de Matching & Cruce Conciliatorio | Motor de cruce automático extracto vs auxiliar contable por fecha, valor y referencia, con detección de partidas conciliatorias (cheques en tránsito, consignaciones pendientes). | 2h | `[ ]` Pendiente | — |
-| **10.7** | Causación Rápida de Notas Bancarias | Endpoints para generación en 1 clic de asientos de GMF (4x1000 - `5115`), comisiones (`530515`) e intereses (`4210`), conciliando la partida automáticamente. | 2h | `[ ]` Pendiente | — |
-| **10.8** | Frontend Web: Tesorería, Cajas & Conciliador | Módulo Angular reactivo con Signals: vistas de gestión de cajas menores, formulario de arqueo, visor de extractos, matriz de conciliación a doble columna e impresión formal membretada. | 2h | `[ ]` Pendiente | — |
+| **10.1** | Modelo de Datos: Tesorería & Conciliación | Entidades TypeORM relacionales en PostgreSQL (`teso_cajas_menores`, `teso_cajas_menores_gastos`, `teso_cajas_menores_arqueos`, `teso_cuentas_bancarias`, `teso_extractos_bancarios`, `teso_conciliaciones_bancarias`, `teso_conciliaciones_partidas`) con constraints multi-tenant y auditoría. | 2h | `[X]` Completado | 2026-10-29 |
+| **10.2** | Motor de Cajas Menores & Legalización | Servicios backend para constitución de fondo fijo (`110510`), causación de gastos menores con retenciones/IVA y reposición periódica vía Comprobante de Egreso (`EGR`). | 2h | `[X]` Completado | 2026-10-29 |
+| **10.3** | Módulo de Arqueos de Caja Menor | Servicio de arqueos físicos: desglose de monedas/billetes, comparación contra saldo contable, acta de arqueo y causación automática de sobrantes (`4295`) o faltantes (`1365`/`5395`). | 2h | `[X]` Completado | 2026-10-29 |
+| **10.4** | Cuentas Bancarias & Libro Auxiliar | Gestión de cuentas corrientes/ahorros vinculadas al PUC (`1110`), consulta de saldo en tiempo real y libro auxiliar bancario con filtros por fecha y tercero. | 2h | `[X]` Completado | 2026-10-29 |
+| **10.5** | Parser e Importador de Extractos Bancarios | Servicio de importación de extractos (CSV / Excel) para bancos colombianos con validación de estructura, mapeo de columnas y prevención de duplicados. | 2h | `[X]` Completado | 2026-10-29 |
+| **10.6** | Algoritmo de Matching & Cruce Conciliatorio | Motor de cruce automático extracto vs auxiliar contable por fecha, valor y referencia, con detección de partidas conciliatorias (cheques en tránsito, consignaciones pendientes). | 2h | `[X]` Completado | 2026-10-29 |
+| **10.7** | Causación Rápida de Notas Bancarias | Endpoints para generación en 1 clic de asientos de GMF (4x1000 - `5115`), comisiones (`530515`) e intereses (`4210`), conciliando la partida automáticamente. | 2h | `[X]` Completado | 2026-10-29 |
+| **10.8** | Frontend Web: Tesorería, Cajas & Conciliador | Módulo Angular reactivo con Signals: vistas de gestión de cajas menores, formulario de arqueo, visor de extractos, matriz de conciliación a doble columna e impresión formal membretada. | 2h | `[X]` Completado | 2026-10-29 |
 
 ---
 

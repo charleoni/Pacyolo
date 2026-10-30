@@ -20,6 +20,7 @@ import { InventariosModule } from './inventarios/inventarios.module.js';
 import { ComprasModule } from './compras/compras.module.js';
 import { VentasModule } from './ventas/ventas.module.js';
 import { CxcModule } from './cxc/cxc.module.js';
+import { TesoreriaModule } from './tesoreria/tesoreria.module.js';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { CxcModule } from './cxc/cxc.module.js';
     ComprasModule,
     VentasModule,
     CxcModule,
+    TesoreriaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
