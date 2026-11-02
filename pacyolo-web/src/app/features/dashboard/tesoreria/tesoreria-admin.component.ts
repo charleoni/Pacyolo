@@ -1032,7 +1032,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
     <app-puc-lookup-modal
       [(visible)]="modalPucBancoDesembolsoVisible"
       titulo="Seleccionar Cuenta de Banco de Desembolso (1110)"
-      [cuentas]="cuentasPucDisponibles()"
+      [cuentas]="cuentasBancosDisponibles()"
       (cuentaSeleccionada)="onCuentaPucBancoDesembolsoSeleccionada($event)">
     </app-puc-lookup-modal>
 
@@ -1040,7 +1040,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
     <app-puc-lookup-modal
       [(visible)]="modalPucBancoReembolsoVisible"
       titulo="Seleccionar Cuenta Bancaria de Giro (1110)"
-      [cuentas]="cuentasPucDisponibles()"
+      [cuentas]="cuentasBancosDisponibles()"
       (cuentaSeleccionada)="onCuentaPucBancoReembolsoSeleccionada($event)">
     </app-puc-lookup-modal>
   `,
@@ -1142,6 +1142,17 @@ export class TesoreriaAdminComponent implements OnInit {
   totalValesPendientes = computed(() =>
     this.cajas().reduce((acc, c) => acc + Number(c.saldo_en_vales || 0), 0),
   );
+
+  readonly cuentasBancosDisponibles = computed(() => {
+    const idsBancos = new Set(
+      this.cuentasBancarias()
+        .map((cb) => cb.cuenta_puc?.id)
+        .filter(Boolean)
+    );
+    return this.cuentasPucDisponibles().filter(
+      (c) => c.codigo.startsWith('1110') || idsBancos.has(c.id)
+    );
+  });
 
   totalReembolsoCalculado = computed(() => {
     const seleccionados = this.valesSeleccionadosIds();

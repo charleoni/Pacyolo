@@ -77,34 +77,36 @@ interface Asiento {
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="sticky top-0 z-10 bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
               <tr>
-                <th class="py-3 px-4">Comprobante</th>
-                <th class="py-3 px-4">Tipo</th>
-                <th class="py-3 px-4">Fecha Contable</th>
-                <th class="py-3 px-4">Concepto / Glosa</th>
-                <th class="py-3 px-4 text-right">Débitos</th>
-                <th class="py-3 px-4 text-right">Créditos</th>
-                <th class="py-3 px-4 text-center">Estado</th>
-                <th class="py-3 px-4 text-right">Acciones</th>
+                <th class="py-3 px-4 whitespace-nowrap">Comprobante</th>
+                <th class="py-3 px-4 whitespace-nowrap">Tipo</th>
+                <th class="py-3 px-4 whitespace-nowrap">Fecha Contable</th>
+                <th class="py-3 px-4 min-w-[220px] max-w-xs md:max-w-md">Concepto / Glosa</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap">Débitos</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap">Créditos</th>
+                <th class="py-3 px-4 text-center whitespace-nowrap">Estado</th>
+                <th class="py-3 px-4 text-center whitespace-nowrap min-w-[260px]">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60">
               @for (asiento of asientosPaginados(); track asiento.id) {
                 <tr class="hover:bg-slate-800/30 transition">
-                  <td class="py-3 px-4 font-mono font-bold text-white">{{ asiento.numero_comprobante }}</td>
-                  <td class="py-3 px-4">
+                  <td class="py-3 px-4 font-mono font-bold text-white whitespace-nowrap">{{ asiento.numero_comprobante }}</td>
+                  <td class="py-3 px-4 whitespace-nowrap">
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
                       {{ asiento.tipo_comprobante }}
                     </span>
                   </td>
-                  <td class="py-3 px-4 text-slate-400 font-mono">{{ asiento.fecha_contable }}</td>
-                  <td class="py-3 px-4 font-medium text-slate-200">{{ asiento.glosa_general }}</td>
-                  <td class="py-3 px-4 text-right font-mono text-emerald-400 font-semibold">
+                  <td class="py-3 px-4 text-slate-400 font-mono whitespace-nowrap">{{ asiento.fecha_contable }}</td>
+                  <td class="py-3 px-4 font-medium text-slate-200 max-w-xs md:max-w-md truncate" [title]="asiento.glosa_general">
+                    {{ asiento.glosa_general }}
+                  </td>
+                  <td class="py-3 px-4 text-right font-mono text-emerald-400 font-semibold whitespace-nowrap">
                     {{ asiento.total_debito | currency:'COP':'symbol-narrow':'1.0-0' }}
                   </td>
-                  <td class="py-3 px-4 text-right font-mono text-emerald-400 font-semibold">
+                  <td class="py-3 px-4 text-right font-mono text-emerald-400 font-semibold whitespace-nowrap">
                     {{ asiento.total_credito | currency:'COP':'symbol-narrow':'1.0-0' }}
                   </td>
-                  <td class="py-3 px-4 text-center">
+                  <td class="py-3 px-4 text-center whitespace-nowrap">
                     <span
                       [class]="asiento.estado === 'CONTABILIZADO' || asiento.estado === 'REGISTRADO' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'"
                       class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border"
@@ -112,44 +114,46 @@ interface Asiento {
                       {{ asiento.estado }}
                     </span>
                   </td>
-                  <td class="py-3 px-4 text-right whitespace-nowrap space-x-1.5">
-                    <button
-                      (click)="imprimirComprobante(asiento)"
-                      class="px-2.5 py-1 text-xs text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/50 rounded-lg border border-indigo-800/40 transition inline-flex items-center gap-1 cursor-pointer"
-                      title="Imprimir Comprobante Oficial (Pilar 2)"
-                    >
-                      <span>🖨️</span>
-                      <span>Imprimir</span>
-                    </button>
+                  <td class="py-3 px-4 text-center whitespace-nowrap min-w-[260px]">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <button
+                        (click)="imprimirComprobante(asiento)"
+                        class="px-2.5 py-1 text-xs text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/50 rounded-lg border border-indigo-800/40 transition inline-flex items-center gap-1 cursor-pointer shadow-sm"
+                        title="Imprimir Comprobante Oficial (Pilar 2)"
+                      >
+                        <span>🖨️</span>
+                        <span>Imprimir</span>
+                      </button>
 
-                    <button
-                      (click)="verDetalle(asiento)"
-                      class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition"
-                      title="Ver líneas del asiento"
-                    >
-                      Líneas
-                    </button>
+                      <button
+                        (click)="verDetalle(asiento)"
+                        class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer shadow-sm"
+                        title="Ver líneas del asiento"
+                      >
+                        Líneas
+                      </button>
 
-                    @if (asiento.estado !== 'ANULADO') {
-                      @if (!asiento.origen_sistema || asiento.origen_sistema === 'MANUAL') {
-                        <button
-                          (click)="abrirModalAnular(asiento)"
-                          class="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition cursor-pointer"
-                          title="Anular comprobante manual con reversión NIIF"
-                        >
-                          Anular
-                        </button>
-                      } @else {
-                        <button
-                          (click)="explicarBloqueoAnulacion(asiento)"
-                          class="px-2.5 py-1 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 rounded-lg border border-amber-800/40 transition inline-flex items-center gap-1 cursor-pointer"
-                          [title]="'Protegido por Pilar 5 (Integridad Causal): Originado por módulo ' + asiento.origen_sistema"
-                        >
-                          <span>🔒</span>
-                          <span>{{ formatearOrigen(asiento.origen_sistema) }}</span>
-                        </button>
+                      @if (asiento.estado !== 'ANULADO') {
+                        @if (!asiento.origen_sistema || asiento.origen_sistema === 'MANUAL') {
+                          <button
+                            (click)="abrirModalAnular(asiento)"
+                            class="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition cursor-pointer shadow-sm"
+                            title="Anular comprobante manual con reversión NIIF"
+                          >
+                            Anular
+                          </button>
+                        } @else {
+                          <button
+                            (click)="explicarBloqueoAnulacion(asiento)"
+                            class="px-2.5 py-1 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 rounded-lg border border-amber-800/40 transition inline-flex items-center gap-1 cursor-pointer shadow-sm"
+                            [title]="'Protegido por Pilar 5 (Integridad Causal): Originado por módulo ' + asiento.origen_sistema"
+                          >
+                            <span>🔒</span>
+                            <span>{{ formatearOrigen(asiento.origen_sistema) }}</span>
+                          </button>
+                        }
                       }
-                    }
+                    </div>
                   </td>
                 </tr>
               } @empty {
