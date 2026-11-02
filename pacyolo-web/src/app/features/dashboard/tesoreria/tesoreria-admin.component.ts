@@ -792,14 +792,38 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
           </div>
 
           <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <!-- Selector de Cuenta Bancaria de Pago (Egreso) - Enterprise Lookup Pattern (Regla 1) -->
             <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1">Cuenta Bancaria de Pago (Egreso)</label>
-              <select [(ngModel)]="cuentaBancoReembolsoId" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">Seleccione cuenta bancaria de giro...</option>
-                @for (cta of cuentasBancarias(); track cta.id) {
-                  <option [value]="cta.cuenta_puc?.id">{{ cta.banco_nombre }} - {{ cta.numero_cuenta }} ({{ cta.cuenta_puc?.codigo }})</option>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">
+                Cuenta Bancaria de Pago / Giro (PUC 1110) *
+              </label>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 truncate font-mono">
+                  @if (cuentaPucBancoReembolsoSeleccionada()) {
+                    <span class="text-indigo-400 font-bold">[{{ cuentaPucBancoReembolsoSeleccionada()?.codigo }}]</span> {{ cuentaPucBancoReembolsoSeleccionada()?.nombre }}
+                  } @else {
+                    <span class="text-slate-500 italic">Haga clic en 'Buscar Banco' para seleccionar la cuenta de giro...</span>
+                  }
+                </div>
+                <button
+                  type="button"
+                  (click)="modalPucBancoReembolsoVisible.set(true)"
+                  class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md cursor-pointer">
+                  🔍 Buscar Banco
+                </button>
+                @if (cuentaPucBancoReembolsoSeleccionada()) {
+                  <button
+                    type="button"
+                    (click)="limpiarBancoReembolso()"
+                    title="Quitar cuenta bancaria"
+                    class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer">
+                    ✕
+                  </button>
                 }
-              </select>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">
+                Cuenta bancaria auxiliar desde la cual se emitirá el Comprobante de Egreso (EGR) para reponer el fondo.
+              </p>
             </div>
 
             <!-- Lista de Vales para Reembolsar con Selección -->
@@ -1184,12 +1208,20 @@ export class TesoreriaAdminComponent implements OnInit {
   }
 
   cargarCatalogos() {
-    this.http.get<TerceroItem[]>('http://localhost:3000/api/v1/terceros').subscribe({
+    const emp = this.authService.empresaActiva();
+    const query = emp?.empresa_id ? `?empresa_id=${emp.empresa_id}` : '';
+
+    this.http.get<TerceroItem[]>(`http://localhost:3000/api/v1/terceros${query}`).subscribe({
       next: (t) => this.tercerosDisponibles.set(t || []),
     });
 
-    this.http.get<CuentaPucLookupItem[]>('http://localhost:3000/api/v1/puc').subscribe({
+    this.http.get<CuentaPucLookupItem[]>(`http://localhost:3000/api/v1/puc/auxiliares${query}`).subscribe({
       next: (cuentas) => this.cuentasPucDisponibles.set(cuentas || []),
+      error: () => {
+        this.http.get<CuentaPucLookupItem[]>(`http://localhost:3000/api/v1/puc${query}`).subscribe({
+          next: (cuentas) => this.cuentasPucDisponibles.set(cuentas || []),
+        });
+      }
     });
   }
 
