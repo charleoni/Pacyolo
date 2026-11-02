@@ -402,16 +402,33 @@ export class TesoreriaService {
   async registrarArqueo(empresaId: string, dto: CreateArqueoCajaMenorDto, usuario: any): Promise<CajaMenorArqueo> {
     const caja = await this.obtenerCajaMenorPorId(empresaId, dto.caja_menor_id);
 
-    // Obtener la suma real de vales vigentes no reembolsados
+    // Obtener la suma real y snapshot inmutable de vales vigentes no reembolsados
     const valesPendientes = await this.gastoRepo.find({
       where: {
         empresa_id: empresaId,
         caja_menor_id: caja.id,
         estado: EstadoGastoCajaMenor.LEGALIZADO,
       },
+      relations: { tercero: true },
+      order: { fecha_gasto: 'ASC' },
     });
 
-    const totalVales = valesPendientes.reduce((acc, curr) => acc + Number(curr.total), 0);
+    const snapshotVales = valesPendientes.map((v) => ({
+      id: v.id,
+      consecutivo: v.consecutivo,
+      fecha_gasto: v.fecha_gasto,
+      concepto: v.concepto,
+      soporte_factura_ref: v.soporte_factura_ref || 'S/R',
+      tercero_nombre: v.tercero?.razon_social || v.tercero?.nombre_completo || 'Sin Tercero',
+      tercero_documento: v.tercero?.numero_documento || '',
+      subtotal: Number(v.subtotal || 0),
+      iva: Number(v.iva || 0),
+      retefuente: Number(v.retefuente || 0),
+      total: Number(v.total),
+      estado: v.estado,
+    }));
+
+    const totalVales = snapshotVales.reduce((acc, curr) => acc + curr.total, 0);
     const totalEfectivo = Number(dto.total_efectivo_fisico);
     const totalFondoContado = Number((totalEfectivo + totalVales).toFixed(2));
     const montoFijo = Number(caja.monto_fondo_fijo);
@@ -507,6 +524,7 @@ export class TesoreriaService {
       auditor_id: usuario?.id,
       custodio_id: caja.responsable_id,
       desglose_efectivo: dto.desglose_efectivo || {},
+      vales_incluidos: snapshotVales,
       total_efectivo_fisico: totalEfectivo,
       total_vales_comprobantes: totalVales,
       total_fondo_contado: totalFondoContado,

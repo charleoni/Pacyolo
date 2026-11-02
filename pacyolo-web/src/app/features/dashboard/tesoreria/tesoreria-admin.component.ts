@@ -17,6 +17,7 @@ import { PucLookupModalComponent, CuentaPucLookupItem } from '../../../shared/co
 import { TerceroLookupModalComponent, TerceroItem } from '../../../shared/components/tercero-lookup-modal.component';
 import { ComprobanteImpresionModalComponent } from '../../../shared/components/comprobante-impresion-modal.component';
 import { ActaArqueoImpresionModalComponent } from '../../../shared/components/acta-arqueo-impresion-modal.component';
+import { ValeCajaMenorImpresionModalComponent } from '../../../shared/components/vale-caja-menor-impresion-modal.component';
 
 @Component({
   selector: 'app-tesoreria-admin',
@@ -27,6 +28,8 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
     ReactiveFormsModule,
     PucLookupModalComponent,
     TerceroLookupModalComponent,
+    ActaArqueoImpresionModalComponent,
+    ValeCajaMenorImpresionModalComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -71,17 +74,17 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Fondos Fijos Autorizados</span>
-            <div class="text-2xl font-black text-white mt-1">\${{ totalFondoFijo() | number:'1.2-2' }}</div>
+            <div class="text-2xl font-black text-white mt-1">\$ {{ totalFondoFijo() | number:'1.2-2' }}</div>
             <p class="text-xs text-indigo-400 mt-1">Cuentas 110510 asignadas</p>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Efectivo Físico Disponible</span>
-            <div class="text-2xl font-black text-emerald-400 mt-1">\${{ totalEfectivoDisponible() | number:'1.2-2' }}</div>
+            <div class="text-2xl font-black text-emerald-400 mt-1">\$ {{ totalEfectivoDisponible() | number:'1.2-2' }}</div>
             <p class="text-xs text-slate-400 mt-1">Disponible para desembolsos menores</p>
           </div>
           <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-lg">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vales Legalizados Pendientes</span>
-            <div class="text-2xl font-black text-amber-400 mt-1">\${{ totalValesPendientes() | number:'1.2-2' }}</div>
+            <div class="text-2xl font-black text-amber-400 mt-1">\$ {{ totalValesPendientes() | number:'1.2-2' }}</div>
             <p class="text-xs text-slate-400 mt-1">Listos para reintegro vía egreso bancario</p>
           </div>
         </div>
@@ -129,9 +132,24 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
                         {{ caja.cuenta_puc?.codigo || '110510' }}
                       </span>
                     </td>
-                    <td class="p-4 text-right font-bold text-white">\${{ Number(caja.monto_fondo_fijo) | number:'1.2-2' }}</td>
-                    <td class="p-4 text-right font-bold text-emerald-400">\${{ Number(caja.saldo_actual_efectivo) | number:'1.2-2' }}</td>
-                    <td class="p-4 text-right font-bold text-amber-400">\${{ Number(caja.saldo_en_vales) | number:'1.2-2' }}</td>
+                    <td class="p-4 text-right font-bold text-white">\$ {{ Number(caja.monto_fondo_fijo) | number:'1.2-2' }}</td>
+                    <td class="p-4 text-right">
+                      <div class="font-bold text-emerald-400 font-mono">$ {{ Number(caja.saldo_actual_efectivo) | number:'1.2-2' }}</div>
+                      <div class="text-[10px] text-slate-400 font-mono">
+                        {{ (100 - calcularPorcentajeConsumo(caja)) }}% en caja
+                      </div>
+                    </td>
+                    <td class="p-4 text-right">
+                      <div class="font-bold text-amber-400 font-mono">$ {{ Number(caja.saldo_en_vales) | number:'1.2-2' }}</div>
+                      <div class="flex items-center justify-end gap-1 mt-0.5">
+                        <div class="w-14 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                          <div class="h-1.5 rounded-full" [style.width.%]="calcularPorcentajeConsumo(caja)" [class]="calcularColorConsumo(caja)"></div>
+                        </div>
+                        <span class="text-[10px] font-mono font-semibold" [class]="calcularPorcentajeConsumo(caja) >= 70 ? 'text-rose-400 font-bold' : 'text-slate-400'">
+                          {{ calcularPorcentajeConsumo(caja) }}%
+                        </span>
+                      </div>
+                    </td>
                     <td class="p-4 text-center">
                       <span class="px-2.5 py-1 rounded-full text-xs font-bold"
                         [class]="caja.estado === 'ABIERTA' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-700 text-slate-300'">
@@ -337,7 +355,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
               </div>
               <div class="text-right">
                 <span class="text-xs opacity-75">Diferencia Neta:</span>
-                <div class="text-xl font-mono font-black">\${{ Number(conc.diferencia_descuadre) | number:'1.2-2' }}</div>
+                <div class="text-xl font-mono font-black">\$ {{ Number(conc.diferencia_descuadre) | number:'1.2-2' }}</div>
               </div>
             </div>
 
@@ -349,23 +367,23 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
                   <h4 class="font-bold text-white text-sm flex items-center gap-2">
                     <span>🏦</span> Saldo en Extracto Bancario
                   </h4>
-                  <span class="font-mono font-bold text-indigo-300">\${{ Number(conc.saldo_extracto_bancario) | number:'1.2-2' }}</span>
+                  <span class="font-mono font-bold text-indigo-300">\$ {{ Number(conc.saldo_extracto_bancario) | number:'1.2-2' }}</span>
                 </div>
 
                 <div class="space-y-2 text-xs">
                   <div class="flex items-center justify-between text-slate-300">
                     <span>(+) Consignaciones en tránsito:</span>
-                    <span class="font-mono font-bold text-emerald-400">\${{ Number(conc.total_consignaciones_en_transito) | number:'1.2-2' }}</span>
+                    <span class="font-mono font-bold text-emerald-400">\$ {{ Number(conc.total_consignaciones_en_transito) | number:'1.2-2' }}</span>
                   </div>
                   <div class="flex items-center justify-between text-slate-300">
                     <span>(-) Cheques girados y no cobrados:</span>
-                    <span class="font-mono font-bold text-rose-400">-\${{ Number(conc.total_cheques_en_transito) | number:'1.2-2' }}</span>
+                    <span class="font-mono font-bold text-rose-400">-\$ {{ Number(conc.total_cheques_en_transito) | number:'1.2-2' }}</span>
                   </div>
                 </div>
 
                 <div class="pt-3 border-t border-slate-700/60 flex items-center justify-between font-bold text-sm">
                   <span class="text-white">(=) Saldo Conciliado de Bancos:</span>
-                  <span class="font-mono text-emerald-400 font-black">\${{ Number(conc.saldo_conciliado_extracto) | number:'1.2-2' }}</span>
+                  <span class="font-mono text-emerald-400 font-black">\$ {{ Number(conc.saldo_conciliado_extracto) | number:'1.2-2' }}</span>
                 </div>
               </div>
 
@@ -375,23 +393,23 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
                   <h4 class="font-bold text-white text-sm flex items-center gap-2">
                     <span>📚</span> Saldo en Libros Contables (1110)
                   </h4>
-                  <span class="font-mono font-bold text-indigo-300">\${{ Number(conc.saldo_libros_contables) | number:'1.2-2' }}</span>
+                  <span class="font-mono font-bold text-indigo-300">\$ {{ Number(conc.saldo_libros_contables) | number:'1.2-2' }}</span>
                 </div>
 
                 <div class="space-y-2 text-xs">
                   <div class="flex items-center justify-between text-slate-300">
                     <span>(+) Notas Crédito (abonos en extracto):</span>
-                    <span class="font-mono font-bold text-emerald-400">\${{ Number(conc.total_notas_credito_pendientes) | number:'1.2-2' }}</span>
+                    <span class="font-mono font-bold text-emerald-400">\$ {{ Number(conc.total_notas_credito_pendientes) | number:'1.2-2' }}</span>
                   </div>
                   <div class="flex items-center justify-between text-slate-300">
                     <span>(-) Notas Débito (GMF 4x1000, comisiones):</span>
-                    <span class="font-mono font-bold text-rose-400">-\${{ Number(conc.total_notas_debito_pendientes) | number:'1.2-2' }}</span>
+                    <span class="font-mono font-bold text-rose-400">-\$ {{ Number(conc.total_notas_debito_pendientes) | number:'1.2-2' }}</span>
                   </div>
                 </div>
 
                 <div class="pt-3 border-t border-slate-700/60 flex items-center justify-between font-bold text-sm">
                   <span class="text-white">(=) Saldo Conciliado de Libros:</span>
-                  <span class="font-mono text-emerald-400 font-black">\${{ Number(conc.saldo_conciliado_libros) | number:'1.2-2' }}</span>
+                  <span class="font-mono text-emerald-400 font-black">\$ {{ Number(conc.saldo_conciliado_libros) | number:'1.2-2' }}</span>
                 </div>
               </div>
             </div>
@@ -426,7 +444,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
                         <td class="p-3 font-mono">{{ p.fecha | date:'yyyy-MM-dd' }}</td>
                         <td class="p-3">{{ p.concepto }}</td>
                         <td class="p-3 font-mono text-slate-400">{{ p.referencia || '-' }}</td>
-                        <td class="p-3 text-right font-mono font-bold text-white">\${{ Number(p.valor) | number:'1.2-2' }}</td>
+                        <td class="p-3 text-right font-mono font-bold text-white">\$ {{ Number(p.valor) | number:'1.2-2' }}</td>
                         <td class="p-3 text-center">
                           @if (p.tipo_partida === 'NOTA_DEBITO_PENDIENTE' && p.extracto_linea_id) {
                             <button
@@ -674,7 +692,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
 
             <div class="p-3 bg-slate-800/80 rounded-xl flex items-center justify-between">
               <span class="text-sm font-bold text-slate-300">Total a Desembolsar en Efectivo:</span>
-              <span class="text-lg font-black font-mono text-emerald-400">\${{ formGasto.get('total')?.value || 0 | number:'1.2-2' }}</span>
+              <span class="text-lg font-black font-mono text-emerald-400">\$ {{ formGasto.get('total')?.value || 0 | number:'1.2-2' }}</span>
             </div>
 
             <div class="pt-4 border-t border-slate-800 flex justify-end gap-2">
@@ -740,19 +758,19 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
             <div class="bg-slate-800/80 p-4 rounded-xl space-y-2 border border-slate-700">
               <div class="flex items-center justify-between text-xs text-slate-300">
                 <span>(+) Total Efectivo Físico Contado:</span>
-                <span class="font-mono font-bold text-white">\${{ arqueoTotalFisico() | number:'1.2-2' }}</span>
+                <span class="font-mono font-bold text-white">\$ {{ arqueoTotalFisico() | number:'1.2-2' }}</span>
               </div>
               <div class="flex items-center justify-between text-xs text-slate-300">
                 <span>(+) Total Vales de Gasto Soportados:</span>
-                <span class="font-mono font-bold text-amber-400">\${{ Number(cajaActiva()?.saldo_en_vales) | number:'1.2-2' }}</span>
+                <span class="font-mono font-bold text-amber-400">\$ {{ Number(cajaActiva()?.saldo_en_vales) | number:'1.2-2' }}</span>
               </div>
               <div class="flex items-center justify-between text-xs font-bold text-slate-200 pt-2 border-t border-slate-700">
                 <span>(=) Total Fondo Contado:</span>
-                <span class="font-mono text-indigo-300 font-black">\${{ arqueoTotalFondo() | number:'1.2-2' }}</span>
+                <span class="font-mono text-indigo-300 font-black">\$ {{ arqueoTotalFondo() | number:'1.2-2' }}</span>
               </div>
               <div class="flex items-center justify-between text-xs text-slate-400">
                 <span>(-) Monto Fondo Fijo Autorizado:</span>
-                <span class="font-mono font-bold">\${{ Number(cajaActiva()?.monto_fondo_fijo) | number:'1.2-2' }}</span>
+                <span class="font-mono font-bold">\$ {{ Number(cajaActiva()?.monto_fondo_fijo) | number:'1.2-2' }}</span>
               </div>
               <div class="flex items-center justify-between text-sm font-bold pt-2 border-t border-slate-700"
                 [class]="arqueoDiferencia() === 0 ? 'text-emerald-400' : arqueoDiferencia() > 0 ? 'text-blue-400' : 'text-rose-400'">
@@ -839,7 +857,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
                         <div class="text-[11px] text-slate-400">{{ v.tercero?.razon_social || v.tercero?.nombre_completo }} | Ref: {{ v.soporte_factura_ref || 'S/R' }}</div>
                       </div>
                     </div>
-                    <div class="font-mono font-bold text-emerald-400">\${{ Number(v.total) | number:'1.2-2' }}</div>
+                    <div class="font-mono font-bold text-emerald-400">\$ {{ Number(v.total) | number:'1.2-2' }}</div>
                   </label>
                 } @empty {
                   <div class="p-6 text-center text-slate-500">No hay vales legalizados pendientes de reembolso.</div>
@@ -849,7 +867,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
 
             <div class="p-4 bg-slate-800/80 rounded-xl flex items-center justify-between border border-slate-700">
               <span class="text-sm font-bold text-slate-300">Total a Girar por Banco:</span>
-              <span class="text-xl font-mono font-black text-emerald-400">\${{ totalReembolsoCalculado() | number:'1.2-2' }}</span>
+              <span class="text-xl font-mono font-black text-emerald-400">\$ {{ totalReembolsoCalculado() | number:'1.2-2' }}</span>
             </div>
 
             <div class="pt-4 border-t border-slate-800 flex justify-end gap-2">
@@ -947,7 +965,7 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
           <div class="p-6 space-y-4 text-sm">
             <div class="p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-1 text-xs">
               <div class="text-slate-400">Concepto en extracto: <span class="font-bold text-white">{{ partidaACausar()?.concepto }}</span></div>
-              <div class="text-slate-400">Monto: <span class="font-mono font-bold text-emerald-400">\${{ Number(partidaACausar()?.valor) | number:'1.2-2' }}</span></div>
+              <div class="text-slate-400">Monto: <span class="font-mono font-bold text-emerald-400">\$ {{ Number(partidaACausar()?.valor) | number:'1.2-2' }}</span></div>
             </div>
 
             <div>
@@ -1043,6 +1061,176 @@ import { ActaArqueoImpresionModalComponent } from '../../../shared/components/ac
       [cuentas]="cuentasBancosDisponibles()"
       (cuentaSeleccionada)="onCuentaPucBancoReembolsoSeleccionada($event)">
     </app-puc-lookup-modal>
+
+    <!-- MODAL 6: VISOR Y KARDEX VIVO DE VALES DE CAJA MENOR (CONSOLA CUSTODIO) -->
+    @if (modalHistorialValesAbierto()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <!-- Header Visor -->
+          <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+            <div>
+              <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <span>📋</span> Control de Vales & Soportes — {{ cajaActiva()?.codigo }} ({{ cajaActiva()?.nombre }})
+              </h3>
+              <p class="text-xs text-slate-400">Custodio: {{ cajaActiva()?.responsable?.nombre_completo }} — Consola en tiempo real de consumo y reembolsos</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="abrirModalGasto(cajaActiva()!)"
+                class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                <span>➕</span> Nuevo Vale
+              </button>
+              <button
+                (click)="modalHistorialValesAbierto.set(false)"
+                class="text-slate-400 hover:text-white text-xl px-2 py-1">✕</button>
+            </div>
+          </div>
+
+          <!-- Métricas del Fondo Fijo en el Visor -->
+          <div class="p-5 border-b border-slate-800 bg-slate-900/60 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
+              <span class="text-xs text-slate-400 font-semibold">Monto Fondo Fijo Asignado:</span>
+              <div class="text-xl font-bold font-mono text-white mt-1">
+                $ {{ Number(cajaActiva()?.monto_fondo_fijo || 0) | number:'1.2-2' }}
+              </div>
+            </div>
+
+            <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
+              <span class="text-xs text-slate-400 font-semibold">Efectivo Físico Disponible:</span>
+              <div class="text-xl font-bold font-mono text-emerald-400 mt-1">
+                $ {{ Number(cajaActiva()?.saldo_actual_efectivo || 0) | number:'1.2-2' }}
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5">
+                {{ ((Number(cajaActiva()?.saldo_actual_efectivo || 0) / Number(cajaActiva()?.monto_fondo_fijo || 1)) * 100) | number:'1.0-0' }}% en efectivo
+              </div>
+            </div>
+
+            <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
+              <span class="text-xs text-slate-400 font-semibold">Vales en Gaveta (Pendientes Reembolso):</span>
+              <div class="text-xl font-bold font-mono text-amber-400 mt-1">
+                $ {{ Number(cajaActiva()?.saldo_en_vales || 0) | number:'1.2-2' }}
+              </div>
+              <div class="text-[11px] text-amber-300 mt-0.5">
+                {{ ((Number(cajaActiva()?.saldo_en_vales || 0) / Number(cajaActiva()?.monto_fondo_fijo || 1)) * 100) | number:'1.0-0' }}% gastado por reponer
+              </div>
+            </div>
+          </div>
+
+          <!-- Barra de Consumo Visual -->
+          <div class="px-5 py-2.5 bg-slate-950/40 border-b border-slate-800">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-400 font-semibold">Capacidad del Fondo:</span>
+              <span class="font-mono text-slate-300">
+                Gastado: {{ calcularPorcentajeConsumo(cajaActiva()!) }}%
+              </span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+              <div
+                class="h-2.5 rounded-full transition-all duration-500"
+                [style.width.%]="calcularPorcentajeConsumo(cajaActiva()!)"
+                [class]="calcularColorConsumo(cajaActiva()!)"></div>
+            </div>
+            @if (calcularPorcentajeConsumo(cajaActiva()!) >= 70) {
+              <div class="mt-2 text-xs text-amber-400 flex items-center gap-1.5 font-medium">
+                <span>⚠️</span>
+                <span>El fondo ha superado el 70% de consumo. Se sugiere solicitar reembolso inmediato para mantener la liquidez operativa.</span>
+              </div>
+            }
+          </div>
+
+          <!-- Tabla de Vales -->
+          <div class="p-5 flex-1 overflow-y-auto">
+            @if (cargandoVales()) {
+              <div class="p-8 text-center text-slate-400 text-sm">Cargando vales y registros de la caja...</div>
+            } @else {
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="sticky top-0 bg-slate-950 text-slate-400 uppercase text-[11px] border-b border-slate-800">
+                  <tr>
+                    <th class="py-2.5 px-3">No. Vale</th>
+                    <th class="py-2.5 px-3">Fecha</th>
+                    <th class="py-2.5 px-3">Beneficiario / Tercero</th>
+                    <th class="py-2.5 px-3">Concepto / Destino</th>
+                    <th class="py-2.5 px-3">Soporte Ref.</th>
+                    <th class="py-2.5 px-3 text-right">Valor ($)</th>
+                    <th class="py-2.5 px-3 text-center">Estado</th>
+                    <th class="py-2.5 px-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                  @for (v of gastosCajaSeleccionada(); track v.id) {
+                    <tr class="hover:bg-slate-800/40 transition">
+                      <td class="py-2.5 px-3 font-mono font-bold text-indigo-400">{{ v.consecutivo }}</td>
+                      <td class="py-2.5 px-3 font-mono text-slate-400">{{ v.fecha_gasto }}</td>
+                      <td class="py-2.5 px-3 font-medium text-slate-200">{{ v.tercero?.razon_social || v.tercero?.nombre_completo || 'Sin tercero' }}</td>
+                      <td class="py-2.5 px-3 text-slate-300 max-w-xs truncate" [title]="v.concepto">{{ v.concepto }}</td>
+                      <td class="py-2.5 px-3 font-mono text-slate-400">{{ v.soporte_factura_ref || 'S/R' }}</td>
+                      <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                        $ {{ Number(v.total) | number:'1.2-2' }}
+                      </td>
+                      <td class="py-2.5 px-3 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                          [class]="v.estado === 'REEMBOLSADO' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'">
+                          {{ v.estado }}
+                        </span>
+                      </td>
+                      <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                        <button
+                          (click)="imprimirVale(v)"
+                          class="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition">
+                          <span>🖨️</span>
+                          <span>Recibo</span>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="8" class="p-8 text-center text-slate-500">
+                        No hay vales registrados para esta caja menor.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+
+          <!-- Pie del Modal -->
+          <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
+            <span class="text-xs text-slate-400 font-mono">
+              Total Vales Registrados: {{ gastosCajaSeleccionada().length }}
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="modalHistorialValesAbierto.set(false)"
+                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+                Cerrar
+              </button>
+              <button
+                (click)="abrirModalReembolsoDesdeVisor()"
+                [disabled]="Number(cajaActiva()?.saldo_en_vales || 0) <= 0"
+                class="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-600/30 flex items-center gap-1.5 cursor-pointer">
+                <span>🔄</span>
+                <span>Solicitar Reembolso de Vales</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- MODAL DE IMPRESIÓN OFICIAL DEL ACTA DE ARQUEO -->
+    <app-acta-arqueo-impresion-modal
+      [(visible)]="modalImprimirArqueoVisible"
+      [arqueo]="arqueoParaImprimir()"
+      [caja]="cajaActiva()"
+    />
+
+    <!-- MODAL DE IMPRESIÓN OFICIAL DEL RECIBO DE CAJA MENOR -->
+    <app-vale-caja-menor-impresion-modal
+      [(visible)]="modalImprimirValeVisible"
+      [vale]="valeParaImprimir()"
+      [caja]="cajaActiva()"
+    />
   `,
 })
 export class TesoreriaAdminComponent implements OnInit {
@@ -1104,6 +1292,15 @@ export class TesoreriaAdminComponent implements OnInit {
   terceroGastoSeleccionado = signal<TerceroItem | null>(null);
   cuentaPucGastoSeleccionada = signal<CuentaPucLookupItem | null>(null);
   cuentaPucNotaSeleccionada = signal<CuentaPucLookupItem | null>(null);
+
+  // Vales & Arqueos Impresión State
+  modalHistorialValesAbierto = signal<boolean>(false);
+  gastosCajaSeleccionada = signal<GastoCajaMenorItem[]>([]);
+  cargandoVales = signal<boolean>(false);
+  valeParaImprimir = signal<GastoCajaMenorItem | null>(null);
+  modalImprimirValeVisible = signal<boolean>(false);
+  arqueoParaImprimir = signal<ArqueoCajaMenorItem | null>(null);
+  modalImprimirArqueoVisible = signal<boolean>(false);
 
   // Arqueo State
   conteoBilletes: Record<string, number> = {
@@ -1356,7 +1553,7 @@ export class TesoreriaAdminComponent implements OnInit {
 
     this.tesoreriaService.registrarGastoCaja(payload).subscribe({
       next: (res) => {
-        this.notificaciones.success('Vale de Gasto Legalizado', `Se registró el vale ${res.consecutivo} por \${{ res.total | number:'1.2-2' }}`);
+        this.notificaciones.success('Vale de Gasto Legalizado', `Se registró el vale ${res.consecutivo} por \$ {{ res.total | number:'1.2-2' }}`);
         this.modalGastoAbierto.set(false);
         this.cargarDatos();
       },
@@ -1365,12 +1562,43 @@ export class TesoreriaAdminComponent implements OnInit {
   }
 
   verGastosCaja(caja: CajaMenorItem) {
+    this.cajaActiva.set(caja);
+    this.cargandoVales.set(true);
+    this.modalHistorialValesAbierto.set(true);
     this.tesoreriaService.listarGastosCaja(caja.id).subscribe({
       next: (gastos) => {
-        const resumen = gastos.map((g) => `${g.consecutivo}: ${g.concepto} ($${Number(g.total).toLocaleString()}) - [${g.estado}]`).join('\n');
-        this.notificaciones.info(`Vales de ${caja.nombre}`, resumen || 'No hay gastos registrados.');
+        this.gastosCajaSeleccionada.set(gastos || []);
+        this.cargandoVales.set(false);
       },
+      error: () => this.cargandoVales.set(false),
     });
+  }
+
+  imprimirVale(v: GastoCajaMenorItem) {
+    this.valeParaImprimir.set(v);
+    this.modalImprimirValeVisible.set(true);
+  }
+
+  abrirModalReembolsoDesdeVisor() {
+    this.modalHistorialValesAbierto.set(false);
+    if (this.cajaActiva()) {
+      this.abrirModalReembolso(this.cajaActiva()!);
+    }
+  }
+
+  calcularPorcentajeConsumo(caja: CajaMenorItem): number {
+    if (!caja) return 0;
+    const fondo = Number(caja.monto_fondo_fijo || 0);
+    if (fondo <= 0) return 0;
+    const vales = Number(caja.saldo_en_vales || 0);
+    return Math.min(100, Math.round((vales / fondo) * 100));
+  }
+
+  calcularColorConsumo(caja: CajaMenorItem): string {
+    const pct = this.calcularPorcentajeConsumo(caja);
+    if (pct >= 75) return 'bg-rose-500';
+    if (pct >= 50) return 'bg-amber-500';
+    return 'bg-emerald-500';
   }
 
   // ==========================================
@@ -1425,8 +1653,11 @@ export class TesoreriaAdminComponent implements OnInit {
 
     this.tesoreriaService.registrarArqueo(payload).subscribe({
       next: (res) => {
-        this.notificaciones.success('Acta de Arqueo Guardada', `Resultado: ${res.resultado}. Diferencia: \${{ res.diferencia | number:'1.2-2' }}`);
+        this.notificaciones.success('Acta de Arqueo Sellada con Éxito', `Resultado: ${res.resultado}. Total fondo contado: ${Number(res.total_fondo_contado).toLocaleString()}`);
         this.modalArqueoAbierto.set(false);
+        this.arqueoParaImprimir.set(res);
+        this.modalImprimirArqueoVisible.set(true);
+        this.cargarDatos();
       },
       error: (err) => this.notificaciones.error('Error al guardar arqueo', err.error?.message || err.message),
     });
@@ -1483,7 +1714,7 @@ export class TesoreriaAdminComponent implements OnInit {
 
     this.tesoreriaService.reembolsarCaja(payload).subscribe({
       next: (res) => {
-        this.notificaciones.success('Egreso de Reembolso Emitido', `Comprobante ${res.asiento?.numero_comprobante} por \${{ res.totalReembolsado | number:'1.2-2' }}`);
+        this.notificaciones.success('Egreso de Reembolso Emitido', `Comprobante ${res.asiento?.numero_comprobante} por \$ {{ res.totalReembolsado | number:'1.2-2' }}`);
         this.modalReembolsoAbierto.set(false);
         this.cargarDatos();
       },
@@ -1599,7 +1830,7 @@ export class TesoreriaAdminComponent implements OnInit {
             if (conc.diferencia_descuadre <= 0.05) {
               this.notificaciones.success('Conciliación Exitosa', 'La conciliación bancaria está completamente cuadrada al centavo ($0.00)');
             } else {
-              this.notificaciones.warning('Partidas Pendientes', `La conciliación presenta una diferencia de descuadre de \${{ conc.diferencia_descuadre | number:'1.2-2' }}`);
+              this.notificaciones.warning('Partidas Pendientes', `La conciliación presenta una diferencia de descuadre de \$ {{ conc.diferencia_descuadre | number:'1.2-2' }}`);
             }
           },
           error: (err) => {

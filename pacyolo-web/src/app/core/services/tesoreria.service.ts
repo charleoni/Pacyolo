@@ -59,6 +59,20 @@ export interface ArqueoCajaMenorItem {
     nombre_completo: string;
   };
   desglose_efectivo?: Record<string, number>;
+  vales_incluidos?: Array<{
+    id: string;
+    consecutivo: string;
+    fecha_gasto: string;
+    concepto: string;
+    soporte_factura_ref: string;
+    tercero_nombre: string;
+    tercero_documento: string;
+    subtotal: number;
+    iva: number;
+    retefuente: number;
+    total: number;
+    estado: string;
+  }>;
   total_efectivo_fisico: number;
   total_vales_comprobantes: number;
   total_fondo_contado: number;

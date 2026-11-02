@@ -126,6 +126,58 @@ import { imprimirElementoAislado, ESTILOS_IMPRESION_CORPORATIVA } from '../../co
                 </table>
               </div>
 
+              <!-- 3.1 RELACIÓN DETALLADA DE VALES Y SOPORTES FÍSICOS EN GAVETA (EVIDENCIA FORENSE / NIA 500) -->
+              <div class="doc-table-card" style="margin-bottom: 12px;">
+                <div style="background: #f1f5f9; padding: 6px 10px; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 8.5px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Relación de Vales y Recibos Físicos Verificados en Gaveta (Evidencia NIA 500)
+                  </span>
+                  <span style="font-size: 8px; color: #64748b; font-family: ui-monospace, monospace;">
+                    {{ arqueo()?.vales_incluidos?.length || 0 }} soportes
+                  </span>
+                </div>
+                <table class="doc-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 14%;">No. Vale</th>
+                      <th style="width: 12%;">Fecha</th>
+                      <th style="width: 26%;">Beneficiario / Tercero</th>
+                      <th style="width: 26%;">Concepto / Destino</th>
+                      <th style="width: 10%;">Ref. Soporte</th>
+                      <th style="width: 12%;" class="text-right">Valor Pesos ($)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (v of arqueo()?.vales_incluidos || []; track v.id) {
+                      <tr>
+                        <td class="font-mono" style="font-weight: 700; color: #1e3a8a;">{{ v.consecutivo }}</td>
+                        <td class="font-mono" style="color: #475569;">{{ v.fecha_gasto }}</td>
+                        <td style="font-weight: 600;">{{ v.tercero_nombre }}</td>
+                        <td style="color: #334155;">{{ v.concepto }}</td>
+                        <td class="font-mono" style="font-size: 8px; color: #64748b;">{{ v.soporte_factura_ref || 'S/R' }}</td>
+                        <td class="text-right font-mono" style="font-weight: 700; color: #0f172a;">
+                          $ {{ v.total | number:'1.2-2' }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="text-center" style="padding: 10px; color: #64748b; font-style: italic;">
+                          No se encontraron vales pendientes de reembolso en gaveta al momento del arqueo (Fondo 100% en efectivo).
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="5" class="text-right" style="font-size: 9px; text-transform: uppercase;">Total Vales Físicos Verificados:</td>
+                      <td class="text-right font-mono" style="font-size: 11px; color: #166534; font-weight: 800;">
+                        $ {{ (arqueo()?.total_vales_comprobantes || 0) | number:'1.2-2' }}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
               <!-- 4. BALANCE GENERAL DE ARQUEO Y DIAGNÓSTICO -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
                 <!-- Cuadro de Balance -->

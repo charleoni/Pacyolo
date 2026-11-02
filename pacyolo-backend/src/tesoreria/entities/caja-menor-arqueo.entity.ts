@@ -58,6 +58,9 @@ export class CajaMenorArqueo {
   @Column({ type: 'jsonb', nullable: true })
   desglose_efectivo: Record<string, number>; // Ej: { "100000": 2, "50000": 4, "20000": 10, "monedas": 15000 }
 
+  @Column({ type: 'jsonb', nullable: true })
+  vales_incluidos?: any[] | null; // Snapshot inmutable de los vales y recibos verificados en el arqueo // Ej: { "100000": 2, "50000": 4, "20000": 10, "monedas": 15000 }
+
   @Column({ type: 'decimal', precision: 16, scale: 2 })
   total_efectivo_fisico: number;
 
