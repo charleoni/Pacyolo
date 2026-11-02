@@ -86,7 +86,7 @@ export class TesoreriaService {
     if (dto.cuenta_banco_origen_id) {
       let cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
       if (!cuentaBanco) {
-        const ctaBancaria = await this.cuentaRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
+        const ctaBancaria = await this.cuentaBancariaRepo.findOne({ where: { id: dto.cuenta_banco_origen_id } });
         if (ctaBancaria) {
           cuentaBanco = await this.pucRepo.findOne({ where: { id: ctaBancaria.cuenta_puc_id } });
         }
@@ -277,7 +277,7 @@ export class TesoreriaService {
 
     let cuentaBanco = await this.pucRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
     if (!cuentaBanco) {
-      const ctaBancaria = await this.cuentaRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
+      const ctaBancaria = await this.cuentaBancariaRepo.findOne({ where: { id: dto.cuenta_banco_pago_id } });
       if (ctaBancaria) {
         cuentaBanco = await this.pucRepo.findOne({ where: { id: ctaBancaria.cuenta_puc_id } });
       }

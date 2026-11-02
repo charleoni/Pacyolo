@@ -172,8 +172,6 @@ export class CxcService {
       glosa_general: `Recaudo de cartera factura ${cxc.numero_factura} - ${cxc.tercero?.razon_social}${
         descuento > 0 ? ` (Dcto Pronto Pago: $${descuento})` : ''
       }`,
-      origen_sistema: 'RECAUDO_CXC',
-      origen_documento_id: cxc.id,
       lineas: lineasAsiento,
     });
 
