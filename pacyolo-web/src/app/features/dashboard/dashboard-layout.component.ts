@@ -340,7 +340,7 @@ import { EmpresaSesion } from '../../core/models/auth.model';
       </div>
 
       <!-- Contenedor Principal -->
-      <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+      <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 w-full max-w-[1920px] mx-auto">
         <router-outlet />
       </main>
     </div>

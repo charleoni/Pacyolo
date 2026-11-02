@@ -77,14 +77,14 @@ interface Asiento {
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="sticky top-0 z-10 bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
               <tr>
-                <th class="py-3 px-4 whitespace-nowrap">Comprobante</th>
-                <th class="py-3 px-4 whitespace-nowrap">Tipo</th>
-                <th class="py-3 px-4 whitespace-nowrap">Fecha Contable</th>
-                <th class="py-3 px-4 min-w-[220px] max-w-xs md:max-w-md">Concepto / Glosa</th>
+                <th class="py-3 px-4 text-left whitespace-nowrap">Comprobante</th>
+                <th class="py-3 px-4 text-left whitespace-nowrap">Tipo</th>
+                <th class="py-3 px-4 text-left whitespace-nowrap">Fecha Contable</th>
+                <th class="py-3 px-4 text-left min-w-[260px] max-w-md xl:max-w-xl">Concepto / Glosa</th>
                 <th class="py-3 px-4 text-right whitespace-nowrap">Débitos</th>
                 <th class="py-3 px-4 text-right whitespace-nowrap">Créditos</th>
                 <th class="py-3 px-4 text-center whitespace-nowrap">Estado</th>
-                <th class="py-3 px-4 text-center whitespace-nowrap min-w-[260px]">Acciones</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap w-[270px]">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/60">
@@ -114,11 +114,11 @@ interface Asiento {
                       {{ asiento.estado }}
                     </span>
                   </td>
-                  <td class="py-3 px-4 text-center whitespace-nowrap min-w-[260px]">
-                    <div class="flex items-center justify-center gap-1.5">
+                  <td class="py-3 px-4 text-right whitespace-nowrap w-[270px]">
+                    <div class="inline-flex items-center justify-end gap-1.5">
                       <button
                         (click)="imprimirComprobante(asiento)"
-                        class="px-2.5 py-1 text-xs text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/50 rounded-lg border border-indigo-800/40 transition inline-flex items-center gap-1 cursor-pointer shadow-sm"
+                        class="w-20 py-1 text-xs text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/50 rounded-lg border border-indigo-800/40 transition inline-flex items-center justify-center gap-1 cursor-pointer shadow-sm"
                         title="Imprimir Comprobante Oficial (Pilar 2)"
                       >
                         <span>🖨️</span>
@@ -127,7 +127,7 @@ interface Asiento {
 
                       <button
                         (click)="verDetalle(asiento)"
-                        class="px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer shadow-sm"
+                        class="w-16 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition cursor-pointer shadow-sm inline-flex items-center justify-center"
                         title="Ver líneas del asiento"
                       >
                         Líneas
@@ -137,7 +137,7 @@ interface Asiento {
                         @if (!asiento.origen_sistema || asiento.origen_sistema === 'MANUAL') {
                           <button
                             (click)="abrirModalAnular(asiento)"
-                            class="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition cursor-pointer shadow-sm"
+                            class="w-24 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 rounded-lg border border-rose-800/40 transition cursor-pointer shadow-sm inline-flex items-center justify-center"
                             title="Anular comprobante manual con reversión NIIF"
                           >
                             Anular
@@ -145,11 +145,11 @@ interface Asiento {
                         } @else {
                           <button
                             (click)="explicarBloqueoAnulacion(asiento)"
-                            class="px-2.5 py-1 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 rounded-lg border border-amber-800/40 transition inline-flex items-center gap-1 cursor-pointer shadow-sm"
+                            class="w-24 py-1 text-xs text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/50 rounded-lg border border-amber-800/40 transition inline-flex items-center justify-center gap-1 cursor-pointer shadow-sm truncate"
                             [title]="'Protegido por Pilar 5 (Integridad Causal): Originado por módulo ' + asiento.origen_sistema"
                           >
                             <span>🔒</span>
-                            <span>{{ formatearOrigen(asiento.origen_sistema) }}</span>
+                            <span class="truncate">{{ formatearOrigen(asiento.origen_sistema) }}</span>
                           </button>
                         }
                       }
@@ -366,16 +366,14 @@ export class LibroDiarioComponent implements OnInit {
   }
 
   formatearOrigen(origen?: string): string {
-    switch (origen) {
-      case 'TESORERIA': return 'Tesorería';
-      case 'CXP': return 'CxP';
-      case 'CXC': return 'CxC';
-      case 'VENTAS':
-      case 'VENTAS_COSTO': return 'Ventas';
-      case 'INVENTARIOS': return 'Inventarios';
-      case 'COMPRAS': return 'Compras';
-      default: return origen || 'Subsistema';
-    }
+    if (!origen) return 'Subsistema';
+    const up = origen.toUpperCase();
+    if (up.includes('VENTA')) return 'Ventas';
+    if (up.includes('TESORERIA') || up.includes('CAJA') || up.includes('BANCO')) return 'Tesorería';
+    if (up.includes('CXP') || up.includes('COMPRA')) return 'CxP';
+    if (up.includes('CXC') || up.includes('RECAUDO')) return 'CxC';
+    if (up.includes('INVENTARIO') || up.includes('KARDEX')) return 'Inventario';
+    return origen;
   }
 
   explicarBloqueoAnulacion(asiento: Asiento): void {
